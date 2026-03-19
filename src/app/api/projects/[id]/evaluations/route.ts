@@ -106,6 +106,7 @@ export async function POST(
     return NextResponse.json({ error: "피평가는 이 프로젝트 팀원이어야 합니다." }, { status: 400 });
   }
 
+  // @ts-expect-error Supabase client infers 'never' for peer_evaluations.insert with custom Database type
   const { error: insertError } = await supabase.from("peer_evaluations").insert({
     project_id: projectId,
     evaluator_id: user.id,
@@ -127,23 +128,26 @@ export async function POST(
     .select("score")
     .eq("evaluatee_id", evaluateeId);
 
-  const totalScore = (allReviews ?? []).reduce((sum, r) => sum + Number(r.score), 0);
+  const reviews = (allReviews ?? []) as Array<{ score: number }>;
+  const totalScore = reviews.reduce((sum, r) => sum + Number(r.score), 0);
   const newMannerTemp = Math.round((36.5 + totalScore) * 10) / 10;
   const clampedTemp = Math.max(30, Math.min(45, newMannerTemp));
 
   const admin = createAdminClient();
   if (admin) {
-    const { data: currentProfile } = await admin
+    const { data: profileData } = await admin
       .from("profiles")
       .select("badges")
       .eq("id", evaluateeId)
       .single();
+    const currentProfile = profileData as { badges?: string[] } | null;
 
     let badges: string[] = Array.isArray(currentProfile?.badges) ? currentProfile.badges : [];
     if (clampedTemp > 40 && !badges.includes("열정적인 협업자")) {
       badges = [...badges, "열정적인 협업자"];
     }
 
+    // @ts-ignore - Supabase admin client infers never for profiles.update in some environments
     await admin
       .from("profiles")
       .update({
@@ -155,17 +159,19 @@ export async function POST(
       .eq("id", evaluateeId);
   } else {
     const supabaseClient = await createClient();
-    const { data: currentProfile } = await supabaseClient
+    const { data: profileData } = await supabaseClient
       .from("profiles")
       .select("badges")
       .eq("id", evaluateeId)
       .single();
+    const currentProfile = profileData as { badges?: string[] } | null;
 
     let badges: string[] = Array.isArray(currentProfile?.badges) ? currentProfile.badges : [];
     if (clampedTemp > 40 && !badges.includes("열정적인 협업자")) {
       badges = [...badges, "열정적인 협업자"];
     }
 
+    // @ts-ignore - Supabase client infers never for profiles.update in some environments
     await supabaseClient
       .from("profiles")
       .update({
