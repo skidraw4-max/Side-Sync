@@ -80,21 +80,21 @@ export default function ProfilePage() {
         }
 
         // maybeSingle: 프로필 row 없을 때도 에러 없이 null 반환
-        const { data: profileRow } = await supabase
+        const { data: profileRow } = await (supabase as any)
           .from("profiles")
           .select("full_name, avatar_url, role, manner_temp, manner_temp_target, success_rate, badges")
           .eq("id", user.id)
           .maybeSingle();
 
         if (cancelled) return;
-        const row = profileRow as { manner_temp?: number; manner_temp_target?: string; badges?: string[] } | null;
+        const profile = profileRow as { full_name: string | null; avatar_url: string | null; role: string | null; manner_temp: number | null; manner_temp_target: string | null; success_rate: string | null; badges: string[] } | null;
         setProfile({
-          fullName: profileRow?.full_name ?? null,
-          avatarUrl: profileRow?.avatar_url ?? null,
-          role: profileRow?.role ?? null,
-          mannerTemp: row?.manner_temp != null ? `${row.manner_temp}` : (profileRow?.manner_temp_target ?? "36.5"),
-          successRate: profileRow?.success_rate ?? "98%",
-          badges: Array.isArray(row?.badges) ? row.badges : [],
+          fullName: profile?.full_name ?? null,
+          avatarUrl: profile?.avatar_url ?? null,
+          role: profile?.role ?? null,
+          mannerTemp: profile?.manner_temp != null ? `${profile.manner_temp}` : (profile?.manner_temp_target ?? "36.5"),
+          successRate: profile?.success_rate ?? "98%",
+          badges: Array.isArray(profile?.badges) ? profile.badges : [],
           location: "San Francisco, CA",
         });
 
