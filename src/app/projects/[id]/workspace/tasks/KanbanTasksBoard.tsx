@@ -396,7 +396,7 @@ export default function KanbanTasksBoard({
       );
 
       const supabase = createClient();
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("tasks")
         .update({ status: newStatus, updated_at: new Date().toISOString() })
         .eq("id", taskId);
@@ -440,7 +440,7 @@ export default function KanbanTasksBoard({
       status: newTaskColumn,
       assignee_id: newAssigneeId && newAssigneeId.trim() && !newAssigneeId.startsWith("__role_") ? newAssigneeId.trim() : null,
     };
-    let { data: inserted, error } = await supabase
+    let { data: inserted, error } = await (supabase as any)
       .from("tasks")
       .insert(insertPayload)
       .select("id, title, category, priority, status, assignee_id")
@@ -449,7 +449,7 @@ export default function KanbanTasksBoard({
     if (error && insertPayload.assignee_id) {
       console.warn("[KanbanTasksBoard] assignee_id로 등록 실패, 담당자 없이 재시도:", error.message);
       const retryPayload = { ...insertPayload, assignee_id: null };
-      const { data: retryData, error: retryError } = await supabase
+      const { data: retryData, error: retryError } = await (supabase as any)
         .from("tasks")
         .insert(retryPayload)
         .select("id, title, category, priority, status, assignee_id")
@@ -502,9 +502,9 @@ export default function KanbanTasksBoard({
         .eq("project_id", projectId)
         .eq("slug", "general")
         .single();
-      await supabase.from("chat_messages").insert({
+      await (supabase as any).from("chat_messages").insert({
         project_id: projectId,
-        channel_id: generalChannel?.id ?? null,
+        channel_id: (generalChannel as { id?: string } | null)?.id ?? null,
         author_id: currentUserId,
         content,
       });
@@ -538,7 +538,7 @@ export default function KanbanTasksBoard({
       );
 
       const supabase = createClient();
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("tasks")
         .update({ assignee_id: dbValue, updated_at: new Date().toISOString() })
         .eq("id", taskId);
@@ -583,7 +583,7 @@ export default function KanbanTasksBoard({
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("tasks")
       .update(updatePayload)
       .eq("id", editingTask.id);
