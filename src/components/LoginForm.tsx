@@ -23,7 +23,7 @@ export default function LoginForm() {
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
-        options: rememberMe ? { persistSession: true } : undefined,
+        ...(rememberMe && { options: { persistSession: true } as Record<string, unknown> }),
       });
 
       if (signInError) {
