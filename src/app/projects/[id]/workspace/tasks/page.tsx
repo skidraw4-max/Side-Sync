@@ -66,8 +66,10 @@ export default async function TasksPage({ params }: TasksPageProps) {
 
   const tasksWithAssignee = tasksTyped.map((t) => ({
     ...t,
+    category: t.category ?? "",
     priority: (t as { priority?: string }).priority ?? "medium",
-    assignee: t.assignee_id ? profileMap.get(t.assignee_id) : null,
+    due_date: null as string | null,
+    assignee: t.assignee_id ? (profileMap.get(t.assignee_id) ?? null) : null,
   }));
 
   // teamMembers: auth user id 기준 (assignee_id FK가 auth.users 참조)
