@@ -77,7 +77,7 @@ export default function ApplicantsDashboardPage() {
       return;
     }
 
-    type AppRow = { id: string; project_id: string; applicant_id: string; message: string | null; role: string | null; status: string; created_at: string };
+    type AppRow = { id: string; project_id: string; applicant_id: string; message: string | null; role: string | null; status: "pending" | "accepted" | "rejected"; created_at: string };
     const appRows = (appRowsData ?? []) as AppRow[];
     const applicantIds = [...new Set(appRows.map((a) => a.applicant_id))];
     let profileMap = new Map<string, ApplicantProfile>();
@@ -102,8 +102,9 @@ export default function ApplicantsDashboardPage() {
     }
 
     setApplications(
-      appRows.map((a) => ({
+      appRows.map((a): ApplicationWithProfile => ({
         ...a,
+        status: a.status as "pending" | "accepted" | "rejected",
         project_title: projectMap.get(a.project_id) ?? "Unknown",
         applicant: profileMap.get(a.applicant_id) ?? null,
       }))

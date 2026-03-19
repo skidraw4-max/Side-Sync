@@ -116,8 +116,8 @@ export default function OnboardingPage() {
       };
       if (avatarUrl != null) payload.avatar_url = avatarUrl;
 
-      const { error: upsertError } = await supabase.from("profiles").upsert(
-        payload,
+      const { error: upsertError } = await (supabase as any).from("profiles").upsert(
+        payload as any,
         { onConflict: "id" }
       );
 
