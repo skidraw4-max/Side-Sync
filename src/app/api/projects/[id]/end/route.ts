@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/types/database";
 import { createAdminClient } from "@/lib/supabase/admin";
+
+type ProjectRow = Pick<
+  Database["public"]["Tables"]["projects"]["Row"],
+  "id" | "title" | "team_leader_id"
+>;
 
 /**
  * POST: 프로젝트 종료 (팀장 전용)
@@ -25,12 +31,13 @@ export async function POST(
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
-  const { data: project } = await supabase
+  const { data } = await supabase
     .from("projects")
     .select("id, title, team_leader_id")
     .eq("id", projectId)
     .single();
 
+  const project = data as ProjectRow | null;
   if (!project) {
     return NextResponse.json({ error: "프로젝트를 찾을 수 없습니다." }, { status: 404 });
   }
@@ -48,7 +55,7 @@ export async function POST(
     .eq("id", projectId)
     .single();
 
-  if ((projectWithStatus as { status?: string })?.status === "completed") {
+  if ((projectWithStatus as unknown as { status?: string } | null)?.status === "completed") {
     return NextResponse.json(
       { error: "이미 종료된 프로젝트입니다." },
       { status: 400 }
@@ -57,6 +64,7 @@ export async function POST(
 
   const { error: updateError } = await supabase
     .from("projects")
+    // @ts-expect-error Supabase client incorrectly infers 'never' for projects.update()
     .update({
       status: "completed",
       updated_at: new Date().toISOString(),
@@ -80,11 +88,13 @@ export async function POST(
     .select("applicant_id")
     .eq("project_id", projectId)
     .eq("status", "accepted");
-  (acceptedApps ?? []).forEach((a) => teamMemberIds.add(a.applicant_id));
+  const apps = (acceptedApps ?? []) as Array<{ applicant_id: string }>;
+  apps.forEach((a) => teamMemberIds.add(a.applicant_id));
 
   const admin = createAdminClient();
   if (admin && teamMemberIds.size > 0) {
     for (const memberId of teamMemberIds) {
+      // @ts-expect-error Supabase admin client infers never for insert
       await admin.from("notifications").insert({
         user_id: memberId,
         title: "상호 평가를 완료해주세요",

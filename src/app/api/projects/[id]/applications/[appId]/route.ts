@@ -1,6 +1,17 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/types/database";
 import { createAdminClient } from "@/lib/supabase/admin";
+
+type ProjectRow = Pick<
+  Database["public"]["Tables"]["projects"]["Row"],
+  "id" | "title" | "team_leader_id" | "recruitment_status"
+>;
+
+type ApplicationRow = Pick<
+  Database["public"]["Tables"]["applications"]["Row"],
+  "id" | "applicant_id" | "status" | "role"
+>;
 
 /**
  * PATCH: 지원 상태 변경 (수락/거절)
@@ -37,11 +48,13 @@ export async function PATCH(
     return NextResponse.json({ error: "status must be 'accepted' or 'rejected'" }, { status: 400 });
   }
 
-  const { data: project } = await supabase
+  const { data } = await supabase
     .from("projects")
     .select("id, title, team_leader_id, recruitment_status")
     .eq("id", projectId)
     .single();
+
+  const project = data as ProjectRow | null;
 
   if (!project) {
     return NextResponse.json({ error: "프로젝트를 찾을 수 없습니다." }, { status: 404 });
@@ -51,13 +64,14 @@ export async function PATCH(
     return NextResponse.json({ error: "팀장만 수락/거절할 수 있습니다." }, { status: 403 });
   }
 
-  const { data: application } = await supabase
+  const { data: appData } = await supabase
     .from("applications")
     .select("id, applicant_id, status, role")
     .eq("id", appId)
     .eq("project_id", projectId)
     .single();
 
+  const application = appData as ApplicationRow | null;
   if (!application) {
     return NextResponse.json({ error: "지원서를 찾을 수 없습니다." }, { status: 404 });
   }
@@ -86,9 +100,14 @@ export async function PATCH(
     }
   }
 
+  const updatePayload = {
+    status,
+    updated_at: new Date().toISOString(),
+  };
   const { error: updateError } = await supabase
     .from("applications")
-    .update({ status, updated_at: new Date().toISOString() })
+    // @ts-expect-error Supabase client incorrectly infers 'never' for applications.update()
+    .update(updatePayload)
     .eq("id", appId);
 
   if (updateError) {
@@ -102,6 +121,7 @@ export async function PATCH(
     const admin = createAdminClient();
     if (admin) {
       // 지원자에게 알림
+      // @ts-expect-error Supabase admin client infers never for insert with custom Database type
       await admin.from("notifications").insert({
         user_id: application.applicant_id,
         title: "축하합니다! 프로젝트 팀원으로 수락되었습니다.",
@@ -110,27 +130,30 @@ export async function PATCH(
       });
 
       // 채팅방에 "OOO님이 새로운 팀원으로 합류했습니다!" 시스템 메시지
-      const { data: profile } = await admin
+      const { data: profileData } = await admin
         .from("profiles")
         .select("full_name")
         .eq("id", application.applicant_id)
         .single();
+      const profile = profileData as { full_name: string | null } | null;
       const memberName = profile?.full_name?.trim() || "새 팀원";
       const systemContent = `${memberName}님이 새로운 팀원으로 합류했습니다! 환영해주세요! 🎉`;
 
       let channelId: string | null = null;
-      const { data: generalChannel } = await admin
+      const { data: generalChannelData } = await admin
         .from("chat_channels")
         .select("id")
         .eq("project_id", projectId)
         .eq("slug", "general")
         .maybeSingle();
+      const generalChannel = generalChannelData as { id: string } | null;
 
       if (generalChannel) {
         channelId = generalChannel.id;
       } else {
-        const { data: newChannel } = await admin
+        const { data: newChannelData } = await admin
           .from("chat_channels")
+          // @ts-expect-error Supabase admin client infers never for insert
           .insert({
             project_id: projectId,
             name: "General",
@@ -139,9 +162,11 @@ export async function PATCH(
           })
           .select("id")
           .single();
+        const newChannel = newChannelData as { id?: string } | null;
         channelId = newChannel?.id ?? null;
       }
 
+      // @ts-expect-error Supabase admin client infers never for insert with custom Database type
       await admin.from("chat_messages").insert({
         project_id: projectId,
         channel_id: channelId,

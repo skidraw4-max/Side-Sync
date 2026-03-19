@@ -9,6 +9,9 @@ export interface RecruitmentStatusRow {
 
 export interface Database {
   public: {
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
     Tables: {
       projects: {
         Row: {

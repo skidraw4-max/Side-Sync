@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/types/database";
 import { createAdminClient } from "@/lib/supabase/admin";
+
+type ProjectRow = Pick<
+  Database["public"]["Tables"]["projects"]["Row"],
+  "id" | "team_leader_id"
+>;
 
 /**
  * POST: 프로젝트 지원 신청
@@ -47,12 +53,13 @@ export async function POST(
   const role = typeof body.role === "string" ? body.role.trim() : null;
 
   // 프로젝트 및 팀장 조회
-  const { data: project, error: projectError } = await supabase
+  const { data, error: projectError } = await supabase
     .from("projects")
     .select("id, team_leader_id")
     .eq("id", projectId)
     .single();
 
+  const project = data as ProjectRow | null;
   if (projectError || !project) {
     return NextResponse.json({ error: "프로젝트를 찾을 수 없습니다." }, { status: 404 });
   }
@@ -94,6 +101,7 @@ export async function POST(
   };
   if (role) insertPayload.role = role;
 
+  // @ts-expect-error Supabase client incorrectly infers 'never' for applications.insert()
   const { error: insertError } = await supabase.from("applications").insert(insertPayload);
 
   if (insertError) {
@@ -107,6 +115,7 @@ export async function POST(
   if (project.team_leader_id) {
     const admin = createAdminClient();
     if (admin) {
+      // @ts-expect-error Supabase admin client infers never for insert with custom Database type
       await admin.from("notifications").insert({
         user_id: project.team_leader_id,
         title: "새로운 지원자가 있습니다!",

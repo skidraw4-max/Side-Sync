@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/types/database";
 import { createAdminClient } from "@/lib/supabase/admin";
+
+type ProjectRow = Pick<
+  Database["public"]["Tables"]["projects"]["Row"],
+  "id" | "team_leader_id" | "status"
+>;
 
 /**
  * POST: 상호 평가 제출
@@ -59,12 +65,13 @@ export async function POST(
   });
   score = Math.max(-0.5, Math.min(0.5, score));
 
-  const { data: project } = await supabase
+  const { data } = await supabase
     .from("projects")
     .select("id, team_leader_id, status")
     .eq("id", projectId)
     .single();
 
+  const project = data as ProjectRow | null;
   if (!project) {
     return NextResponse.json({ error: "프로젝트를 찾을 수 없습니다." }, { status: 404 });
   }
