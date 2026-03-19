@@ -1,0 +1,175 @@
+"use client";
+
+import { useState, useEffect } from "react";
+
+interface ApplyModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  projectId: string;
+  projectTitle: string;
+  roles: { role: string; total: number; filled: number }[];
+  onSubmitSuccess?: () => void;
+}
+
+export default function ApplyModal({
+  isOpen,
+  onClose,
+  projectId,
+  projectTitle,
+  roles,
+  onSubmitSuccess,
+}: ApplyModalProps) {
+  const [selectedRole, setSelectedRole] = useState("");
+  const [motivation, setMotivation] = useState("");
+  const [agreeShare, setAgreeShare] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const openRoles = roles.filter((r) => r.filled < r.total);
+  const defaultRole = openRoles[0]?.role ?? "";
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedRole(defaultRole);
+      setMotivation("");
+      setAgreeShare(false);
+      setError(null);
+    }
+  }, [isOpen, defaultRole]);
+
+  const handleClose = () => {
+    onClose();
+    setError(null);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!motivation.trim()) {
+      setError("지원 동기를 입력해주세요.");
+      return;
+    }
+    if (!agreeShare) {
+      setError("프로필 및 포트폴리오 공유에 동의해주세요.");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/apply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+        role: selectedRole || null,
+        motivation: motivation.trim(),
+        agreeShareProfile: agreeShare,
+      }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error ?? "지원 제출에 실패했습니다.");
+      }
+      handleClose();
+      onSubmitSuccess?.();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "지원 제출에 실패했습니다.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 z-50 bg-black/50"
+        onClick={handleClose}
+        onKeyDown={(e) => e.key === "Escape" && handleClose()}
+        role="button"
+        tabIndex={0}
+        aria-label="모달 닫기"
+      />
+      <div
+        className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.key === "Escape" && handleClose()}
+      >
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">Apply to Join</h2>
+          <button
+            type="button"
+            onClick={handleClose}
+            className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+            aria-label="닫기"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div>
+            <label htmlFor="role" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500">
+              Selected Role
+            </label>
+            <select
+              id="role"
+              value={selectedRole || defaultRole}
+              onChange={(e) => setSelectedRole(e.target.value)}
+              className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20"
+            >
+              {openRoles.length === 0 ? (
+                <option value="">모집 중인 포지션이 없습니다</option>
+              ) : (
+                openRoles.map((r) => (
+                  <option key={r.role} value={r.role}>
+                    {r.role}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="motivation" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500">
+              Motivation
+            </label>
+            <textarea
+              id="motivation"
+              rows={5}
+              value={motivation}
+              onChange={(e) => setMotivation(e.target.value)}
+              placeholder="Tell the project lead why you're a good fit..."
+              className="w-full resize-none rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20"
+            />
+          </div>
+
+          <label className="flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              checked={agreeShare}
+              onChange={(e) => setAgreeShare(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#2563EB] focus:ring-[#2563EB]"
+            />
+            <span className="text-sm text-gray-600">
+              I agree to share my public profile and portfolio with the project leadership team.
+            </span>
+          </label>
+
+          {error && (
+            <p className="text-sm text-red-600">{error}</p>
+          )}
+
+          <button
+            type="submit"
+            disabled={isSubmitting || openRoles.length === 0}
+            className="w-full rounded-xl bg-[#2563EB] py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8] disabled:opacity-60"
+          >
+            {isSubmitting ? "제출 중..." : "Submit Application"}
+          </button>
+        </form>
+      </div>
+    </>
+  );
+}

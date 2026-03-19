@@ -1,0 +1,6 @@
+-- 샘플 테스크 (projects.id와 profiles.id를 실제 값으로 변경 필요)
+-- INSERT INTO tasks (project_id, title, category, status, assignee_id, due_date) VALUES
+--   ('<project-id>', 'Implement Dashboard Charts', 'FRONTEND', 'todo', '<user-id>', '2025-05-15'),
+--   ('<project-id>', 'Finalize User Persona Mockups', 'DESIGN', 'todo', '<user-id>', '2025-05-18'),
+--   ('<project-id>', 'Competitor Feature Analysis', 'RESEARCH', 'doing', '<user-id>', NULL),
+--   ('<project-id>', 'Draft Product Announcement', 'CONTENT', 'done', '<user-id>', NULL);
