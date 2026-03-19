@@ -69,25 +69,37 @@ export default function NoticesPage() {
       .order("pinned", { ascending: false })
       .order("created_at", { ascending: false });
 
+    const noticesTyped = (noticesData ?? []) as Array<{
+      id: string;
+      title: string;
+      content: string;
+      category: string;
+      author_id: string;
+      pinned: boolean;
+      created_at: string;
+    }>;
+
     const { data: project } = await supabase
       .from("projects")
       .select("title")
       .eq("id", projectId)
       .single();
 
-    if (project) setProjectTitle(project.title);
+    const projectTyped = project as { title?: string } | null;
+    if (projectTyped) setProjectTitle(projectTyped.title ?? "");
 
-    const authorIds = [...new Set((noticesData ?? []).map((n) => n.author_id))];
+    const authorIds = [...new Set(noticesTyped.map((n) => n.author_id))];
     const { data: profiles } = authorIds.length
       ? await supabase.from("profiles").select("id, full_name, avatar_url").in("id", authorIds)
       : { data: [] };
 
+    const profilesTyped = (profiles ?? []) as Array<{ id: string; full_name: string | null; avatar_url: string | null }>;
     const profileMap = new Map(
-      (profiles ?? []).map((p) => [p.id, { full_name: p.full_name, avatar_url: p.avatar_url }])
+      profilesTyped.map((p) => [p.id, { full_name: p.full_name, avatar_url: p.avatar_url }])
     );
 
     setNotices(
-      (noticesData ?? []).map((n) => ({
+      noticesTyped.map((n) => ({
         ...n,
         author: profileMap.get(n.author_id) ?? null,
       }))
@@ -125,7 +137,7 @@ export default function NoticesPage() {
       return;
     }
 
-    const { data: notice, error: noticeError } = await supabase
+    const { data: notice, error: noticeError } = await (supabase as any)
       .from("notices")
       .insert({
         project_id: projectId,
@@ -145,32 +157,33 @@ export default function NoticesPage() {
       return;
     }
 
-    const { data: project } = await supabase
+    const { data: projectData } = await supabase
       .from("projects")
       .select("team_leader_id, title")
       .eq("id", projectId)
       .single();
+    const projectTyped = projectData as { team_leader_id: string | null; title: string } | null;
 
     const memberIds = new Set<string>();
-    if (project?.team_leader_id) memberIds.add(project.team_leader_id);
+    if (projectTyped?.team_leader_id) memberIds.add(projectTyped.team_leader_id);
     const { data: acceptedApps } = await supabase
       .from("applications")
       .select("applicant_id")
       .eq("project_id", projectId)
       .eq("status", "accepted");
-    (acceptedApps ?? []).forEach((a) => memberIds.add(a.applicant_id));
+    ((acceptedApps ?? []) as Array<{ applicant_id: string }>).forEach((a) => memberIds.add(a.applicant_id));
 
     const notificationsToInsert = [...memberIds]
       .filter((id) => id !== user.id)
       .map((userId) => ({
         user_id: userId,
         title: "새 공지사항 📢",
-        message: `[${project?.title || "프로젝트"}] 새로운 공지사항이 게시되었습니다: ${formTitle.trim()}`,
+        message: `[${projectTyped?.title || "프로젝트"}] 새로운 공지사항이 게시되었습니다: ${formTitle.trim()}`,
         link: `/projects/${projectId}/workspace/notices`,
       }));
 
     if (notificationsToInsert.length > 0) {
-      await supabase.from("notifications").insert(notificationsToInsert);
+      await (supabase as any).from("notifications").insert(notificationsToInsert);
     }
 
     toast.success("공지사항이 게시되었습니다.");

@@ -36,9 +36,10 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
   ]);
 
   const isAcceptedMember = !!acceptedApp;
+  const projectTyped = project as { team_leader_id: string | null } | null;
 
   // 팀장도 아니고, 수락된 팀원도 아니라면?
-  if (!project || (user.id !== project.team_leader_id && !isAcceptedMember)) {
+  if (!projectTyped || (user.id !== projectTyped.team_leader_id && !isAcceptedMember)) {
     redirect(`/projects/${projectId}?error=no-access`);
   }
 

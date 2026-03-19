@@ -41,13 +41,15 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps) 
       .eq("status", "accepted"),
   ]);
 
-  let channelsList = channels ?? [];
-  if (channelsList.length === 0 && project) {
+  const projectTyped = project as { id: string; title: string; team_leader_id: string | null } | null;
+  type ChannelRow = { id: string; name: string; slug: string; description: string | null };
+  let channelsList: ChannelRow[] = ((channels ?? []) as ChannelRow[]);
+  if (channelsList.length === 0 && projectTyped) {
     const admin = createAdminClient();
     if (admin) {
       try {
         for (const ch of DEFAULT_CHANNELS) {
-          const { error } = await admin.from("chat_channels").insert({
+          const { error } = await (admin as any).from("chat_channels").insert({
             project_id: projectId,
             name: ch.name,
             slug: ch.slug,
@@ -57,17 +59,17 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps) 
             // 중복 키(23505) 외 오류만 기록 - 민감 정보 노출 방지
           }
         }
-        const { data: created } = await admin
+        const { data: created } = await (admin as any)
           .from("chat_channels")
           .select("id, name, slug, description")
           .eq("project_id", projectId)
           .order("created_at", { ascending: true });
-        channelsList = created ?? channelsList;
+        channelsList = (created ?? channelsList) as Array<{ id: string; name: string; slug: string; description: string | null }>;
       } catch {
-        channelsList = channels ?? [];
+        channelsList = (channels ?? []) as ChannelRow[];
       }
     } else {
-      const { data: created } = await supabase.rpc("ensure_project_channels", { p_project_id: projectId });
+      const { data: created } = await (supabase as any).rpc("ensure_project_channels", { p_project_id: projectId });
       if (Array.isArray(created) && created.length > 0) {
         channelsList = created.map((c: { id: string; name: string; slug: string; description: string | null }) => ({
           id: c.id,
@@ -76,12 +78,12 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps) 
           description: c.description,
         }));
       } else {
-        const { data: refetched } = await supabase
+        const { data: refetched } = await (supabase as any)
           .from("chat_channels")
           .select("id, name, slug, description")
           .eq("project_id", projectId)
           .order("created_at", { ascending: true });
-        channelsList = refetched ?? channelsList;
+        channelsList = (refetched ?? channelsList) as ChannelRow[];
       }
     }
   }
@@ -108,12 +110,21 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps) 
   }
 
   const { data: messages } = await messagesQuery;
+  const messagesTyped = (messages ?? []) as Array<{
+    id: string;
+    project_id: string;
+    channel_id: string | null;
+    author_id: string;
+    content: string;
+    created_at: string;
+  }>;
 
+  const acceptedAppsTyped = (acceptedApps ?? []) as Array<{ applicant_id: string }>;
   const teamMemberIds = new Set<string>();
-  if (project?.team_leader_id) teamMemberIds.add(project.team_leader_id);
-  (acceptedApps ?? []).forEach((a) => teamMemberIds.add(a.applicant_id));
+  if (projectTyped?.team_leader_id) teamMemberIds.add(projectTyped.team_leader_id);
+  acceptedAppsTyped.forEach((a) => teamMemberIds.add(a.applicant_id));
 
-  const authorIds = [...new Set((messages ?? []).map((m) => m.author_id))];
+  const authorIds = [...new Set(messagesTyped.map((m) => m.author_id))];
   const allIds = new Set([...teamMemberIds, ...authorIds]);
   const { data: profiles } =
     allIds.size > 0
@@ -123,14 +134,20 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps) 
           .in("id", Array.from(allIds))
       : { data: [] };
 
+  const profilesTyped = (profiles ?? []) as Array<{
+    id: string;
+    full_name: string | null;
+    avatar_url: string | null;
+    role: string | null;
+  }>;
   const profileMap = new Map(
-    (profiles ?? []).map((p) => [
+    profilesTyped.map((p) => [
       p.id,
       { fullName: p.full_name, avatarUrl: p.avatar_url, role: p.role },
     ])
   );
 
-  const messagesWithAuthor = (messages ?? []).map((m) => ({
+  const messagesWithAuthor = messagesTyped.map((m) => ({
     ...m,
     author: profileMap.get(m.author_id) ?? {
       fullName: null,
@@ -146,7 +163,7 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps) 
     description: c.description,
   }));
 
-  const teamMembers = (profiles ?? [])
+  const teamMembers = profilesTyped
     .filter((p) => teamMemberIds.has(p.id))
     .map((p) => ({
       id: p.id,
@@ -162,7 +179,7 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps) 
   return (
     <ChatRoom
       projectId={projectId}
-      projectTitle={project?.title ?? "Project"}
+      projectTitle={projectTyped?.title ?? "Project"}
       activeChannel={activeChannel ? { id: activeChannel.id, name: activeChannel.name, slug: activeChannel.slug, description: activeChannel.description } : null}
       channels={channelsForRoom}
       initialMessages={messagesWithAuthor}

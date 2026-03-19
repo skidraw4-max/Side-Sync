@@ -178,7 +178,7 @@ export default function ChatRoom({
     setInputValue("");
     const supabase = createClient();
 
-    const { error } = await supabase.from("chat_messages").insert({
+    const { error } = await (supabase as any).from("chat_messages").insert({
       project_id: projectId,
       channel_id: activeChannel.id,
       author_id: currentUserId,

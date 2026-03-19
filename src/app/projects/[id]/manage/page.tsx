@@ -53,11 +53,17 @@ export default function ManageApplicantsPage() {
       return;
     }
 
-    const { data: project } = await supabase
+    const { data: projectRaw } = await supabase
       .from("projects")
       .select("id, title, team_leader_id, recruitment_status")
       .eq("id", projectId)
       .single();
+    const project = projectRaw as {
+      id: string;
+      title: string;
+      team_leader_id: string | null;
+      recruitment_status?: Array<{ role: string; count?: number; total?: number }>;
+    } | null;
 
     if (!project) {
       router.push("/projects");
@@ -73,11 +79,12 @@ export default function ManageApplicantsPage() {
     setProjectTitle(project.title);
 
     if (project.team_leader_id) {
-      const { data: leaderProfile } = await supabase
+      const { data } = await supabase
         .from("profiles")
         .select("full_name")
         .eq("id", project.team_leader_id)
         .single();
+      const leaderProfile = data as { full_name: string | null } | null;
       setTeamLeaderName(leaderProfile?.full_name ?? "Unknown");
     }
 
@@ -121,9 +128,19 @@ export default function ManageApplicantsPage() {
       return;
     }
 
-    const applicantIds = [...new Set((appRows ?? []).map((a) => a.applicant_id))];
+    const appRowsTyped = (appRows ?? []) as Array<{
+      id: string;
+      project_id: string;
+      applicant_id: string;
+      message: string | null;
+      role: string | null;
+      status: "pending" | "accepted" | "rejected";
+      created_at: string;
+    }>;
+
+    const applicantIds = [...new Set(appRowsTyped.map((a) => a.applicant_id))];
     if (applicantIds.length === 0) {
-      setApplications((appRows ?? []).map((a) => ({ ...a, applicant: null })));
+      setApplications(appRowsTyped.map((a) => ({ ...a, applicant: null })));
       return;
     }
 
@@ -132,8 +149,16 @@ export default function ManageApplicantsPage() {
       .select("id, full_name, avatar_url, tech_stack, manner_temp_target")
       .in("id", applicantIds);
 
+    const profileRowsTyped = (profileRows ?? []) as Array<{
+      id: string;
+      full_name: string | null;
+      avatar_url: string | null;
+      tech_stack: unknown;
+      manner_temp_target: string | null;
+    }>;
+
     const profileMap = new Map(
-      (profileRows ?? []).map((p) => [
+      profileRowsTyped.map((p) => [
         p.id,
         {
           full_name: p.full_name,
@@ -145,7 +170,7 @@ export default function ManageApplicantsPage() {
     );
 
     setApplications(
-      (appRows ?? []).map((a) => ({
+      appRowsTyped.map((a) => ({
         ...a,
         applicant: profileMap.get(a.applicant_id) ?? null,
       }))

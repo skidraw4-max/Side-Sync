@@ -22,7 +22,7 @@ export default async function WorkspaceLayout({
   }
 
   const [
-    { data: project },
+    { data: projectRaw },
     { data: acceptedApp },
     { data: channels },
   ] = await Promise.all([
@@ -45,20 +45,23 @@ export default async function WorkspaceLayout({
       .order("created_at", { ascending: true }),
   ]);
 
-  let channelsList = channels ?? [];
+  const project = projectRaw as { id: string; title: string; team_leader_id: string | null; status?: string } | null;
+  const channelsTyped = (channels ?? []) as Array<{ id: string; name: string; slug: string }>;
+
+  let channelsList = channelsTyped;
   if (channelsList.length === 0 && project) {
-    const { error } = await supabase.from("chat_channels").insert([
+    const { error } = await (supabase as any).from("chat_channels").insert([
       { project_id: projectId, name: "General", slug: "general", description: "General project discussion" },
       { project_id: projectId, name: "Design Sync", slug: "design-sync", description: "Syncing visual components and brand guidelines" },
       { project_id: projectId, name: "Development", slug: "development", description: "Code and implementation discussion" },
     ]);
     if (!error) {
-      const { data: inserted } = await supabase
+      const { data: inserted } = await (supabase as any)
         .from("chat_channels")
         .select("id, name, slug")
         .eq("project_id", projectId)
         .order("created_at", { ascending: true });
-      channelsList = inserted ?? [];
+      channelsList = (inserted ?? []) as Array<{ id: string; name: string; slug: string }>;
     }
   }
 

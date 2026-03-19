@@ -52,11 +52,12 @@ export default function EvaluatePage() {
       return;
     }
 
-    const { data: projectData } = await supabase
+    const { data } = await supabase
       .from("projects")
       .select("id, title, team_leader_id, status")
       .eq("id", projectId)
       .single();
+    const projectData = data as { id: string; title: string; team_leader_id: string | null; status: string } | null;
 
     if (!projectData) {
       setError("프로젝트를 찾을 수 없습니다.");
@@ -79,7 +80,8 @@ export default function EvaluatePage() {
       .select("applicant_id, role")
       .eq("project_id", projectId)
       .eq("status", "accepted");
-    (acceptedApps ?? []).forEach((a) => memberIds.add(a.applicant_id));
+    const acceptedAppsTyped = (acceptedApps ?? []) as Array<{ applicant_id: string; role?: string }>;
+    acceptedAppsTyped.forEach((a) => memberIds.add(a.applicant_id));
 
     memberIds.delete(user.id);
 
@@ -93,16 +95,23 @@ export default function EvaluatePage() {
       .from("profiles")
       .select("id, full_name, avatar_url, manner_temp, manner_temp_target")
       .in("id", Array.from(memberIds));
+    const profilesTyped = (profiles ?? []) as Array<{
+      id: string;
+      full_name: string | null;
+      avatar_url: string | null;
+      manner_temp?: number;
+      manner_temp_target?: string;
+    }>;
 
     const roleMap = new Map<string, string>();
     if (projectData.team_leader_id) {
       roleMap.set(projectData.team_leader_id, "LEAD");
     }
-    (acceptedApps ?? []).forEach((a) => {
-      roleMap.set(a.applicant_id, (a as { role?: string }).role ?? "MEMBER");
+    acceptedAppsTyped.forEach((a) => {
+      roleMap.set(a.applicant_id, a.role ?? "MEMBER");
     });
 
-    const members: TeamMember[] = (profiles ?? []).map((p) => ({
+    const members: TeamMember[] = profilesTyped.map((p) => ({
       id: p.id,
       full_name: p.full_name,
       avatar_url: p.avatar_url,
@@ -116,7 +125,8 @@ export default function EvaluatePage() {
       .select("evaluatee_id")
       .eq("project_id", projectId)
       .eq("evaluator_id", user.id);
-    setEvaluatedIds(new Set((existingEvals ?? []).map((e) => e.evaluatee_id)));
+    const existingEvalsTyped = (existingEvals ?? []) as Array<{ evaluatee_id: string }>;
+    setEvaluatedIds(new Set(existingEvalsTyped.map((e) => e.evaluatee_id)));
     setLoading(false);
   }, [projectId, router]);
 

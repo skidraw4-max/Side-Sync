@@ -18,7 +18,7 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: project, error } = await supabase
+  const { data: projectRaw, error } = await supabase
     .from("projects")
     .select(
       "id, title, description, goal, tech_stack, team_leader_id, recruitment_status, manner_temp_target, visibility, duration_months, est_launch, created_at"
@@ -26,20 +26,36 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
     .eq("id", id)
     .single();
 
-  if (error || !project) {
+  if (error || !projectRaw) {
     notFound();
   }
+
+  const project = projectRaw as {
+    id: string;
+    title: string;
+    description: string | null;
+    goal: string | null;
+    tech_stack: unknown;
+    team_leader_id: string | null;
+    recruitment_status: unknown;
+    manner_temp_target: string | null;
+    visibility: string | null;
+    duration_months: number | null;
+    est_launch: string | null;
+    created_at: string;
+  };
 
   const isLeader = !!user && user.id === project.team_leader_id;
 
   // 팀장 프로필
   let teamLeader: { name: string; role: string; avatarUrl: string | null } | null = null;
   if (project.team_leader_id) {
-    const { data: profile } = await supabase
+    const { data: profileRaw } = await supabase
       .from("profiles")
       .select("full_name, role, avatar_url")
       .eq("id", project.team_leader_id)
       .single();
+    const profile = profileRaw as { full_name: string | null; role: string | null; avatar_url: string | null } | null;
     if (profile) {
       teamLeader = {
         name: profile.full_name ?? "Unknown",
@@ -56,8 +72,9 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
     .eq("project_id", id)
     .eq("status", "accepted");
 
-  const acceptedApplicants = acceptedApps ?? [];
-  const applicantIds = [...new Set(acceptedApplicants.map((a) => a.applicant_id))];
+  const acceptedApplicantsRaw = (acceptedApps ?? []) as Array<{ applicant_id: string; role?: string }>;
+  const acceptedApplicants = acceptedApplicantsRaw.map((a) => ({ applicant_id: a.applicant_id, role: a.role ?? null }));
+  const applicantIds = [...new Set(acceptedApplicantsRaw.map((a) => a.applicant_id))];
   if (project.team_leader_id && !applicantIds.includes(project.team_leader_id)) {
     applicantIds.push(project.team_leader_id);
   }
@@ -69,7 +86,7 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
       .from("profiles")
       .select("id, full_name, avatar_url, manner_temp_target")
       .in("id", applicantIds);
-    (profiles ?? []).forEach((p) => {
+    ((profiles ?? []) as Array<{ id: string; full_name: string | null; avatar_url: string | null; manner_temp_target: string | null }>).forEach((p) => {
       profilesMap[p.id] = {
         full_name: p.full_name,
         avatar_url: p.avatar_url,
