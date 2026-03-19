@@ -165,7 +165,7 @@ export default function NotificationDropdown() {
 
   const markAsRead = async (id: string) => {
     const supabase = createClient();
-    await supabase.from("notifications").update({ read: true }).eq("id", id);
+    await (supabase as any).from("notifications").update({ read: true }).eq("id", id);
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
     );
@@ -174,7 +174,7 @@ export default function NotificationDropdown() {
   const markAllAsRead = async () => {
     if (!userId) return;
     const supabase = createClient();
-    await supabase.from("notifications").update({ read: true }).eq("user_id", userId);
+    await (supabase as any).from("notifications").update({ read: true }).eq("user_id", userId);
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 

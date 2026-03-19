@@ -27,11 +27,12 @@ export default function ProfileHeader() {
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user: u } }) => {
       if (!u) return;
-      const { data: profile } = await supabase
+      const { data } = await supabase
         .from("profiles")
         .select("avatar_url, full_name")
         .eq("id", u.id)
         .single();
+      const profile = data as { avatar_url: string | null; full_name: string | null } | null;
       setUser({
         id: u.id,
         avatarUrl: profile?.avatar_url ?? null,
@@ -44,11 +45,12 @@ export default function ProfileHeader() {
     } = supabase.auth.onAuthStateChange(async (_, session) => {
       if (session?.user) {
         const supabaseClient = createClient();
-        const { data: profile } = await supabaseClient
+        const { data: profileData } = await supabaseClient
           .from("profiles")
           .select("avatar_url, full_name")
           .eq("id", session.user.id)
           .single();
+        const profile = profileData as { avatar_url: string | null; full_name: string | null } | null;
         setUser({
           id: session.user.id,
           avatarUrl: profile?.avatar_url ?? null,
