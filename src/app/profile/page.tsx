@@ -156,7 +156,9 @@ export default function ProfilePage() {
                 .in("id", Array.from(allMemberIds))
             : { data: [] };
 
-        const avatarMap = new Map((avatars ?? []).map((a) => [a.id, a.avatar_url]));
+        const avatarMap = new Map(
+          ((avatars ?? []) as Array<{ id: string; avatar_url: string | null }>).map((a) => [a.id, a.avatar_url])
+        );
 
         const projectsList: ProjectItem[] = allProjects.map((p) => {
           const memberIds: string[] = [];
