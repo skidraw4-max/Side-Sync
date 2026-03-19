@@ -39,7 +39,7 @@ export default function ProjectDetailHeader() {
       .select("avatar_url")
       .eq("id", user.id)
       .single()
-      .then(({ data }) => setAvatarUrl(data?.avatar_url ?? null));
+      .then(({ data }) => setAvatarUrl((data as { avatar_url: string | null } | null)?.avatar_url ?? null));
   }, [user?.id]);
 
   useEffect(() => {
