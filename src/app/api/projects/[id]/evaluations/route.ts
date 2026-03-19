@@ -135,7 +135,7 @@ export async function POST(
 
   const admin = createAdminClient();
   if (admin) {
-    const { data: profileData } = await admin
+    const { data: profileData } = await (admin as any)
       .from("profiles")
       .select("badges")
       .eq("id", evaluateeId)
@@ -147,8 +147,7 @@ export async function POST(
       badges = [...badges, "열정적인 협업자"];
     }
 
-    // @ts-ignore - Supabase admin client infers never for profiles.update in some environments
-    await admin
+    await (admin as any)
       .from("profiles")
       .update({
         manner_temp: clampedTemp,
@@ -159,7 +158,7 @@ export async function POST(
       .eq("id", evaluateeId);
   } else {
     const supabaseClient = await createClient();
-    const { data: profileData } = await supabaseClient
+    const { data: profileData } = await (supabaseClient as any)
       .from("profiles")
       .select("badges")
       .eq("id", evaluateeId)
@@ -172,8 +171,9 @@ export async function POST(
     }
 
     // @ts-ignore - Supabase client infers never for profiles.update in some environments
-    await supabaseClient
+    await (supabaseClient as any)
       .from("profiles")
+      // @ts-ignore
       .update({
         manner_temp: clampedTemp,
         manner_temp_target: `${clampedTemp}°C`,
