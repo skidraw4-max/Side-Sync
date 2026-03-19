@@ -47,7 +47,7 @@ async function fetchMyProjects(userId: string): Promise<ProjectWithId[]> {
         .limit(100);
 
       if (fallbackData?.length) {
-        const rows = fallbackData as Array<{ team_leader_id?: string | null } & (typeof fallbackData)[0]>;
+        const rows = (fallbackData ?? []) as Array<{ id: string; title: string; description: string | null; team_leader_id: string | null }>;
         safeLedProjects = rows
           .filter((p) => p.team_leader_id === userId)
           .map(({ team_leader_id, ...rest }) => rest) as Database["public"]["Tables"]["projects"]["Row"][];
