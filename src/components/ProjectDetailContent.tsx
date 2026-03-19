@@ -155,12 +155,16 @@ export default function ProjectDetailContent({
       </div>
 
       {/* Apply Modal - Apply Now 클릭 시 지원 동기 입력 모달 */}
-      {isModalOpen && (
-        <ApplyModal
-          projectTitle={projectTitle}
-          onClose={() => setIsModalOpen(false)}
-        />
-      )}
+      <ApplyModal
+        isOpen={isModalOpen}
+        projectId={projectId}
+        projectTitle={projectTitle}
+        roles={RECRUITMENT_STATUS.map((r) => {
+          const [filled, total] = r.count.split("/").map((n) => parseInt(n, 10) || 0);
+          return { role: r.role, total: total || 1, filled };
+        })}
+        onClose={() => setIsModalOpen(false)}
+      />
     </>
   );
 }
