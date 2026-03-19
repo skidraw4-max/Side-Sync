@@ -120,9 +120,12 @@ export default function ProfilePage() {
                 .in("id", Array.from(memberProjectIds))
             : { data: [] };
 
+        type ProjectRow = { id: string; title: string; description: string | null; gradient: string | null; team_leader_id: string | null };
+        const led = (ledProjects ?? []) as ProjectRow[];
+        const member = (memberProjects ?? []) as ProjectRow[];
         const allProjects = [
-          ...(ledProjects ?? []),
-          ...(memberProjects ?? []).filter((p) => !(ledProjects ?? []).some((l) => l.id === p.id)),
+          ...led,
+          ...member.filter((p) => !led.some((l) => l.id === p.id)),
         ].slice(0, 3);
 
         const projectIds = allProjects.map((p) => p.id);
