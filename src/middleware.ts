@@ -62,7 +62,7 @@ export async function middleware(request: NextRequest) {
         .eq("id", user.id)
         .single();
 
-      const techStack = profile?.tech_stack ?? [];
+      const techStack = (profile as { tech_stack?: unknown } | null)?.tech_stack ?? [];
       const hasTechStack = Array.isArray(techStack) && techStack.length > 0;
 
       const redirectUrl = hasTechStack
@@ -78,7 +78,7 @@ export async function middleware(request: NextRequest) {
         .eq("id", user.id)
         .single();
 
-      const techStack = profile?.tech_stack ?? [];
+      const techStack = (profile as { tech_stack?: unknown } | null)?.tech_stack ?? [];
       const hasTechStack = Array.isArray(techStack) && techStack.length > 0;
 
       if (hasTechStack) {
@@ -95,7 +95,7 @@ export async function middleware(request: NextRequest) {
         .eq("id", user.id)
         .single();
 
-      const techStack = profile?.tech_stack ?? [];
+      const techStack = (profile as { tech_stack?: unknown } | null)?.tech_stack ?? [];
       const hasTechStack = Array.isArray(techStack) && techStack.length > 0;
 
       if (!hasTechStack) {
