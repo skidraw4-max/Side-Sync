@@ -77,8 +77,8 @@ export default async function TasksPage({ params }: TasksPageProps) {
   );
   const teamMembers = Array.from(teamMemberIds).map((uid) => ({
     id: uid,
-    fullName: profileById.get(uid)?.full_name ?? null,
-    avatarUrl: profileById.get(uid)?.avatar_url ?? null,
+    fullName: profileById.get(uid)?.fullName ?? null,
+    avatarUrl: profileById.get(uid)?.avatarUrl ?? null,
   }));
 
   // recruitment_status: [{ role, roleKey }, ...] 또는 tech_stack (string[]) → 직군 라벨 목록
