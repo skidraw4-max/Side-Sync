@@ -87,7 +87,7 @@ export default async function TasksPage({ params }: TasksPageProps) {
   const recruitArr = Array.isArray(raw)
     ? (raw as RecruitItem[]).map((r) => r.role ?? r.roleKey ?? "").filter(Boolean)
     : [];
-  const techArr = (project?.tech_stack ?? []) as string[];
+  const techArr = (projectTyped?.tech_stack ?? []) as string[];
   const recruitmentRoles = recruitArr.length > 0 ? recruitArr : techArr;
 
   return (
