@@ -65,7 +65,7 @@ export default function ProfilePage() {
         const {
           data: { session },
           error: sessionError,
-        } = await supabase.auth.getSession();
+        } = await (supabase as any).auth.getSession();
 
         if (cancelled) return;
         if (sessionError) {
@@ -98,23 +98,23 @@ export default function ProfilePage() {
           location: "San Francisco, CA",
         });
 
-        const { data: ledProjects } = await supabase
+        const { data: ledProjects } = await (supabase as any)
           .from("projects")
           .select("id, title, description, gradient, team_leader_id")
           .eq("team_leader_id", user.id)
           .order("created_at", { ascending: false });
 
-        const { data: acceptedApps } = await supabase
+        const { data: acceptedApps } = await (supabase as any)
           .from("applications")
           .select("project_id")
           .eq("applicant_id", user.id)
           .eq("status", "accepted");
 
-        const memberProjectIds = new Set((acceptedApps ?? []).map((a) => a.project_id));
+        const memberProjectIds = new Set(((acceptedApps ?? []) as Array<{ project_id: string }>).map((a) => a.project_id));
 
         const { data: memberProjects } =
           memberProjectIds.size > 0
-            ? await supabase
+            ? await (supabase as any)
                 .from("projects")
                 .select("id, title, description, gradient, team_leader_id")
                 .in("id", Array.from(memberProjectIds))
@@ -130,7 +130,7 @@ export default function ProfilePage() {
 
         const { data: allApps } =
           projectIds.length > 0
-            ? await supabase
+            ? await (supabase as any)
                 .from("applications")
                 .select("project_id, applicant_id")
                 .in("project_id", projectIds)
@@ -147,7 +147,7 @@ export default function ProfilePage() {
 
         const { data: avatars } =
           allMemberIds.size > 0
-            ? await supabase
+            ? await (supabase as any)
                 .from("profiles")
                 .select("id, avatar_url")
                 .in("id", Array.from(allMemberIds))
