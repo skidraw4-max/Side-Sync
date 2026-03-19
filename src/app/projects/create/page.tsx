@@ -107,7 +107,7 @@ export default function CreateProjectPage() {
       }));
 
       // team_leader_id에 auth.uid()(= user.id) 저장 → RLS 및 '나의 프로젝트' 목록 조회에 사용
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("projects")
         .insert({
           title: title.trim(),
