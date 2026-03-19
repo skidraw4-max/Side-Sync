@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ProfileHeader from "@/components/ProfileHeader";
 import Footer from "@/components/Footer";
+import EmptyState from "@/components/EmptyState";
 import MannerTemperatureGauge from "@/components/MannerTemperatureGauge";
 import { ProfilePageSkeleton } from "@/components/Skeleton";
 import { createClient } from "@/lib/supabase/client";
