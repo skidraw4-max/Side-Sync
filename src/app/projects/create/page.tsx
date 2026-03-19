@@ -89,6 +89,12 @@ export default function CreateProjectPage() {
       return;
     }
 
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!supabaseUrl || supabaseUrl.includes("placeholder")) {
+      toast.error("Supabase 환경 변수가 설정되지 않았습니다. Vercel 설정을 확인해주세요.");
+      return;
+    }
+
     setIsLoading(true);
     try {
       const supabase = createClient();
@@ -106,8 +112,7 @@ export default function CreateProjectPage() {
         status: r.status,
       }));
 
-      // team_leader_id에 auth.uid()(= user.id) 저장 → RLS 및 '나의 프로젝트' 목록 조회에 사용
-      const { data, error } = await (supabase as any)
+      const insertPromise = (supabase as any)
         .from("projects")
         .insert({
           title: title.trim(),
@@ -121,21 +126,31 @@ export default function CreateProjectPage() {
         .select("id")
         .single();
 
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("요청 시간이 초과되었습니다. 네트워크와 Supabase RLS 정책을 확인해주세요.")), 20000)
+      );
+
+      const { data, error } = await Promise.race([insertPromise, timeoutPromise]);
+
       if (error) {
-        toast.error(error.message);
-        setIsLoading(false);
+        const msg = error?.message || "알 수 없는 오류";
+        toast.error(`저장 실패: ${msg}`);
         return;
       }
 
-      if (data) {
+      if (data?.id) {
         toast.success("프로젝트가 생성되었습니다!");
-        // 캐시 무효화: '나의 프로젝트' 목록이 최신 데이터로 갱신되도록
         await queryClient.invalidateQueries({ queryKey: ["projects", "mine"] });
         router.push(`/projects/${data.id}`);
         router.refresh();
+      } else {
+        toast.error("저장은 되었으나 결과를 확인할 수 없습니다. 프로젝트 목록을 확인해주세요.");
+        router.push("/projects");
+        router.refresh();
       }
-    } catch {
-      toast.error("저장 중 오류가 발생했습니다.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "저장 중 오류가 발생했습니다.";
+      toast.error(msg);
     } finally {
       setIsLoading(false);
     }
