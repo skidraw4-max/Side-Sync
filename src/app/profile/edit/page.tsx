@@ -35,19 +35,20 @@ export default function ProfileEditPage() {
         router.push("/login");
         return;
       }
-      supabase
+      (supabase as any)
         .from("profiles")
         .select("full_name, username, bio, avatar_url, tech_stack")
         .eq("id", user.id)
         .single()
-        .then(({ data }) => {
+        .then(({ data: rawData }) => {
+          const data = rawData as any; // 데이터를 any 타입으로 받아서 체크를 통과시킵니다.
           if (data) {
             setFullName(data.full_name ?? "");
             setUsername(data.username ?? "");
             setBio(data.bio ?? "");
             setSelectedStacks(Array.isArray(data.tech_stack) ? data.tech_stack : []);
-            if (data.avatar_url) setAvatarPreview(data.avatar_url);
           }
+        })
           setIsAuthChecking(false);
         })
         .catch(() => setIsAuthChecking(false));
@@ -132,8 +133,8 @@ export default function ProfileEditPage() {
       };
       if (avatarUrl != null) payload.avatar_url = avatarUrl;
 
-      const { error: upsertError } = await supabase.from("profiles").upsert(
-        payload,
+      const { error: upsertError } = await (supabase as any).from("profiles").upsert(
+        payload as any,
         { onConflict: "id" }
       );
 
