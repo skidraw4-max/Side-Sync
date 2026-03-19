@@ -48,12 +48,13 @@ export default function ApplicantsDashboardPage() {
     setLoading(true);
     setError(null);
 
-    const { data: myProjects } = await supabase
+    const { data: myProjectsData } = await supabase
       .from("projects")
       .select("id, title")
       .eq("team_leader_id", user.id);
+    const myProjects = (myProjectsData ?? []) as Array<{ id: string; title: string }>;
 
-    if (!myProjects?.length) {
+    if (!myProjects.length) {
       setApplications([]);
       setLoading(false);
       return;
@@ -62,7 +63,7 @@ export default function ApplicantsDashboardPage() {
     const projectIds = myProjects.map((p) => p.id);
     const projectMap = new Map(myProjects.map((p) => [p.id, p.title]));
 
-    const { data: appRows, error: appError } = await supabase
+    const { data: appRowsData, error: appError } = await supabase
       .from("applications")
       .select("id, project_id, applicant_id, message, role, status, created_at")
       .in("project_id", projectIds)
@@ -76,17 +77,20 @@ export default function ApplicantsDashboardPage() {
       return;
     }
 
-    const applicantIds = [...new Set((appRows ?? []).map((a) => a.applicant_id))];
+    type AppRow = { id: string; project_id: string; applicant_id: string; message: string | null; role: string | null; status: string; created_at: string };
+    const appRows = (appRowsData ?? []) as AppRow[];
+    const applicantIds = [...new Set(appRows.map((a) => a.applicant_id))];
     let profileMap = new Map<string, ApplicantProfile>();
 
     if (applicantIds.length > 0) {
-      const { data: profiles } = await supabase
+      const { data: profilesData } = await supabase
         .from("profiles")
         .select("id, full_name, avatar_url, tech_stack")
         .in("id", applicantIds);
 
+      const profiles = (profilesData ?? []) as Array<{ id: string; full_name: string | null; avatar_url: string | null; tech_stack: string[] }>;
       profileMap = new Map(
-        (profiles ?? []).map((p) => [
+        profiles.map((p) => [
           p.id,
           {
             full_name: p.full_name,
@@ -98,7 +102,7 @@ export default function ApplicantsDashboardPage() {
     }
 
     setApplications(
-      (appRows ?? []).map((a) => ({
+      appRows.map((a) => ({
         ...a,
         project_title: projectMap.get(a.project_id) ?? "Unknown",
         applicant: profileMap.get(a.applicant_id) ?? null,
