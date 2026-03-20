@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
+import { BrandLogoWordmark } from "@/components/BrandLogo";
 
 interface NavItem {
   label: string;
@@ -77,17 +78,11 @@ export default function WorkspaceSidebarNav({
 
   return (
     <aside className="sticky top-0 flex h-screen w-56 shrink-0 flex-col border-r border-gray-200 bg-[#FAFAFA]">
-      <Link href="/" className="flex items-center gap-2 p-5 hover:opacity-90 transition-opacity">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2563EB]">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
-            <path d="M16 3h5v5" />
-            <path d="M8 21H3v-5" />
-            <path d="M21 3l-7 7" />
-            <path d="M3 21l7-7" />
-          </svg>
-        </div>
-        <span className="font-semibold text-gray-800">Side-Sync</span>
-      </Link>
+      <BrandLogoWordmark
+        size={32}
+        textClassName="font-semibold text-gray-800"
+        className="p-5 transition-opacity hover:opacity-90"
+      />
 
       {projectTitle && (
         <div className="mx-3 mb-2 flex items-center gap-2 rounded-lg bg-white px-3 py-2.5 shadow-sm">

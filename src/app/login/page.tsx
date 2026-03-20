@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import Header from "@/components/Header";
 import LoginForm from "@/components/LoginForm";
@@ -16,20 +17,14 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
           <div className="mb-8">
             <div className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#2563EB]">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="white"
-                  strokeWidth="2"
-                >
-                  <path d="m7 17 5-5-5-5" />
-                  <path d="m17 7-5 5 5 5" />
-                </svg>
-              </div>
+              <Image
+                src="/logo-side-sync.png"
+                alt="Side-Sync"
+                width={40}
+                height={40}
+                className="rounded-2xl object-cover"
+                priority
+              />
               <span className="text-xl font-semibold text-[#2563EB]">Side-Sync</span>
             </div>
             <h1 className="mt-6 text-2xl font-bold text-gray-900">Welcome Back</h1>

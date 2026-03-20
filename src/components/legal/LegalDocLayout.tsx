@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { BrandLogoWordmark } from "@/components/BrandLogo";
 
 export type LegalTocItem = { id: string; label: string };
 
@@ -26,9 +27,10 @@ export default function LegalDocLayout({
     <div className="min-h-screen bg-[#F9FAFB]">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-4 md:px-8">
-          <Link href="/" className="text-lg font-bold tracking-tight text-gray-900">
-            Side-Sync
-          </Link>
+          <BrandLogoWordmark
+            size={36}
+            textClassName="text-lg font-bold tracking-tight text-gray-900"
+          />
           <nav className="flex flex-wrap items-center gap-1 text-sm">
             <Link
               href="/"

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandLogoMark } from "@/components/BrandLogo";
 
 interface WorkspaceSidebarProps {
   activeItem?: "notice" | "kanban" | "files";
@@ -14,20 +15,7 @@ export default function WorkspaceSidebar({ activeItem = "files" }: WorkspaceSide
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-gray-200 bg-white p-6">
       <Link href="/workspace/files" className="flex items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2563EB]">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="white"
-            strokeWidth="2"
-          >
-            <path d="m7 17 5-5-5-5" />
-            <path d="m17 7-5 5 5 5" />
-          </svg>
-        </div>
+        <BrandLogoMark size={32} />
         <span className="font-semibold text-gray-800">Side-Sync Workspace</span>
       </Link>
 

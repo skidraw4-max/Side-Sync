@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { signOutClient } from "@/lib/auth/client-sign-out";
+import { BrandLogoWordmark } from "@/components/BrandLogo";
 import type { User } from "@supabase/supabase-js";
 
 const NAV_ITEMS = [
@@ -74,25 +75,10 @@ export default function ProjectDetailHeader() {
             <line x1="4" y1="18" x2="20" y2="18" />
           </svg>
         </button>
-      <Link href="/" className="flex shrink-0 items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2563EB]">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="white"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="m7 17 5-5-5-5" />
-            <path d="m17 7-5 5 5 5" />
-          </svg>
-        </div>
-        <span className="text-xl font-semibold text-gray-800">Side-Sync</span>
-      </Link>
+      <BrandLogoWordmark
+        size={32}
+        textClassName="text-xl font-semibold text-gray-800"
+      />
       </div>
 
       {mobileMenuOpen && (

@@ -18,6 +18,8 @@ export interface Database {
           id: string;
           title: string;
           description: string | null;
+          summary: string | null;
+          content: string | null;
           goal: string | null;
           tech_stack: string[];
           manner_temp_target: string;
@@ -36,6 +38,8 @@ export interface Database {
           id?: string;
           title: string;
           description?: string | null;
+          summary?: string | null;
+          content?: string | null;
           goal?: string | null;
           tech_stack: string[];
           manner_temp_target: string;
@@ -51,6 +55,8 @@ export interface Database {
           id?: string;
           title?: string;
           description?: string | null;
+          summary?: string | null;
+          content?: string | null;
           goal?: string | null;
           tech_stack?: string[];
           manner_temp_target?: string;

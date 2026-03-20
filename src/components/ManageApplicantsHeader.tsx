@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import NotificationDropdown from "@/components/NotificationDropdown";
+import { BrandLogoWordmark } from "@/components/BrandLogo";
 
 interface ManageApplicantsHeaderProps {
   projectId: string;
@@ -56,15 +57,10 @@ export default function ManageApplicantsHeader({
 
   return (
     <header className="flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-4 md:px-8 lg:px-12">
-      <Link href="/" className="flex shrink-0 items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2563EB]">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-            <path d="m7 17 5-5-5-5" />
-            <path d="m17 7-5 5 5 5" />
-          </svg>
-        </div>
-        <span className="text-xl font-bold text-slate-900">Side-Sync</span>
-      </Link>
+      <BrandLogoWordmark
+        size={32}
+        textClassName="text-xl font-bold text-slate-900"
+      />
 
       <nav className="flex items-center gap-8">
         {NAV_ITEMS.map((item) => (

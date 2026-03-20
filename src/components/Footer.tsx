@@ -1,3 +1,5 @@
+import { BrandLogoMark } from "@/components/BrandLogo";
+
 /** 개인정보 처리방침 등과 동일한 문의 메일 */
 const CONTACT_MAILTO = "mailto:skidraw4@gmail.com";
 
@@ -22,22 +24,7 @@ export default function Footer({ variant = "default" }: FooterProps) {
       <footer className="mt-24 border-t border-gray-100 px-6 py-12 md:px-12 lg:px-24">
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2563EB]">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="white"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="m7 17 5-5-5-5" />
-                <path d="m17 7-5 5 5 5" />
-              </svg>
-            </div>
+            <BrandLogoMark size={32} />
             <span className="text-xl font-semibold text-gray-800">Side-Sync</span>
           </div>
           <nav className="flex gap-6">
@@ -71,22 +58,7 @@ export default function Footer({ variant = "default" }: FooterProps) {
     <footer className="mt-24 border-t border-gray-100 px-6 py-12 md:px-12 lg:px-24">
       <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2563EB]">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="white"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="m7 17 5-5-5-5" />
-              <path d="m17 7-5 5 5 5" />
-            </svg>
-          </div>
+          <BrandLogoMark size={32} />
           <span className="text-xl font-semibold text-gray-800">Side-Sync</span>
         </div>
         <nav className="flex gap-6">

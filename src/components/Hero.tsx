@@ -1,119 +1,23 @@
-import Image from "next/image";
+"use client";
 
-/** 이미지 교체 시 파일명을 바꾸거나 이 상수만 수정하면 캐시 없이 최신 파일이 로드됩니다 */
-const HERO_IMAGE_SRC = "/hero-collaboration-ai.png";
-
-const techTags = [
-  {
-    name: "React",
-    bgClass: "bg-violet-100",
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2L2 7l10 5 10-5-10-5z" />
-        <path d="M2 17l10 5 10-5" />
-      </svg>
-    ),
-  },
-  {
-    name: "Node.js",
-    bgClass: "bg-green-100",
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#22c55e">
-        <circle cx="12" cy="12" r="4" />
-      </svg>
-    ),
-  },
-  {
-    name: "Design",
-    bgClass: "bg-orange-100",
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ea580c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 3l2 4 4 .5-3 3.5 1 4-3.5-2-3.5 2-1-4-3-3.5 4-.5z" />
-      </svg>
-    ),
-  },
-  {
-    name: "Python",
-    bgClass: "bg-amber-100",
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2c-2 0-4 2-4 4v2h8V6c0-2-2-4-4-4z" />
-        <path d="M4 8v10c0 2 2 4 4 4h8c2 0 4-2 4-4V8H4z" />
-      </svg>
-    ),
-  },
-  {
-    name: "Flutter",
-    bgClass: "bg-gray-100",
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2L2 7l10 5 10-5-10-5z" />
-        <path d="M2 17l10 5 10-5" />
-      </svg>
-    ),
-  },
-];
-
+/**
+ * 메인 랜딩 히어로 — SaaS 스타일 (검색·이미지는 Trending 섹션에서 처리)
+ * 타이틀: 기존 6xl/7xl/8xl 대비 약 70% 크기(≈30% 축소)
+ */
 export default function Hero() {
   return (
-    <section className="flex flex-col items-center px-6 md:px-12 lg:px-24">
-      <h1 className="max-w-3xl text-center text-4xl font-bold leading-tight text-gray-900 md:text-5xl lg:text-6xl">
-        Find your perfect side{" "}
-        <span className="text-[#2563EB]">project partner</span>
-      </h1>
-      <p className="mt-6 max-w-2xl text-center text-lg text-gray-500">
-        Connect with developers and designers who share your passion. Build,
-        learn, and grow together on projects that matter.
-      </p>
-      <div className="relative mt-10 w-full max-w-4xl overflow-hidden rounded-2xl border border-blue-100/80 bg-gradient-to-b from-blue-50/90 via-white to-orange-50/30 shadow-sm ring-1 ring-orange-100/40">
-        <Image
-          src={HERO_IMAGE_SRC}
-          alt="Side-Sync 협업 온도: 테이블 중앙의 오렌지 빛 구형 AI 캐릭터와 온도계·따뜻한 아우라로 팀 시너지를 표현한 일러스트"
-          width={1600}
-          height={900}
-          className="h-auto w-full object-cover"
-          priority
-        />
-      </div>
-      <div className="mt-10 flex w-full max-w-2xl items-center gap-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="flex flex-1 items-center gap-2 px-4 py-3">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            className="text-gray-400"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.35-4.35" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Search projects by tech stack, role, or keyword..."
-            className="flex-1 bg-transparent text-gray-900 placeholder:text-gray-400 focus:outline-none"
-          />
-        </div>
-        <button
-          type="button"
-          className="rounded-r-xl bg-[#2563EB] px-6 py-3 text-sm font-medium text-white hover:bg-[#1d4ed8] transition-colors"
-        >
-          Search
-        </button>
-      </div>
-      <div className="mt-6 flex flex-wrap justify-center gap-3">
-        {techTags.map((tag) => (
-          <button
-            key={tag.name}
-            type="button"
-            className={`flex items-center gap-2 rounded-full ${tag.bgClass} px-4 py-2 text-sm font-medium text-gray-800 transition-colors hover:opacity-90`}
-          >
-            {tag.icon}
-            {tag.name}
-          </button>
-        ))}
+    <section className="bg-slate-50 px-6 pb-16 pt-12 md:px-12 md:pb-24 md:pt-16 lg:px-24">
+      <div className="mx-auto flex max-w-5xl flex-col items-center text-center">
+        <h1 className="text-[2.625rem] font-black leading-[1.08] tracking-tight text-slate-900 md:text-[3.15rem] lg:text-[4.2rem]">
+          아이디어만 준비하세요.
+          <br />
+          나머지는 <span className="text-blue-600">Side-Sync</span>가 채웁니다.
+        </h1>
+        <p className="mt-6 max-w-2xl text-base leading-relaxed text-slate-600 md:mt-7 md:text-lg md:leading-relaxed">
+          나만의 <span className="font-semibold text-slate-800">아이디어</span>를 구체화할{" "}
+          <span className="font-semibold text-slate-800">최적의 파트너</span>를 만나고,{" "}
+          <span className="font-semibold text-slate-800">전용 협업 툴</span>로 실현해 보세요.
+        </p>
       </div>
     </section>
   );

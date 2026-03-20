@@ -6,6 +6,7 @@ import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { getMergedAvatarUrl, getMergedDisplayName } from "@/lib/auth-user-display";
 import { signOutClient } from "@/lib/auth/client-sign-out";
+import { BrandLogoWordmark } from "@/components/BrandLogo";
 
 async function loadProfileForHeader(
   supabase: ReturnType<typeof createClient>,
@@ -84,25 +85,10 @@ export default function ProfileHeader() {
 
   return (
     <header className="sticky top-0 z-50 flex items-center justify-between border-b border-gray-100 bg-white px-6 py-4 md:px-12 lg:px-24">
-      <Link href="/" className="flex shrink-0 items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2563EB]">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="white"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="m7 17 5-5-5-5" />
-            <path d="m17 7-5 5 5 5" />
-          </svg>
-        </div>
-        <span className="text-xl font-semibold text-gray-800">Side-Sync</span>
-      </Link>
+      <BrandLogoWordmark
+        size={32}
+        textClassName="text-xl font-semibold text-gray-800"
+      />
 
       <nav className="flex items-center gap-6 md:gap-8">
         {NAV_LINKS.map(({ label, href }) => (

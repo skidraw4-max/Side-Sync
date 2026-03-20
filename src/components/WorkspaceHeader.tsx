@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandLogoMark } from "@/components/BrandLogo";
 
 interface WorkspaceHeaderProps {
   activeNav?: "dashboard" | "notices" | "tasks";
@@ -14,20 +15,7 @@ export default function WorkspaceHeader({ activeNav = "notices" }: WorkspaceHead
   return (
     <header className="flex items-center justify-between border-b border-gray-100 bg-white px-8 py-4">
       <Link href="/workspace/files" className="flex items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2563EB]">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="white"
-            strokeWidth="2"
-          >
-            <path d="m7 17 5-5-5-5" />
-            <path d="m17 7-5 5 5 5" />
-          </svg>
-        </div>
+        <BrandLogoMark size={32} />
         <span className="text-xl font-semibold text-gray-800">Side-Sync Workspace</span>
       </Link>
       <nav className="flex items-center gap-8">
