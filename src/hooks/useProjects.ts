@@ -2,7 +2,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/types/database";
 import type { ProjectCardProps } from "@/components/ProjectCard";
 
@@ -44,6 +44,11 @@ const FALLBACK_PROJECTS: ProjectWithId[] = [
   },
 ];
 
+type RowMinimal = Pick<
+  Database["public"]["Tables"]["projects"]["Row"],
+  "id" | "title" | "description" | "tech_stack"
+> & { manner_temp_target?: string | null };
+
 async function fetchProjects(): Promise<ProjectWithId[]> {
   const isConfigured =
     process.env.NEXT_PUBLIC_SUPABASE_URL &&
@@ -55,17 +60,31 @@ async function fetchProjects(): Promise<ProjectWithId[]> {
     return FALLBACK_PROJECTS;
   }
 
+  const supabase = createClient();
+
   try {
-    const { data, error } = await supabase
+    // gradient 컬럼이 없는 프로젝트 DB에서 select에 gradient 포함 시 400 Bad Request →
+    // 콘솔에 GET .../projects?...gradient... 400 이 찍힘 (로그아웃 후 홈 재로드 시에도 동일).
+    // UI는 기본 그라데이션을 쓰므로 DB에서 gradient는 조회하지 않음.
+    let { data, error } = await supabase
       .from("projects")
-      .select("id, title, description, tech_stack, manner_temp_target, gradient")
+      .select("id, title, description, tech_stack, manner_temp_target")
       .order("created_at", { ascending: false });
+
+    if (error) {
+      const { data: d2, error: e2 } = await supabase
+        .from("projects")
+        .select("id, title, description, tech_stack")
+        .order("created_at", { ascending: false });
+      data = d2;
+      error = e2;
+    }
 
     if (error) {
       return FALLBACK_PROJECTS;
     }
 
-    const rows = (data ?? []) as Database["public"]["Tables"]["projects"]["Row"][];
+    const rows = (data ?? []) as RowMinimal[];
     if (rows.length === 0) {
       return FALLBACK_PROJECTS;
     }
@@ -75,8 +94,8 @@ async function fetchProjects(): Promise<ProjectWithId[]> {
       title: row.title,
       description: row.description ?? undefined,
       techStack: Array.isArray(row.tech_stack) ? row.tech_stack : [],
-      mannerTemperature: row.manner_temp_target,
-      gradient: row.gradient ?? DEFAULT_GRADIENT,
+      mannerTemperature: row.manner_temp_target ?? "36.5°C",
+      gradient: DEFAULT_GRADIENT,
     }));
   } catch {
     return FALLBACK_PROJECTS;
@@ -101,14 +120,14 @@ export function useProjects() {
   const query = useQuery({
     queryKey: PROJECTS_QUERY_KEY,
     queryFn: fetchProjects,
-    retry: false, // Supabase 미연결 시 빠르게 fallback 표시
-    refetchOnWindowFocus: true, // 탭 전환 후 돌아올 때 최신 데이터 반영
+    retry: false,
+    refetchOnWindowFocus: true,
   });
 
-  // Supabase Realtime: projects 테이블 변경 시 자동 refetch
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
 
+    const supabase = createClient();
     const channel = supabase
       .channel("projects-realtime")
       .on(

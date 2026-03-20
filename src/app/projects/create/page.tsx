@@ -4,11 +4,10 @@ import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import type { RecruitmentStatusRow } from "@/types/database";
+import type { Database, RecruitmentStatusRow } from "@/types/database";
 
 const ROLE_OPTIONS: { value: string; label: string }[] = [
   { value: "planner", label: "기획자 (Planner)" },
@@ -96,15 +95,10 @@ export default function CreateProjectPage() {
     }
 
     setIsLoading(true);
-    try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error("로그인이 필요합니다.");
-        router.push("/login");
-        return;
-      }
+    const abortController = new AbortController();
+    const timeoutId = window.setTimeout(() => abortController.abort(), 45_000);
 
+    try {
       const recruitmentStatus: RecruitmentStatusRow[] = recruitments.map((r) => ({
         role: ROLE_OPTIONS.find((o) => o.value === r.roleKey)?.label ?? r.roleKey,
         roleKey: r.roleKey,
@@ -112,36 +106,40 @@ export default function CreateProjectPage() {
         status: r.status,
       }));
 
-      const insertPromise = (supabase as any)
-        .from("projects")
-        .insert({
-          title: title.trim(),
-          description: description.trim() || null,
-          goal: goal.trim() || null,
-          tech_stack: techStack,
-          manner_temp_target: "36.5",
-          team_leader_id: user.id,
-          recruitment_status: recruitmentStatus,
-        })
-        .select("id")
-        .single();
+      const payload: Pick<
+        Database["public"]["Tables"]["projects"]["Insert"],
+        "title" | "description" | "goal" | "tech_stack" | "recruitment_status"
+      > = {
+        title: title.trim(),
+        description: description.trim() || null,
+        goal: goal.trim() || null,
+        tech_stack: techStack,
+        recruitment_status: recruitmentStatus,
+      };
 
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("요청 시간이 초과되었습니다. 네트워크와 Supabase RLS 정책을 확인해주세요.")), 20000)
-      );
+      const res = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        signal: abortController.signal,
+        body: JSON.stringify(payload),
+      });
 
-      const { data, error } = await Promise.race([insertPromise, timeoutPromise]);
+      const json = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
 
-      if (error) {
-        const msg = error?.message || "알 수 없는 오류";
-        toast.error(`저장 실패: ${msg}`);
+      if (!res.ok) {
+        const msg = json.error ?? `요청 실패 (${res.status})`;
+        toast.error(msg);
+        if (res.status === 401) {
+          router.push("/login");
+        }
         return;
       }
 
-      if (data?.id) {
+      if (json.id) {
         toast.success("프로젝트가 생성되었습니다!");
-        await queryClient.invalidateQueries({ queryKey: ["projects", "mine"] });
-        router.push(`/projects/${data.id}`);
+        void queryClient.invalidateQueries({ queryKey: ["projects", "mine"] });
+        router.push(`/projects/${json.id}`);
         router.refresh();
       } else {
         toast.error("저장은 되었으나 결과를 확인할 수 없습니다. 프로젝트 목록을 확인해주세요.");
@@ -149,9 +147,15 @@ export default function CreateProjectPage() {
         router.refresh();
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "저장 중 오류가 발생했습니다.";
-      toast.error(msg);
+      console.error("[create project]", err);
+      if (err instanceof Error && err.name === "AbortError") {
+        toast.error("요청 시간이 초과되었습니다. 네트워크와 Supabase 설정을 확인해 주세요.");
+      } else {
+        const msg = err instanceof Error ? err.message : "저장 중 오류가 발생했습니다.";
+        toast.error(msg);
+      }
     } finally {
+      window.clearTimeout(timeoutId);
       setIsLoading(false);
     }
   };
@@ -305,9 +309,14 @@ export default function CreateProjectPage() {
                     </div>
                     <select
                       value={r.status}
-                      onChange={(e) =>
-                        updateRecruitment(r.id, "status", e.target.value ?? "open")
-                      }
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        updateRecruitment(
+                          r.id,
+                          "status",
+                          v === "urgent" ? "urgent" : "recruiting"
+                        );
+                      }}
                       className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-[#2563EB] focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
                     >
                       {STATUS_OPTIONS.map((opt) => (

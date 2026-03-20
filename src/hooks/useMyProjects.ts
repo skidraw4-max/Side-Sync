@@ -12,6 +12,19 @@ export interface ProjectWithId extends ProjectCardProps {
   id: string;
 }
 
+/** Navigator Lock steal/Abort 등 일시적 Auth 잠금 오류 */
+function isTransientAuthLockError(e: unknown): boolean {
+  if (e == null) return false;
+  if (typeof e === "object" && e !== null && "name" in e && (e as { name: string }).name === "AbortError") {
+    return true;
+  }
+  const msg =
+    typeof e === "object" && e !== null && "message" in e && typeof (e as { message: unknown }).message === "string"
+      ? (e as { message: string }).message
+      : String(e);
+  return msg.includes("Lock broken") || msg.includes("steal");
+}
+
 async function fetchMyProjects(userId: string): Promise<ProjectWithId[]> {
   if (!userId) return [];
 
@@ -29,16 +42,27 @@ async function fetchMyProjects(userId: string): Promise<ProjectWithId[]> {
 
   try {
     // gradient, manner_temp_target 등 DB에 없을 수 있는 컬럼 제외 후 조회
-    const { data: allProjects, error: fetchError } = await supabase
-      .from("projects")
-      .select("id, title, description, tech_stack, manner_temp_target, team_leader_id")
-      .order("created_at", { ascending: false })
-      .limit(100);
+    let allProjects: unknown[] | null = null;
+    let fetchError: unknown = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const res = await supabase
+        .from("projects")
+        .select("id, title, description, tech_stack, manner_temp_target, team_leader_id")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      allProjects = res.data as unknown[] | null;
+      fetchError = res.error;
+      if (!fetchError) break;
+      if (!isTransientAuthLockError(fetchError) || attempt === 2) break;
+      await new Promise((r) => setTimeout(r, 120 * (attempt + 1)));
+    }
 
     let safeLedProjects: Database["public"]["Tables"]["projects"]["Row"][] = [];
 
     if (fetchError) {
-      console.error("[useMyProjects] 프로젝트 조회 에러:", fetchError.message ?? fetchError);
+      if (!isTransientAuthLockError(fetchError)) {
+        console.error("[useMyProjects] 프로젝트 조회 에러:", (fetchError as { message?: string })?.message ?? fetchError);
+      }
       // tech_stack, manner_temp_target 없이 재시도 (컬럼 없을 수 있음)
       const { data: fallbackData } = await supabase
         .from("projects")

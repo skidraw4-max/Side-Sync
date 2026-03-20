@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-export default function SocialLoginButtons() {
+interface SocialLoginButtonsProps {
+  className?: string;
+}
+
+export default function SocialLoginButtons({ className = "mt-8" }: SocialLoginButtonsProps) {
   const [isLoading, setIsLoading] = useState<string | null>(null);
 
   const handleGoogleSignIn = async () => {
@@ -30,7 +34,7 @@ export default function SocialLoginButtons() {
   };
 
   return (
-    <div className="mt-8 grid grid-cols-2 gap-4">
+    <div className={`grid grid-cols-2 gap-4 ${className}`}>
       <button
         type="button"
         onClick={handleGoogleSignIn}

@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { User } from "@supabase/supabase-js";
+import type { Session, User } from "@supabase/supabase-js";
+import { signOutClient } from "@/lib/auth/client-sign-out";
+import { useServerHydratedSession } from "@/contexts/AuthSessionContext";
 import NotificationDropdown from "@/components/NotificationDropdown";
 
 interface HeaderProps {
@@ -50,46 +51,56 @@ function FullLogo({ className }: { className?: string }) {
 }
 
 export default function Header({ variant = "default" }: HeaderProps) {
-  const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const serverSession = useServerHydratedSession();
+  const [user, setUser] = useState<User | null>(() => serverSession?.user ?? null);
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  /** 서버에서 세션을 넘겼으면 첫 페인트부터 로그인 UI (use client 전용 페이지 대응) */
+  const [authReady, setAuthReady] = useState(() => serverSession !== undefined);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     const supabase = createClient();
-    supabase.auth.getUser().then(async ({ data: { user: u } }) => {
-      setUser(u ?? null);
+
+    async function applySession(session: Session | null) {
+      if (cancelled) return;
+      const u = session?.user ?? null;
+      setUser(u);
       if (u) {
         const { data: p } = await supabase
           .from("profiles")
           .select("avatar_url, full_name")
           .eq("id", u.id)
           .single();
-        setProfile(p ?? null);
+        if (!cancelled) setProfile(p ?? null);
       } else {
         setProfile(null);
       }
-    });
+      setAuthReady(true);
+    }
+
+    // 서버에서 이미 유저가 있으면 프로필만 보강
+    if (serverSession?.user) {
+      void applySession(serverSession);
+    } else {
+      void supabase.auth.getSession().then(({ data: { session } }) => {
+        void applySession(session);
+      });
+    }
+
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        const supabaseClient = createClient();
-        const { data: p } = await supabaseClient
-          .from("profiles")
-          .select("avatar_url, full_name")
-          .eq("id", session.user.id)
-          .single();
-        setProfile(p ?? null);
-      } else {
-        setProfile(null);
-      }
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      void applySession(session);
     });
-    return () => subscription.unsubscribe();
-  }, []);
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, [serverSession]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -109,11 +120,8 @@ export default function Header({ variant = "default" }: HeaderProps) {
   }, []);
 
   const handleLogout = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
     setDropdownOpen(false);
-    router.push("/");
-    router.refresh();
+    await signOutClient();
   };
 
   const links = NAV_LINKS[variant];
@@ -122,9 +130,15 @@ export default function Header({ variant = "default" }: HeaderProps) {
   const RightSection = () => (
     <>
       {variant === "onboarding" ? (
-        <Link href="/login" className="whitespace-nowrap rounded-lg bg-[#2563EB] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#1d4ed8] transition-colors">
+        <Link href="/login" className="whitespace-nowrap rounded-lg bg-[#2563EB] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#1d4ed8]">
           Sign In
         </Link>
+      ) : !authReady ? (
+        <div
+          className="h-9 w-24 shrink-0 animate-pulse rounded-lg bg-gray-200/80"
+          aria-hidden
+          aria-busy
+        />
       ) : isLoggedIn ? (
         <div className="flex items-center gap-2">
           <NotificationDropdown />
@@ -156,9 +170,12 @@ export default function Header({ variant = "default" }: HeaderProps) {
           </div>
         </div>
       ) : (
-        <a href="/login" className="inline-flex shrink-0 items-center justify-center rounded-lg bg-[#2563EB] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#1d4ed8] cursor-pointer">
+        <Link
+          href="/login"
+          className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-lg bg-[#2563EB] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#1d4ed8]"
+        >
           Sign In
-        </a>
+        </Link>
       )}
     </>
   );
@@ -181,15 +198,17 @@ export default function Header({ variant = "default" }: HeaderProps) {
           <nav className="flex items-center gap-4 lg:gap-6">
             {variant === "onboarding" ? (
               links.map(({ label, href }) => (
-                <Link key={label} href={href} className="whitespace-nowrap text-gray-700 hover:text-gray-900 transition-colors">
+                <Link key={label} href={href} className="whitespace-nowrap text-gray-700 transition-colors hover:text-gray-900">
                   {label}
                 </Link>
               ))
+            ) : !authReady ? (
+              <div className="hidden h-10 w-48 animate-pulse rounded-lg bg-gray-100 md:block" aria-hidden />
             ) : isLoggedIn ? (
               <>
                 <Link
                   href="/projects/create"
-                  className="flex shrink-0 items-center gap-2 rounded-lg border-2 border-[#2563EB] bg-white px-4 py-2 text-sm font-medium text-[#2563EB] hover:bg-[#2563EB] hover:text-white transition-colors"
+                  className="flex shrink-0 items-center gap-2 rounded-lg border-2 border-[#2563EB] bg-white px-4 py-2 text-sm font-medium text-[#2563EB] transition-colors hover:bg-[#2563EB] hover:text-white"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M5 12h14" />
@@ -197,13 +216,13 @@ export default function Header({ variant = "default" }: HeaderProps) {
                   </svg>
                   새 프로젝트
                 </Link>
-                <Link href="/projects" className="whitespace-nowrap text-gray-700 hover:text-gray-900 transition-colors">
+                <Link href="/projects" className="whitespace-nowrap text-gray-700 transition-colors hover:text-gray-900">
                   내 프로젝트
                 </Link>
               </>
             ) : (
               links.map(({ label, href }) => (
-                <Link key={label} href={href} className="whitespace-nowrap text-gray-700 hover:text-gray-900 transition-colors">
+                <Link key={label} href={href} className="whitespace-nowrap text-gray-700 transition-colors hover:text-gray-900">
                   {label}
                 </Link>
               ))

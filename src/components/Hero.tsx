@@ -1,3 +1,8 @@
+import Image from "next/image";
+
+/** 이미지 교체 시 파일명을 바꾸거나 이 상수만 수정하면 캐시 없이 최신 파일이 로드됩니다 */
+const HERO_IMAGE_SRC = "/hero-collaboration-ai.png";
+
 const techTags = [
   {
     name: "React",
@@ -60,6 +65,16 @@ export default function Hero() {
         Connect with developers and designers who share your passion. Build,
         learn, and grow together on projects that matter.
       </p>
+      <div className="relative mt-10 w-full max-w-4xl overflow-hidden rounded-2xl border border-blue-100/80 bg-gradient-to-b from-blue-50/90 via-white to-orange-50/30 shadow-sm ring-1 ring-orange-100/40">
+        <Image
+          src={HERO_IMAGE_SRC}
+          alt="Side-Sync 협업 온도: 테이블 중앙의 오렌지 빛 구형 AI 캐릭터와 온도계·따뜻한 아우라로 팀 시너지를 표현한 일러스트"
+          width={1600}
+          height={900}
+          className="h-auto w-full object-cover"
+          priority
+        />
+      </div>
       <div className="mt-10 flex w-full max-w-2xl items-center gap-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
         <div className="flex flex-1 items-center gap-2 px-4 py-3">
           <svg

@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { signOutClient } from "@/lib/auth/client-sign-out";
 import type { User } from "@supabase/supabase-js";
 
 const NAV_ITEMS = [
@@ -14,7 +14,6 @@ const NAV_ITEMS = [
 ];
 
 export default function ProjectDetailHeader() {
-  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -53,11 +52,8 @@ export default function ProjectDetailHeader() {
   }, []);
 
   const handleLogout = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
     setDropdownOpen(false);
-    router.push("/");
-    router.refresh();
+    await signOutClient();
   };
 
   const isLoggedIn = !!user;

@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { signOutClient } from "@/lib/auth/client-sign-out";
 
 const NAV_LINKS = [
   { label: "Home", href: "/" },
@@ -13,7 +13,6 @@ const NAV_LINKS = [
 ];
 
 export default function ProfileHeader() {
-  const router = useRouter();
   const [user, setUser] = useState<{
     id: string;
     avatarUrl?: string | null;
@@ -75,11 +74,8 @@ export default function ProfileHeader() {
   }, []);
 
   const handleLogout = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
     setDropdownOpen(false);
-    router.push("/");
-    router.refresh();
+    await signOutClient();
   };
 
   return (

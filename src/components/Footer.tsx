@@ -1,7 +1,12 @@
-const footerLinks = ["Terms", "Privacy", "Contact", "Help Center"];
+const footerLinks = [
+  { label: "Terms", href: "/terms" },
+  { label: "Privacy", href: "/privacy" },
+  { label: "Contact", href: "#" },
+  { label: "Help Center", href: "#" },
+];
 const stitchFooterLinks = [
-  { label: "Privacy Policy", href: "#" },
-  { label: "Terms of Service", href: "#" },
+  { label: "Privacy Policy", href: "/privacy" },
+  { label: "Terms of Service", href: "/terms" },
   { label: "Help Center", href: "#" },
 ];
 
@@ -85,11 +90,11 @@ export default function Footer({ variant = "default" }: FooterProps) {
         <nav className="flex gap-6">
           {footerLinks.map((link) => (
             <a
-              key={link}
-              href="#"
+              key={link.label}
+              href={link.href}
               className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
             >
-              {link}
+              {link.label}
             </a>
           ))}
         </nav>
