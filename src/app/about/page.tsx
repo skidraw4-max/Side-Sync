@@ -111,29 +111,10 @@ export default function AboutPage() {
           </div>
         </section>
 
-        {/* 4. Statistics — 블루 배너 */}
-        <section className="bg-[#2563EB] px-6 py-10 text-white md:px-12 lg:px-24">
-          <div className="mx-auto grid max-w-7xl gap-7 text-center md:grid-cols-3 md:gap-0 md:divide-x md:divide-white/25">
-            <div className="px-4">
-              <p className="text-4xl font-bold tracking-tight md:text-5xl">500+</p>
-              <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-blue-100">
-                Active Projects
-              </p>
-            </div>
-            <div className="px-4">
-              <p className="text-4xl font-bold tracking-tight md:text-5xl">2000+</p>
-              <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-blue-100">
-                Skilled Members
-              </p>
-            </div>
-            <div className="px-4">
-              <p className="text-4xl font-bold tracking-tight md:text-5xl">150+</p>
-              <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-blue-100">
-                Successful Launches
-              </p>
-            </div>
-          </div>
-        </section>
+        {/* 4. 구분선 */}
+        <div className="px-6 py-10 md:px-12 md:py-12 lg:px-24" aria-hidden>
+          <div className="mx-auto max-w-7xl h-1 rounded-full bg-[#2563EB]" />
+        </div>
 
         {/* 5. CTA */}
         <section className="px-6 py-11 md:px-12 md:py-16 lg:px-24">
