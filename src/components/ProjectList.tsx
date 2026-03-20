@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import ProjectCard from "./ProjectCard";
 import EmptyState from "./EmptyState";
 import { ProjectCardSkeleton } from "./Skeleton";
@@ -12,13 +11,6 @@ interface ProjectListProps {
 
 export default function ProjectList({ userId }: ProjectListProps) {
   const { data: projects, isLoading, isError, error } = useMyProjects(userId);
-
-  useEffect(() => {
-    const expectedUserId = "fce649e8-d71f-45f0-b516-ea26ed04b1c8";
-    const isMatch = userId === expectedUserId;
-    console.log("[ProjectList] 현재 유저 ID:", userId, "| 예상 UUID와 일치:", isMatch ? "✅" : "❌");
-    console.log("[ProjectList] 가져온 프로젝트:", projects);
-  }, [userId, projects]);
 
   return (
     <section className="px-6 md:px-12 lg:px-24">

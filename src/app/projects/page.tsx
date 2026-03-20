@@ -23,12 +23,6 @@ export default async function ProjectsPage() {
     redirect("/login");
   }
 
-  // Auth 세션 확인용 (서버 터미널에 출력)
-  const expectedUserId = "fce649e8-d71f-45f0-b516-ea26ed04b1c8";
-  const isMatch = user.id === expectedUserId;
-  console.log("[Projects] 현재 유저 ID:", user.id);
-  console.log("[Projects] 예상 UUID와 일치:", isMatch, isMatch ? "✅" : "❌ (불일치)");
-
   return (
     <div className="min-h-screen bg-white">
       <Header />

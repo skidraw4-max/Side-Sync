@@ -2,8 +2,34 @@
 
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
+import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import { getMergedAvatarUrl, getMergedDisplayName } from "@/lib/auth-user-display";
 import { signOutClient } from "@/lib/auth/client-sign-out";
+
+async function loadProfileForHeader(
+  supabase: ReturnType<typeof createClient>,
+  user: User
+) {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("avatar_url, full_name")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("[ProfileHeader] profiles:", error.message);
+  }
+
+  const profile = data as { avatar_url: string | null; full_name: string | null } | null;
+
+  return {
+    id: user.id,
+    avatarUrl: getMergedAvatarUrl(user, profile?.avatar_url),
+    fullName: getMergedDisplayName(user, profile?.full_name),
+    email: user.email ?? null,
+  };
+}
 
 const NAV_LINKS = [
   { label: "Home", href: "/" },
@@ -24,38 +50,16 @@ export default function ProfileHeader() {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(async ({ data: { user: u } }) => {
+    void supabase.auth.getUser().then(async ({ data: { user: u } }) => {
       if (!u) return;
-      const { data } = await supabase
-        .from("profiles")
-        .select("avatar_url, full_name")
-        .eq("id", u.id)
-        .single();
-      const profile = data as { avatar_url: string | null; full_name: string | null } | null;
-      setUser({
-        id: u.id,
-        avatarUrl: profile?.avatar_url ?? null,
-        fullName: profile?.full_name ?? null,
-        email: u.email ?? null,
-      });
+      setUser(await loadProfileForHeader(supabase, u));
     });
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_, session) => {
       if (session?.user) {
         const supabaseClient = createClient();
-        const { data: profileData } = await supabaseClient
-          .from("profiles")
-          .select("avatar_url, full_name")
-          .eq("id", session.user.id)
-          .single();
-        const profile = profileData as { avatar_url: string | null; full_name: string | null } | null;
-        setUser({
-          id: session.user.id,
-          avatarUrl: profile?.avatar_url ?? null,
-          fullName: profile?.full_name ?? null,
-          email: session.user.email ?? null,
-        });
+        setUser(await loadProfileForHeader(supabaseClient, session.user));
       } else {
         setUser(null);
       }

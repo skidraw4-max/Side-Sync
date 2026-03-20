@@ -3,20 +3,26 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { useServerHydratedSession } from "@/contexts/AuthSessionContext";
 import { useMyProjects } from "@/hooks/useMyProjects";
 import ProjectCard from "@/components/ProjectCard";
 import EmptyState from "@/components/EmptyState";
 import { ProjectCardSkeleton } from "@/components/Skeleton";
 
 export default function MyProjectsSection() {
-  const [userId, setUserId] = useState<string | null>(null);
+  const session = useServerHydratedSession();
+  const [userId, setUserId] = useState<string | null>(() => session?.user?.id ?? null);
   const { data: projects, isLoading } = useMyProjects(userId ?? "");
 
   useEffect(() => {
-    createClient()
+    if (session?.user?.id) {
+      setUserId(session.user.id);
+      return;
+    }
+    void createClient()
       .auth.getUser()
       .then(({ data: { user } }) => setUserId(user?.id ?? null));
-  }, []);
+  }, [session]);
 
   if (!userId) return null;
 

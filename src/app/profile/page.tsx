@@ -9,9 +9,12 @@ import EmptyState from "@/components/EmptyState";
 import MannerTemperatureGauge from "@/components/MannerTemperatureGauge";
 import { ProfilePageSkeleton } from "@/components/Skeleton";
 import { createClient } from "@/lib/supabase/client";
+import { getMergedAvatarUrl, getMergedDisplayName } from "@/lib/auth-user-display";
+import { fetchLedProjectsForUser, fetchProjectsByIds } from "@/lib/supabase-project-queries";
 
 interface ProfileData {
-  fullName: string | null;
+  /** DB + OAuth 메타데이터 병합 결과 (표시용) */
+  fullName: string;
   avatarUrl: string | null;
   role: string | null;
   mannerTemp: string;
@@ -74,24 +77,42 @@ export default function ProfilePage() {
           router.push("/login");
           return;
         }
-        const user = session?.user;
-        if (!user) {
+        const sessionUser = session?.user;
+        if (!sessionUser) {
           router.push("/login");
           return;
         }
 
+        const {
+          data: { user: jwtUser },
+        } = await supabase.auth.getUser();
+        const user = jwtUser ?? sessionUser;
+
         // maybeSingle: 프로필 row 없을 때도 에러 없이 null 반환
-        const { data: profileRow } = await (supabase as any)
+        const { data: profileRow, error: profileFetchError } = await supabase
           .from("profiles")
           .select("full_name, avatar_url, role, manner_temp, manner_temp_target, success_rate, badges")
           .eq("id", user.id)
           .maybeSingle();
 
+        if (profileFetchError) {
+          console.warn("[ProfilePage] profiles 조회:", profileFetchError.message);
+        }
+
         if (cancelled) return;
-        const profile = profileRow as { full_name: string | null; avatar_url: string | null; role: string | null; manner_temp: number | null; manner_temp_target: string | null; success_rate: string | null; badges: string[] } | null;
+        const profile = profileRow as {
+          full_name: string | null;
+          avatar_url: string | null;
+          role: string | null;
+          manner_temp: number | null;
+          manner_temp_target: string | null;
+          success_rate: string | null;
+          badges: string[];
+        } | null;
+
         setProfile({
-          fullName: profile?.full_name ?? null,
-          avatarUrl: profile?.avatar_url ?? null,
+          fullName: getMergedDisplayName(user, profile?.full_name),
+          avatarUrl: getMergedAvatarUrl(user, profile?.avatar_url),
           role: profile?.role ?? null,
           mannerTemp: profile?.manner_temp != null ? `${profile.manner_temp}` : (profile?.manner_temp_target ?? "36.5"),
           successRate: profile?.success_rate ?? "98%",
@@ -99,11 +120,7 @@ export default function ProfilePage() {
           location: "San Francisco, CA",
         });
 
-        const { data: ledProjects } = await (supabase as any)
-          .from("projects")
-          .select("id, title, description, gradient, team_leader_id")
-          .eq("team_leader_id", user.id)
-          .order("created_at", { ascending: false });
+        const led = await fetchLedProjectsForUser(supabase as any, user.id);
 
         const { data: acceptedApps } = await (supabase as any)
           .from("applications")
@@ -113,17 +130,11 @@ export default function ProfilePage() {
 
         const memberProjectIds = new Set(((acceptedApps ?? []) as Array<{ project_id: string }>).map((a) => a.project_id));
 
-        const { data: memberProjects } =
-          memberProjectIds.size > 0
-            ? await (supabase as any)
-                .from("projects")
-                .select("id, title, description, gradient, team_leader_id")
-                .in("id", Array.from(memberProjectIds))
-            : { data: [] };
+        const ledIds = new Set(led.map((p) => p.id));
+        const memberIdsOnly = Array.from(memberProjectIds).filter((id) => !ledIds.has(id));
+        const member = await fetchProjectsByIds(supabase as any, memberIdsOnly);
 
         type ProjectRow = { id: string; title: string; description: string | null; gradient: string | null; team_leader_id: string | null };
-        const led = (ledProjects ?? []) as ProjectRow[];
-        const member = (memberProjects ?? []) as ProjectRow[];
         const allProjects = [
           ...led,
           ...member.filter((p) => !led.some((l) => l.id === p.id)),

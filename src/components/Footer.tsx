@@ -1,13 +1,15 @@
+/** 개인정보 처리방침 등과 동일한 문의 메일 */
+const CONTACT_MAILTO = "mailto:skidraw4@gmail.com";
+
 const footerLinks = [
-  { label: "Terms", href: "/terms" },
-  { label: "Privacy", href: "/privacy" },
-  { label: "Contact", href: "#" },
-  { label: "Help Center", href: "#" },
+  { label: "이용약관", href: "/terms" },
+  { label: "개인정보처리방침", href: "/privacy" },
+  { label: "Contact", href: CONTACT_MAILTO },
 ];
 const stitchFooterLinks = [
-  { label: "Privacy Policy", href: "/privacy" },
-  { label: "Terms of Service", href: "/terms" },
-  { label: "Help Center", href: "#" },
+  { label: "이용약관", href: "/terms" },
+  { label: "개인정보처리방침", href: "/privacy" },
+  { label: "Contact", href: CONTACT_MAILTO },
 ];
 
 interface FooterProps {

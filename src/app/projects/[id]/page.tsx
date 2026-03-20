@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import ProjectDetailHeader from "@/components/ProjectDetailHeader";
 import ProjectDetailStitch from "@/components/ProjectDetailStitch";
 import Footer from "@/components/Footer";
+import { getDemoProjectById } from "@/lib/demo-projects";
 import type { RecruitmentStatusRow } from "@/types/database";
 
 interface ProjectDetailPageProps {
@@ -17,6 +18,49 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  const demo = getDemoProjectById(id);
+  if (demo) {
+    const defaultMilestones = [
+      { label: "Architecture", percent: 100, icon: "check" as const },
+      { label: "Sync Engine (Current)", percent: 65, icon: "sync" as const },
+      { label: "Public Beta", percent: 0, icon: "lock" as const },
+    ];
+    return (
+      <div className="min-h-screen bg-[#F9FAFB]">
+        <ProjectDetailHeader />
+        <div className="border-b border-amber-200 bg-amber-50 px-6 py-2.5 text-center text-sm text-amber-900 md:px-12 lg:px-24">
+          <span className="font-medium">샘플 프로젝트</span>
+          <span className="text-amber-800">
+            {" "}
+            — 실제 DB에 등록된 프로젝트가 없을 때 표시되는 예시입니다. 프로젝트를 생성하면 여기에 표시됩니다.
+          </span>
+        </div>
+        <ProjectDetailStitch
+          projectId={id}
+          projectTitle={demo.title}
+          projectDescription={demo.description}
+          techStack={demo.techStack}
+          mannerTempTarget={demo.mannerTemperature}
+          teamLeader={{
+            name: "Side-Sync",
+            role: "Demo · 샘플 리드",
+            avatarUrl: null,
+          }}
+          recruitmentStatus={null}
+          acceptedApplicants={[]}
+          profilesMap={{}}
+          isLeader={false}
+          hasApplied={false}
+          visibility="Public"
+          durationMonths={6}
+          estLaunch="TBD"
+          milestones={defaultMilestones}
+        />
+        <Footer variant="stitch" />
+      </div>
+    );
+  }
 
   const { data: projectRaw, error } = await supabase
     .from("projects")

@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/types/database";
 import type { ProjectCardProps } from "@/components/ProjectCard";
+import { fetchLedProjectsForUser, fetchProjectsByIds } from "@/lib/supabase-project-queries";
 
 const DEFAULT_GRADIENT = "from-blue-200 via-indigo-200 to-purple-200";
 
@@ -12,18 +13,7 @@ export interface ProjectWithId extends ProjectCardProps {
   id: string;
 }
 
-/** Navigator Lock steal/Abort 등 일시적 Auth 잠금 오류 */
-function isTransientAuthLockError(e: unknown): boolean {
-  if (e == null) return false;
-  if (typeof e === "object" && e !== null && "name" in e && (e as { name: string }).name === "AbortError") {
-    return true;
-  }
-  const msg =
-    typeof e === "object" && e !== null && "message" in e && typeof (e as { message: unknown }).message === "string"
-      ? (e as { message: string }).message
-      : String(e);
-  return msg.includes("Lock broken") || msg.includes("steal");
-}
+type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
 
 async function fetchMyProjects(userId: string): Promise<ProjectWithId[]> {
   if (!userId) return [];
@@ -41,50 +31,8 @@ async function fetchMyProjects(userId: string): Promise<ProjectWithId[]> {
   }
 
   try {
-    // gradient, manner_temp_target 등 DB에 없을 수 있는 컬럼 제외 후 조회
-    let allProjects: unknown[] | null = null;
-    let fetchError: unknown = null;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const res = await supabase
-        .from("projects")
-        .select("id, title, description, tech_stack, manner_temp_target, team_leader_id")
-        .order("created_at", { ascending: false })
-        .limit(100);
-      allProjects = res.data as unknown[] | null;
-      fetchError = res.error;
-      if (!fetchError) break;
-      if (!isTransientAuthLockError(fetchError) || attempt === 2) break;
-      await new Promise((r) => setTimeout(r, 120 * (attempt + 1)));
-    }
+    const safeLedProjects = await fetchLedProjectsForUser(supabase, userId);
 
-    let safeLedProjects: Database["public"]["Tables"]["projects"]["Row"][] = [];
-
-    if (fetchError) {
-      if (!isTransientAuthLockError(fetchError)) {
-        console.error("[useMyProjects] 프로젝트 조회 에러:", (fetchError as { message?: string })?.message ?? fetchError);
-      }
-      // tech_stack, manner_temp_target 없이 재시도 (컬럼 없을 수 있음)
-      const { data: fallbackData } = await supabase
-        .from("projects")
-        .select("id, title, description, team_leader_id")
-        .order("created_at", { ascending: false })
-        .limit(100);
-
-      if (fallbackData?.length) {
-        const rows = (fallbackData ?? []) as Array<{ id: string; title: string; description: string | null; team_leader_id: string | null }>;
-        safeLedProjects = rows
-          .filter((p) => p.team_leader_id === userId)
-          .map(({ team_leader_id, ...rest }) => rest) as Database["public"]["Tables"]["projects"]["Row"][];
-      }
-    } else {
-      // team_leader_id가 현재 유저와 일치하는 프로젝트만
-      const rows = (allProjects ?? []) as Array<{ team_leader_id?: string | null } & Database["public"]["Tables"]["projects"]["Row"]>;
-      safeLedProjects = rows
-        .filter((p) => p.team_leader_id === userId)
-        .map(({ team_leader_id, ...rest }) => rest) as Database["public"]["Tables"]["projects"]["Row"][];
-    }
-
-    // 내가 멤버(accepted)로 참여한 프로젝트
     const { data: acceptedApps } = await supabase
       .from("applications")
       .select("project_id")
@@ -95,33 +43,20 @@ async function fetchMyProjects(userId: string): Promise<ProjectWithId[]> {
       .map((a) => (a as { project_id: string }).project_id)
       .filter((id) => id);
 
-    let memberProjects: Database["public"]["Tables"]["projects"]["Row"][] = [];
-    if (memberProjectIds.length > 0) {
-      const { data } = await supabase
-        .from("projects")
-        .select("id, title, description, tech_stack, manner_temp_target")
-        .in("id", memberProjectIds)
-        .order("created_at", { ascending: false });
-      memberProjects = (data ?? []) as Database["public"]["Tables"]["projects"]["Row"][];
-    }
-
-    // 리더 프로젝트 + 멤버 프로젝트 (중복 제거, created_at 기준 정렬)
     const ledIds = new Set(safeLedProjects.map((p) => p.id));
-    const combined = [
-      ...safeLedProjects,
-      ...memberProjects.filter((p) => !ledIds.has(p.id)),
-    ] as Database["public"]["Tables"]["projects"]["Row"][];
+    const memberIdsOnly = memberProjectIds.filter((id) => !ledIds.has(id));
+    const memberProjects = await fetchProjectsByIds(supabase, memberIdsOnly);
 
-    const result = combined.map((row) => ({
+    const combined = [...safeLedProjects, ...memberProjects] as ProjectRow[];
+
+    return combined.map((row) => ({
       id: row.id,
       title: row.title,
       description: row.description ?? undefined,
       techStack: Array.isArray(row.tech_stack) ? row.tech_stack : [],
-      mannerTemperature: row.manner_temp_target,
-      gradient: row.gradient ?? DEFAULT_GRADIENT,
+      mannerTemperature: (row as { manner_temp_target?: string | null }).manner_temp_target ?? "36.5°C",
+      gradient: (row as { gradient?: string | null }).gradient ?? DEFAULT_GRADIENT,
     }));
-    console.log("[useMyProjects] 가져온 프로젝트 (최종 결합):", result);
-    return result;
   } catch (err) {
     console.error("[useMyProjects] fetchMyProjects 에러:", err);
     return [];
@@ -149,10 +84,9 @@ export function useMyProjects(userId: string) {
     enabled: !!userId,
     retry: false,
     refetchOnWindowFocus: true,
-    staleTime: 0, // 캐시로 인한 목록 미표시 방지: 항상 최신 데이터 요청
+    staleTime: 0,
   });
 
-  // Supabase Realtime: projects/applications 변경 시 refetch
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
 

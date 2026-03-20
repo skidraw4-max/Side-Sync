@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { DEMO_PROJECTS } from "@/lib/demo-projects";
 import type { Database } from "@/types/database";
 import type { ProjectCardProps } from "@/components/ProjectCard";
 
@@ -14,35 +15,10 @@ export interface ProjectWithId extends ProjectCardProps {
   id: string;
 }
 
-const FALLBACK_PROJECTS: ProjectWithId[] = [
-  {
-    id: "fallback-1",
-    title: "AI Travel Planner",
-    description:
-      "A smart itinerary generator that uses LLMs to plan personalized trips based on your preferences and budget.",
-    gradient: "from-blue-200 via-indigo-200 to-purple-200",
-    mannerTemperature: "36.5°C",
-    techStack: ["FRONTEND", "UI DESIGNER"],
-  },
-  {
-    id: "fallback-2",
-    title: "Eco-Tracker App",
-    description:
-      "Track your carbon footprint and discover sustainable alternatives for everyday choices.",
-    gradient: "from-emerald-200 via-teal-200 to-cyan-200",
-    mannerTemperature: "42.0°C",
-    techStack: ["MOBILE", "BACKEND"],
-  },
-  {
-    id: "fallback-3",
-    title: "SkillSwap Network",
-    description:
-      "A peer-to-peer platform for developers to exchange skills and collaborate on learning projects.",
-    gradient: "from-violet-200 via-purple-200 to-pink-200",
-    mannerTemperature: "38.2°C",
-    techStack: ["FULL-STACK", "DESIGN"],
-  },
-];
+/** DB 미연결·오류 시 트렌딩 카드용 (상세는 demo-projects와 동일 ID로 렌더) */
+const FALLBACK_PROJECTS: ProjectWithId[] = DEMO_PROJECTS.map((p) => ({
+  ...p,
+}));
 
 type RowMinimal = Pick<
   Database["public"]["Tables"]["projects"]["Row"],
