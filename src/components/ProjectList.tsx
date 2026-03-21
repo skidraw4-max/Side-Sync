@@ -52,6 +52,7 @@ export default function ProjectList({ userId }: ProjectListProps) {
               mannerTemperature={project.mannerTemperature}
               description={project.description}
               gradient={project.gradient}
+              showWorkspaceLink
             />
           ))}
         </div>

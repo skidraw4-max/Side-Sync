@@ -73,6 +73,7 @@ export default function MyProjectsSection() {
               mannerTemperature={project.mannerTemperature}
               description={project.description}
               gradient={project.gradient}
+              showWorkspaceLink
             />
           ))}
         </div>
