@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { BrandLogoMark } from "@/components/BrandLogo";
+import AdBanner from "@/components/AdBanner";
+import { ADSENSE_CLIENT_ID, ADSENSE_SLOTS } from "@/lib/ads-config";
 
 interface WorkspaceSidebarProps {
   activeItem?: "notice" | "kanban" | "files";
@@ -13,7 +15,7 @@ export default function WorkspaceSidebar({ activeItem = "files" }: WorkspaceSide
   ];
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-gray-200 bg-white p-6">
+    <aside className="flex min-h-screen w-64 shrink-0 flex-col border-r border-gray-200 bg-white p-6">
       <Link href="/workspace/files" className="flex items-center gap-2">
         <BrandLogoMark size={32} />
         <span className="font-semibold text-gray-800">Side-Sync Workspace</span>
@@ -80,6 +82,14 @@ export default function WorkspaceSidebar({ activeItem = "files" }: WorkspaceSide
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
           </svg>
         </div>
+      </div>
+
+      <div className="border-t border-gray-200 pt-4">
+        <AdBanner
+          adSlotId={ADSENSE_SLOTS.workspaceSidebar}
+          adClientId={ADSENSE_CLIENT_ID || undefined}
+          className="max-w-full"
+        />
       </div>
     </aside>
   );

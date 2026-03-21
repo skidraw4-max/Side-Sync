@@ -1,0 +1,13 @@
+---
+description: 프로덕션 도메인(sidesync.io, www) — SEO·리다이렉트·환경 설정 시 참고
+alwaysApply: true
+---
+
+# Side-Sync 프로덕션 도메인
+
+- **루트 도메인**: `sidesync.io` (구매·Vercel 등에 연결됨)
+- **`www`**: `www.sidesync.io` 도 설정되어 있음 (호스팅에서 apex ↔ www 리다이렉트 정책에 맞춰 한쪽을 canonical로 두는 것이 좋음)
+
+코드·메타데이터에서 기본 canonical은 `layout.tsx`의 `metadataBase` / `openGraph.url`(`https://sidesync.io`)과 맞출 것.
+
+Supabase Redirect URLs·OAuth·AdSense·Search Console 등 외부 서비스에는 **apex와 www 모두** 필요 시 각각 등록.

@@ -117,7 +117,15 @@ export default function Header({ variant = "default" }: HeaderProps) {
               aria-label="프로필 메뉴"
             >
               {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
+                <img
+                  src={profile.avatar_url}
+                  alt={
+                    profile.full_name
+                      ? `${profile.full_name}님의 프로필 사진`
+                      : "내 프로필 사진"
+                  }
+                  className="h-full w-full object-cover"
+                />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-orange-400 to-pink-500 text-sm font-medium text-white">
                   {(profile?.full_name?.[0] ?? user?.email?.[0] ?? "?").toUpperCase()}

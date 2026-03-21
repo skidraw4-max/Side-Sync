@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { shouldEnableSupabaseRealtimeSubscriptions } from "@/lib/supabase/realtime-flags";
 import type { Database } from "@/types/database";
 import type { ProjectCardProps } from "@/components/ProjectCard";
 import { fetchLedProjectsForUser, fetchProjectsByIds } from "@/lib/supabase-project-queries";
@@ -88,7 +89,7 @@ export function useMyProjects(userId: string) {
   });
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) return;
+    if (!isSupabaseConfigured() || !shouldEnableSupabaseRealtimeSubscriptions()) return;
 
     const supabase = createClient();
     const channel = supabase

@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { shouldEnableSupabaseRealtimeSubscriptions } from "@/lib/supabase/realtime-flags";
 import { DEMO_PROJECTS } from "@/lib/demo-projects";
 import { projectMatchesSearchTokens, tokenizeSearchQuery } from "@/lib/project-search";
 import type { Database } from "@/types/database";
@@ -31,35 +32,32 @@ type RowMinimal = Pick<
 };
 
 function mapRowToCard(row: RowMinimal): ProjectWithId {
+  const r = row as RowMinimal & { gradient?: string | null };
   return {
     id: row.id,
     title: row.title,
     description: row.description ?? undefined,
     techStack: Array.isArray(row.tech_stack) ? row.tech_stack : [],
     mannerTemperature: row.manner_temp_target ?? "36.5°C",
-    gradient: DEFAULT_GRADIENT,
+    gradient: r.gradient?.trim() ? r.gradient : DEFAULT_GRADIENT,
   };
 }
 
 async function fetchAllProjectsRows(supabase: ReturnType<typeof createClient>): Promise<RowMinimal[]> {
-  const selectVariants = [
-    "id, title, description, goal, summary, content, tech_stack, manner_temp_target",
-    "id, title, description, goal, tech_stack, manner_temp_target",
-    "id, title, description, tech_stack, manner_temp_target",
-  ];
+  /** 컬럼 목록을 직접 나열하면 마이그레이션 누락 시 400(Bad Request)이 날 수 있어 * 한 번만 조회 */
+  const { data, error } = await supabase
+    .from("projects")
+    .select("*")
+    .order("created_at", { ascending: false });
 
-  for (const sel of selectVariants) {
-    const { data, error } = await supabase
-      .from("projects")
-      .select(sel)
-      .order("created_at", { ascending: false });
-
-    if (!error && data !== null) {
-      return data as unknown as RowMinimal[];
+  if (error) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[useProjects] projects select:", error.message);
     }
+    return [];
   }
 
-  return [];
+  return (data ?? []) as unknown as RowMinimal[];
 }
 
 async function fetchProjects(searchQuery?: string): Promise<ProjectWithId[]> {
@@ -144,7 +142,7 @@ export function useProjects(searchQuery: string = "") {
   });
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) return;
+    if (!isSupabaseConfigured() || !shouldEnableSupabaseRealtimeSubscriptions()) return;
 
     const supabase = createClient();
     const channel = supabase

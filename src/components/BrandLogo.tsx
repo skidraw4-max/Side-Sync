@@ -17,7 +17,7 @@ export function BrandLogoMark({ size = 36, className = "", priority = false }: B
   return (
     <Image
       src={LOGO_SRC}
-      alt="Side-Sync"
+      alt="Side-Sync 협업 플랫폼 로고"
       width={size}
       height={size}
       className={`rounded-2xl object-cover ${className}`.trim()}

@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { BrandLogoWordmark } from "@/components/BrandLogo";
-import Ads from "@/components/Ads";
+import AdBanner from "@/components/AdBanner";
 import { ADSENSE_CLIENT_ID, ADSENSE_SLOTS } from "@/lib/ads-config";
 
 interface NavItem {
@@ -243,9 +243,9 @@ export default function WorkspaceSidebarNav({
       </div>
 
       <div className="mt-auto border-t border-gray-200 p-2">
-        <Ads
-          adClientId={ADSENSE_CLIENT_ID}
+        <AdBanner
           adSlotId={ADSENSE_SLOTS.workspaceSidebar}
+          adClientId={ADSENSE_CLIENT_ID || undefined}
           className="max-w-full"
         />
       </div>

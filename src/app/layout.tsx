@@ -38,6 +38,13 @@ export default async function RootLayout({
 
   return (
     <html lang="ko">
+      <head>
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2237287742271246"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body className="antialiased font-sans">
         <Providers initialSession={session}>{children}</Providers>
       </body>

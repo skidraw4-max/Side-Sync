@@ -18,6 +18,8 @@ async function authLockNoOp<R>(
 }
 
 export function createClient() {
+  // Vercel: NEXT_PUBLIC_SUPABASE_URL은 대시보드 API의 Project URL과 동일해야 함.
+  // 잘못된 ref면 DNS 실패(ERR_NAME_NOT_RESOLVED)·REST 오류가 납니다.
   // Vercel: env vars는 Project Settings에 설정 필요. 없으면 placeholder 사용하여 크래시 방지
   const supabaseUrl =
     process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";

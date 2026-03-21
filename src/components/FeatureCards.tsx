@@ -25,8 +25,18 @@ const features = [
 
 export default function FeatureCards() {
   return (
-    <section className="border-t border-slate-100 bg-white px-6 py-16 md:px-12 md:py-20 lg:px-24">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 md:grid-cols-3 md:gap-10 lg:gap-12">
+    <section
+      className="border-t border-slate-100 bg-white px-6 py-16 md:px-12 md:py-20 lg:px-24"
+      aria-labelledby="home-features-heading"
+    >
+      <div className="mx-auto max-w-7xl">
+        <h2
+          id="home-features-heading"
+          className="mb-10 text-center text-2xl font-bold tracking-tight text-slate-900 md:mb-12 md:text-3xl"
+        >
+          핵심 기능
+        </h2>
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-3 md:gap-10 lg:gap-12">
         {features.map(({ icon: Icon, title, description }) => (
           <div
             key={title}
@@ -39,6 +49,7 @@ export default function FeatureCards() {
             <p className="mt-3 text-base leading-relaxed text-slate-600">{description}</p>
           </div>
         ))}
+        </div>
       </div>
     </section>
   );

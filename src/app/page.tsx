@@ -1,7 +1,7 @@
 import Header from "@/components/Header";
 import HomeExploreSection from "@/components/HomeExploreSection";
 import Footer from "@/components/Footer";
-import Ads from "@/components/Ads";
+import AdBanner from "@/components/AdBanner";
 import { ADSENSE_CLIENT_ID, ADSENSE_SLOTS } from "@/lib/ads-config";
 
 export default function Home() {
@@ -12,9 +12,10 @@ export default function Home() {
         <HomeExploreSection />
       </main>
       <div className="mx-auto max-w-4xl px-4 pb-6">
-        <Ads
-          adClientId={ADSENSE_CLIENT_ID}
+        <AdBanner
           adSlotId={ADSENSE_SLOTS.homeFooter}
+          adClientId={ADSENSE_CLIENT_ID || undefined}
+          className="w-full"
         />
       </div>
       <Footer />
