@@ -4,11 +4,15 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { BrandLogoWordmark } from "@/components/BrandLogo";
+import Ads from "@/components/Ads";
+import { ADSENSE_CLIENT_ID, ADSENSE_SLOTS } from "@/lib/ads-config";
 
 interface NavItem {
   label: string;
   href: string;
   icon: string;
+  /** 비활성화 시 링크 대신 버튼으로만 표시 */
+  disabled?: boolean;
 }
 
 interface Channel {
@@ -42,7 +46,7 @@ export default function WorkspaceSidebarNav({
   const navItems: NavItem[] = [
     { label: "Dashboard", href: "#", icon: "grid" },
     { label: "Tasks", href: `/projects/${projectId}/workspace/tasks`, icon: "checklist" },
-    { label: "Chat", href: `/projects/${projectId}/workspace/chat`, icon: "chat" },
+    { label: "Chat", href: `/projects/${projectId}/workspace/chat`, icon: "chat", disabled: true },
     { label: "Notices", href: `/projects/${projectId}/workspace/notices`, icon: "megaphone" },
     { label: "Files", href: "#", icon: "folder" },
     { label: "Settings", href: "#", icon: "gear" },
@@ -64,7 +68,8 @@ export default function WorkspaceSidebarNav({
     }
   };
 
-  const isActive = (href: string) => {
+  const isActive = (href: string, disabled?: boolean) => {
+    if (disabled) return false;
     if (href === "#") return false;
     const noticesHref = `/projects/${projectId}/workspace/notices`;
     const tasksHref = `/projects/${projectId}/workspace/tasks`;
@@ -75,6 +80,49 @@ export default function WorkspaceSidebarNav({
     if (pathname === `/projects/${projectId}/workspace`) return href === tasksHref;
     return false;
   };
+
+  const navIcon = (icon: string) => (
+    <>
+      {icon === "grid" && (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="3" y="3" width="7" height="7" />
+          <rect x="14" y="3" width="7" height="7" />
+          <rect x="14" y="14" width="7" height="7" />
+          <rect x="3" y="14" width="7" height="7" />
+        </svg>
+      )}
+      {icon === "checklist" && (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M9 11l3 3L22 4" />
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+        </svg>
+      )}
+      {icon === "chat" && (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </svg>
+      )}
+      {icon === "megaphone" && (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="m3 11 18-5v12L3 14v-3z" />
+          <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
+        </svg>
+      )}
+      {icon === "folder" && (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+          <line x1="12" y1="11" x2="12" y2="17" />
+          <line x1="9" y1="14" x2="15" y2="14" />
+        </svg>
+      )}
+      {icon === "gear" && (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+        </svg>
+      )}
+    </>
+  );
 
   return (
     <aside className="sticky top-0 flex h-screen w-56 shrink-0 flex-col border-r border-gray-200 bg-[#FAFAFA]">
@@ -94,57 +142,33 @@ export default function WorkspaceSidebarNav({
       )}
 
       <nav className="flex-1 space-y-1 px-3">
-        {navItems.map((item) => (
-          <Link
-            key={item.label}
-            href={item.href}
-            className={`flex items-center gap-3 rounded-full px-3 py-2.5 text-sm transition-colors ${
-              isActive(item.href)
-                ? "bg-[#2563EB]/10 font-medium text-[#2563EB]"
-                : "text-gray-600 hover:bg-gray-100"
-            }`}
-          >
-            {item.icon === "grid" && (
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="3" width="7" height="7" />
-                <rect x="14" y="3" width="7" height="7" />
-                <rect x="14" y="14" width="7" height="7" />
-                <rect x="3" y="14" width="7" height="7" />
-              </svg>
-            )}
-            {item.icon === "checklist" && (
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 11l3 3L22 4" />
-                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-              </svg>
-            )}
-            {item.icon === "chat" && (
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              </svg>
-            )}
-            {item.icon === "megaphone" && (
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="m3 11 18-5v12L3 14v-3z" />
-                <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
-              </svg>
-            )}
-            {item.icon === "folder" && (
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                <line x1="12" y1="11" x2="12" y2="17" />
-                <line x1="9" y1="14" x2="15" y2="14" />
-              </svg>
-            )}
-            {item.icon === "gear" && (
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-              </svg>
-            )}
-            {item.label}
-          </Link>
-        ))}
+        {navItems.map((item) =>
+          item.disabled ? (
+            <button
+              key={item.label}
+              type="button"
+              disabled
+              title="준비 중"
+              className="flex w-full cursor-not-allowed items-center gap-3 rounded-full px-3 py-2.5 text-left text-sm text-gray-400 opacity-60"
+            >
+              {navIcon(item.icon)}
+              {item.label}
+            </button>
+          ) : (
+            <Link
+              key={item.label}
+              href={item.href}
+              className={`flex items-center gap-3 rounded-full px-3 py-2.5 text-sm transition-colors ${
+                isActive(item.href, item.disabled)
+                  ? "bg-[#2563EB]/10 font-medium text-[#2563EB]"
+                  : "text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              {navIcon(item.icon)}
+              {item.label}
+            </Link>
+          )
+        )}
       </nav>
 
       {isLeader && projectStatus === "active" && (
@@ -216,6 +240,14 @@ export default function WorkspaceSidebarNav({
             </p>
           </div>
         </div>
+      </div>
+
+      <div className="mt-auto border-t border-gray-200 p-2">
+        <Ads
+          adClientId={ADSENSE_CLIENT_ID}
+          adSlotId={ADSENSE_SLOTS.workspaceSidebar}
+          className="max-w-full"
+        />
       </div>
     </aside>
   );
