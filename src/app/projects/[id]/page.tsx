@@ -5,11 +5,15 @@ import ProjectDetailHeader from "@/components/ProjectDetailHeader";
 import ProjectDetailStitch from "@/components/ProjectDetailStitch";
 import Footer from "@/components/Footer";
 import { getDemoProjectById } from "@/lib/demo-projects";
+import { fetchProjectDetailById } from "@/lib/supabase-project-queries";
 import type { RecruitmentStatusRow } from "@/types/database";
 
 interface ProjectDetailPageProps {
   params: Promise<{ id: string }>;
 }
+
+/** 쿠키 기반 세션으로 매 요청 조회 (목록→상세 이동 시 캐시로 인한 404 방지) */
+export const dynamic = "force-dynamic";
 
 export default async function ProjectDetailPage({ params }: ProjectDetailPageProps) {
   const { id } = await params;
@@ -62,15 +66,9 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
     );
   }
 
-  const { data: projectRaw, error } = await supabase
-    .from("projects")
-    .select(
-      "id, title, description, goal, tech_stack, team_leader_id, recruitment_status, manner_temp_target, visibility, duration_months, est_launch, created_at"
-    )
-    .eq("id", id)
-    .single();
+  const projectRaw = await fetchProjectDetailById(supabase, id);
 
-  if (error || !projectRaw) {
+  if (!projectRaw) {
     notFound();
   }
 

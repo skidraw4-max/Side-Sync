@@ -75,3 +75,40 @@ export async function fetchProjectsByIds(
   }
   return [];
 }
+
+/**
+ * 프로젝트 상세 페이지용 단건 조회.
+ * 마이그레이션 단계별로 컬럼이 다른 DB에서도 동작하도록 select 문자열을 순차 시도하고,
+ * 마지막에 `*` 로 폴백합니다. (존재하지 않는 컬럼을 나열하면 PostgREST가 전체 요청을 실패시켜 404로 이어짐)
+ */
+const DETAIL_SELECT_VARIANTS = [
+  "id, title, description, goal, tech_stack, team_leader_id, recruitment_status, manner_temp_target, visibility, duration_months, est_launch, created_at, gradient, summary, content, category, status",
+  "id, title, description, goal, tech_stack, team_leader_id, recruitment_status, manner_temp_target, visibility, duration_months, est_launch, created_at",
+  "id, title, description, tech_stack, team_leader_id, recruitment_status, manner_temp_target, visibility, duration_months, est_launch, created_at, gradient",
+  "id, title, description, tech_stack, team_leader_id, manner_temp_target, recruitment_status, visibility, duration_months, est_launch, created_at",
+  "id, title, description, tech_stack, team_leader_id, manner_temp_target, visibility, duration_months, est_launch, created_at",
+  "id, title, description, tech_stack, team_leader_id, manner_temp_target, created_at, gradient",
+  "id, title, description, tech_stack, team_leader_id, manner_temp_target, created_at",
+  ...BY_IDS_SELECT_VARIANTS,
+] as const;
+
+export async function fetchProjectDetailById(
+  supabase: SupabaseClient,
+  id: string
+): Promise<ProjectRow | null> {
+  for (const sel of DETAIL_SELECT_VARIANTS) {
+    const { data, error } = await supabase.from("projects").select(sel).eq("id", id).maybeSingle();
+
+    if (!error && data) {
+      return data as unknown as ProjectRow;
+    }
+  }
+
+  const { data, error } = await supabase.from("projects").select("*").eq("id", id).maybeSingle();
+
+  if (!error && data) {
+    return data as unknown as ProjectRow;
+  }
+
+  return null;
+}
