@@ -112,3 +112,41 @@ export async function fetchProjectDetailById(
 
   return null;
 }
+
+/** applications.role 컬럼이 없는 DB(마이그레이션 미적용)에서도 400을 피하기 위한 타입 */
+export type AcceptedApplicationRow = {
+  applicant_id: string;
+  role: string | null;
+};
+
+/**
+ * accepted 지원자 목록.
+ * `select("applicant_id, role")` 처럼 컬럼을 나열하면 `role` 미존재 시 **첫 요청이 400**으로 콘솔에 남습니다.
+ * `*` 는 테이블에 실제 존재하는 컬럼만 반환하므로 한 번에 안전합니다.
+ */
+export async function fetchAcceptedApplicationsForProject(
+  supabase: SupabaseClient,
+  projectId: string
+): Promise<AcceptedApplicationRow[]> {
+  const { data, error } = await supabase
+    .from("applications")
+    .select("*")
+    .eq("project_id", projectId)
+    .eq("status", "accepted");
+
+  if (error || !data || !Array.isArray(data)) {
+    return [];
+  }
+
+  return data
+    .map((row) => {
+      const r = row as Record<string, unknown>;
+      const applicantId = r.applicant_id;
+      if (typeof applicantId !== "string") return null;
+      const roleVal = r.role;
+      const role =
+        typeof roleVal === "string" && roleVal.trim() !== "" ? roleVal : null;
+      return { applicant_id: applicantId, role };
+    })
+    .filter((x): x is AcceptedApplicationRow => x !== null);
+}

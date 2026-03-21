@@ -66,12 +66,20 @@ export async function PATCH(
 
   const { data: appData } = await supabase
     .from("applications")
-    .select("id, applicant_id, status, role")
+    .select("*")
     .eq("id", appId)
     .eq("project_id", projectId)
     .single();
 
-  const application = appData as ApplicationRow | null;
+  const raw = appData as Record<string, unknown> | null;
+  const application = raw
+    ? ({
+        id: String(raw.id),
+        applicant_id: String(raw.applicant_id),
+        status: raw.status as ApplicationRow["status"],
+        role: typeof raw.role === "string" ? raw.role : null,
+      } as ApplicationRow)
+    : null;
   if (!application) {
     return NextResponse.json({ error: "지원서를 찾을 수 없습니다." }, { status: 404 });
   }

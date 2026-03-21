@@ -1,10 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import ApplyModal from "./ApplyModal";
 import type { RecruitmentStatusRow } from "@/types/database";
+
+/** role 컬럼이 없을 때 모집 정원(total) 순으로 accepted 명수를 배분 (표시용) */
+function distributeFilledGreedy(
+  totalAccepted: number,
+  entries: { role: string; total: number }[]
+): Record<string, number> {
+  const byRole: Record<string, number> = {};
+  let remaining = totalAccepted;
+  for (const e of entries) {
+    const take = Math.min(e.total, remaining);
+    byRole[e.role] = take;
+    remaining -= take;
+    if (remaining <= 0) break;
+  }
+  return byRole;
+}
 
 interface TeamMember {
   id: string;
@@ -59,43 +75,53 @@ export default function ProjectDetailStitch({
     { label: "Public Beta", percent: 0, icon: "lock" as const },
   ],
 }: ProjectDetailStitchProps) {
-  const [rolesWithFilled, setRolesWithFilled] = useState<RoleStatus[]>([]);
-  const [membersCount, setMembersCount] = useState(0);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [showApplyModal, setShowApplyModal] = useState(false);
-  const supabase = createClient();
+  /** 매 렌더마다 새 인스턴스면 realtime useEffect가 무한에 가깝게 재실행됨 */
+  const supabase = useMemo(() => createClient(), []);
 
-  const rawStatus = recruitmentStatus ?? [];
-  const roleEntries = Array.isArray(rawStatus)
-    ? rawStatus.map((r) => ({
-        role: r.role,
-        total: "count" in r ? (r as { count: number }).count : 1,
-      }))
-    : [{ role: "UI Designer", total: 1 }, { role: "Backend Dev", total: 1 }, { role: "Frontend Dev", total: 2 }];
+  const roleEntries = useMemo(() => {
+    const rawStatus = recruitmentStatus ?? [];
+    if (!Array.isArray(rawStatus)) {
+      return [
+        { role: "UI Designer", total: 1 },
+        { role: "Backend Dev", total: 1 },
+        { role: "Frontend Dev", total: 2 },
+      ];
+    }
+    return rawStatus.map((r) => ({
+      role: r.role,
+      total: "count" in r ? (r as { count: number }).count : 1,
+    }));
+  }, [recruitmentStatus]);
 
-  useEffect(() => {
-    async function fetchFilled() {
-      const { data } = await supabase
-        .from("applications")
-        .select("role")
-        .eq("project_id", projectId)
-        .eq("status", "accepted");
-      const byRole: Record<string, number> = {};
-      (data ?? []).forEach((a) => {
-        const r = (a as { role?: string }).role ?? "General";
+  /** 서버에서 이미 acceptedApplicants를 내려주므로 클라이언트에서 applications 재조회하지 않음 (400·중복 요청 방지) */
+  const { rolesWithFilled, membersCount } = useMemo(() => {
+    const apps = acceptedApplicants;
+    const byRole: Record<string, number> = {};
+    const hasRolePerRow = apps.some((a) => a.role != null && String(a.role).trim() !== "");
+
+    if (hasRolePerRow) {
+      apps.forEach((a) => {
+        const r = a.role ?? "General";
         byRole[r] = (byRole[r] ?? 0) + 1;
       });
-      const withFilled = roleEntries.map((e) => ({
-        role: e.role,
-        total: e.total,
-        filled: byRole[e.role] ?? 0,
-      }));
-      setRolesWithFilled(withFilled);
-      const total = withFilled.reduce((s, r) => s + r.filled, 0);
-      setMembersCount(total + (teamLeader ? 1 : 0));
+    } else if (apps.length > 0 && roleEntries.length > 0) {
+      Object.assign(byRole, distributeFilledGreedy(apps.length, roleEntries));
     }
-    fetchFilled();
-  }, [projectId, roleEntries, teamLeader]);
+
+    const withFilled = roleEntries.map((e) => ({
+      role: e.role,
+      total: e.total,
+      filled: byRole[e.role] ?? 0,
+    }));
+    const totalFromSlots = withFilled.reduce((s, r) => s + r.filled, 0);
+    const acceptedCount = hasRolePerRow ? totalFromSlots : apps.length;
+    return {
+      rolesWithFilled: withFilled,
+      membersCount: acceptedCount + (teamLeader ? 1 : 0),
+    };
+  }, [acceptedApplicants, roleEntries, teamLeader]);
 
   useEffect(() => {
     const members: TeamMember[] = [];
@@ -122,17 +148,13 @@ export default function ProjectDetailStitch({
     setTeamMembers(members);
   }, [teamLeader, acceptedApplicants, profilesMap, mannerTempTarget]);
 
+  /** projects만 구독: applications Realtime은 일부 환경에서 불필요한 REST 트래픽/400을 유발할 수 있어 제외 */
   useEffect(() => {
     const sub = supabase
       .channel(`project-detail-${projectId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "projects", filter: `id=eq.${projectId}` },
-        () => window.location.reload()
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "applications", filter: `project_id=eq.${projectId}` },
         () => window.location.reload()
       )
       .subscribe();

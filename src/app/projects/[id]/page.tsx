@@ -5,7 +5,7 @@ import ProjectDetailHeader from "@/components/ProjectDetailHeader";
 import ProjectDetailStitch from "@/components/ProjectDetailStitch";
 import Footer from "@/components/Footer";
 import { getDemoProjectById } from "@/lib/demo-projects";
-import { fetchProjectDetailById } from "@/lib/supabase-project-queries";
+import { fetchAcceptedApplicationsForProject, fetchProjectDetailById } from "@/lib/supabase-project-queries";
 import type { RecruitmentStatusRow } from "@/types/database";
 
 interface ProjectDetailPageProps {
@@ -107,14 +107,8 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
     }
   }
 
-  // accepted 지원자 (role 포함)
-  const { data: acceptedApps } = await supabase
-    .from("applications")
-    .select("applicant_id, role")
-    .eq("project_id", id)
-    .eq("status", "accepted");
-
-  const acceptedApplicantsRaw = (acceptedApps ?? []) as Array<{ applicant_id: string; role?: string }>;
+  // accepted 지원자 (role 컬럼 없는 DB는 applicant_id만 조회)
+  const acceptedApplicantsRaw = await fetchAcceptedApplicationsForProject(supabase, id);
   const acceptedApplicants = acceptedApplicantsRaw.map((a) => ({ applicant_id: a.applicant_id, role: a.role ?? null }));
   const applicantIds = [...new Set(acceptedApplicantsRaw.map((a) => a.applicant_id))];
   if (project.team_leader_id && !applicantIds.includes(project.team_leader_id)) {

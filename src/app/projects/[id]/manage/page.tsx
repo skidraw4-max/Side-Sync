@@ -9,6 +9,7 @@ import Footer from "@/components/Footer";
 import EmptyState from "@/components/EmptyState";
 import { ManageApplicantsSkeleton } from "@/components/Skeleton";
 import { createClient } from "@/lib/supabase/client";
+import { fetchAcceptedApplicationsForProject } from "@/lib/supabase-project-queries";
 
 interface ApplicantProfile {
   full_name: string | null;
@@ -88,17 +89,13 @@ export default function ManageApplicantsPage() {
       setTeamLeaderName(leaderProfile?.full_name ?? "Unknown");
     }
 
-    // 역할별 모집 현황 (filled/total) 계산
+    // 역할별 모집 현황 (filled/total) 계산 — role 컬럼 없는 DB는 select("*") 기반 헬퍼 사용
     const rawStatus = (project as { recruitment_status?: Array<{ role: string; count?: number; total?: number }> }).recruitment_status;
-    const { data: acceptedApps } = await supabase
-      .from("applications")
-      .select("role")
-      .eq("project_id", projectId)
-      .eq("status", "accepted");
+    const acceptedApps = await fetchAcceptedApplicationsForProject(supabase, projectId);
 
     const filledByRole: Record<string, number> = {};
-    (acceptedApps ?? []).forEach((a) => {
-      const r = (a as { role?: string }).role?.trim() || "General";
+    acceptedApps.forEach((a) => {
+      const r = a.role?.trim() || "General";
       filledByRole[r] = (filledByRole[r] ?? 0) + 1;
     });
 
@@ -117,7 +114,7 @@ export default function ManageApplicantsPage() {
       : ["pending"];
     const { data: appRows, error } = await supabase
       .from("applications")
-      .select("id, project_id, applicant_id, message, role, status, created_at")
+      .select("*")
       .eq("project_id", projectId)
       .in("status", statusFilter)
       .order("created_at", { ascending: false });
@@ -128,15 +125,18 @@ export default function ManageApplicantsPage() {
       return;
     }
 
-    const appRowsTyped = (appRows ?? []) as Array<{
-      id: string;
-      project_id: string;
-      applicant_id: string;
-      message: string | null;
-      role: string | null;
-      status: "pending" | "accepted" | "rejected";
-      created_at: string;
-    }>;
+    const appRowsTyped = (appRows ?? []).map((row) => {
+      const r = row as Record<string, unknown>;
+      return {
+        id: String(r.id),
+        project_id: String(r.project_id),
+        applicant_id: String(r.applicant_id),
+        message: (typeof r.message === "string" ? r.message : null) as string | null,
+        role: typeof r.role === "string" ? r.role : null,
+        status: r.status as "pending" | "accepted" | "rejected",
+        created_at: String(r.created_at),
+      };
+    });
 
     const applicantIds = [...new Set(appRowsTyped.map((a) => a.applicant_id))];
     if (applicantIds.length === 0) {

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { fetchAcceptedApplicationsForProject } from "@/lib/supabase-project-queries";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import EmptyState from "@/components/EmptyState";
@@ -75,12 +76,7 @@ export default function EvaluatePage() {
 
     const memberIds = new Set<string>();
     if (projectData.team_leader_id) memberIds.add(projectData.team_leader_id);
-    const { data: acceptedApps } = await supabase
-      .from("applications")
-      .select("applicant_id, role")
-      .eq("project_id", projectId)
-      .eq("status", "accepted");
-    const acceptedAppsTyped = (acceptedApps ?? []) as Array<{ applicant_id: string; role?: string }>;
+    const acceptedAppsTyped = await fetchAcceptedApplicationsForProject(supabase, projectId);
     acceptedAppsTyped.forEach((a) => memberIds.add(a.applicant_id));
 
     memberIds.delete(user.id);

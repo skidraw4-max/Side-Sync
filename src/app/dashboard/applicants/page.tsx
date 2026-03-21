@@ -65,7 +65,7 @@ export default function ApplicantsDashboardPage() {
 
     const { data: appRowsData, error: appError } = await supabase
       .from("applications")
-      .select("id, project_id, applicant_id, message, role, status, created_at")
+      .select("*")
       .in("project_id", projectIds)
       .eq("status", "pending")
       .order("created_at", { ascending: false });
@@ -78,7 +78,18 @@ export default function ApplicantsDashboardPage() {
     }
 
     type AppRow = { id: string; project_id: string; applicant_id: string; message: string | null; role: string | null; status: "pending" | "accepted" | "rejected"; created_at: string };
-    const appRows = (appRowsData ?? []) as AppRow[];
+    const appRows = (appRowsData ?? []).map((row) => {
+      const r = row as Record<string, unknown>;
+      return {
+        id: String(r.id),
+        project_id: String(r.project_id),
+        applicant_id: String(r.applicant_id),
+        message: (typeof r.message === "string" ? r.message : null) as string | null,
+        role: typeof r.role === "string" ? r.role : null,
+        status: r.status as AppRow["status"],
+        created_at: String(r.created_at),
+      };
+    });
     const applicantIds = [...new Set(appRows.map((a) => a.applicant_id))];
     let profileMap = new Map<string, ApplicantProfile>();
 
