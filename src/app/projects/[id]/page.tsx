@@ -6,6 +6,10 @@ import ProjectDetailStitch from "@/components/ProjectDetailStitch";
 import Footer from "@/components/Footer";
 import { getDemoProjectById } from "@/lib/demo-projects";
 import { fetchAcceptedApplicationsForProject, fetchProjectDetailById } from "@/lib/supabase-project-queries";
+import {
+  normalizeRecruitmentStatusRows,
+  normalizeTechStackFromDb,
+} from "@/lib/project-detail-normalize";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchApplicationCountsByPosition } from "@/lib/project-application-positions";
 import type { RecruitmentStatusRow } from "@/types/database";
@@ -165,8 +169,10 @@ export default async function ProjectDetailPage({ params, searchParams }: Projec
       st === "pending" || st === "accepted" || st === "rejected" ? st : "none";
   }
 
-  // 마일스톤 (recruitment_status 기반)
-  const rawStatus = project.recruitment_status as RecruitmentStatusRow[] | null;
+  // 마일스톤·모집 UI — JSON 문자열/roleKey 만 저장된 행도 동일 라벨로 복원
+  const normalizedRecruitment = normalizeRecruitmentStatusRows(project.recruitment_status);
+  const rawStatus: RecruitmentStatusRow[] | null =
+    normalizedRecruitment.length > 0 ? normalizedRecruitment : null;
   const defaultMilestones = [
     { label: "Architecture", percent: 100, icon: "check" as const },
     { label: "Sync Engine (Current)", percent: 65, icon: "sync" as const },
@@ -214,7 +220,7 @@ export default async function ProjectDetailPage({ params, searchParams }: Projec
         projectId={id}
         projectTitle={project.title}
         projectDescription={project.description}
-        techStack={Array.isArray(project.tech_stack) ? project.tech_stack : []}
+        techStack={normalizeTechStackFromDb(project.tech_stack)}
         mannerTempTarget={project.manner_temp_target ?? "36.5°C"}
         teamLeader={teamLeader}
         recruitmentStatus={rawStatus}

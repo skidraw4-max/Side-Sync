@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import { PROJECT } from "@/lib/constants/contents";
+import { normalizeRecruitmentStatusRows } from "@/lib/project-detail-normalize";
 
 /** 모집 공고가 비었을 때 참여 신청·정원 계산용 기본 슬롯 (PROJECT.roleGeneral 과 동일 라벨) */
 export const FALLBACK_OPEN_RECRUITMENT_SLOT = {
@@ -40,22 +41,20 @@ export function parseRecruitmentSlots(recruitment_status: unknown): { role: stri
  * 배열이 비었거나, 항목에 유효한 role 이 하나도 없으면 기본 슬롯 1개(일반/넉넉한 정원)를 반환합니다.
  */
 export function getEffectiveRecruitmentSlots(recruitment_status: unknown): { role: string; total: number }[] {
-  if (!Array.isArray(recruitment_status) || recruitment_status.length === 0) {
+  const rows = normalizeRecruitmentStatusRows(recruitment_status);
+  if (rows.length === 0) {
     return [{ role: FALLBACK_OPEN_RECRUITMENT_SLOT.role, total: FALLBACK_OPEN_RECRUITMENT_SLOT.total }];
   }
 
   const out: { role: string; total: number }[] = [];
-  for (const item of recruitment_status) {
-    const r = item as { role?: string; count?: number; total?: number };
-    if (typeof r.role !== "string" || !r.role.trim()) continue;
-    const role = r.role.trim();
+  for (const r of rows) {
     const total =
       typeof r.total === "number" && r.total >= 0
         ? r.total
         : typeof r.count === "number" && r.count >= 0
           ? r.count
           : 1;
-    out.push({ role, total });
+    out.push({ role: r.role, total });
   }
 
   if (out.length === 0) {

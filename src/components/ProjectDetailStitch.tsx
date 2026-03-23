@@ -330,18 +330,22 @@ export default function ProjectDetailStitch({
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                     {PROJECT.requiredTechStack}
                   </h3>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {(techStack.length ? techStack : ["React", "Node.js", "Figma", "Tailwind CSS", "OpenAI API"]).map((tech, i) => (
-                      <span
-                        key={tech}
-                        className={`rounded-full px-3 py-1.5 text-sm font-medium ${
-                          i < 3 ? "bg-[#2563EB] text-white" : "bg-gray-100 text-gray-700"
-                        }`}
-                      >
-                        {tech}
-                      </span>
-                    ))}
-                  </div>
+                  {techStack.length > 0 ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {techStack.map((tech, i) => (
+                        <span
+                          key={`${tech}-${i}`}
+                          className={`rounded-full px-3 py-1.5 text-sm font-medium ${
+                            i < 3 ? "bg-[#2563EB] text-white" : "bg-gray-100 text-gray-700"
+                          }`}
+                        >
+                          {tech}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-sm text-gray-500">{PROJECT.techStackEmptyHint}</p>
+                  )}
                 </section>
 
                 <section className="mt-8">

@@ -96,21 +96,46 @@ export async function fetchProjectDetailById(
   supabase: SupabaseClient,
   id: string
 ): Promise<ProjectRow | null> {
-  for (const sel of DETAIL_SELECT_VARIANTS) {
-    const { data, error } = await supabase.from("projects").select(sel).eq("id", id).maybeSingle();
+  let data: Record<string, unknown> | null = null;
 
-    if (!error && data) {
-      return data as unknown as ProjectRow;
+  // `*` 는 존재하는 컬럼만 반환하므로 안전. 부분 select 가 먼저 성공하면 recruitment_status·tech_stack 이 빠질 수 있음.
+  const full = await supabase.from("projects").select("*").eq("id", id).maybeSingle();
+  if (!full.error && full.data) {
+    data = full.data as unknown as Record<string, unknown>;
+  } else {
+    for (const sel of DETAIL_SELECT_VARIANTS) {
+      const { data: row, error } = await supabase.from("projects").select(sel).eq("id", id).maybeSingle();
+      if (!error && row) {
+        data = row as unknown as Record<string, unknown>;
+        break;
+      }
     }
   }
 
-  const { data, error } = await supabase.from("projects").select("*").eq("id", id).maybeSingle();
-
-  if (!error && data) {
-    return data as unknown as ProjectRow;
+  if (!data) {
+    return null;
   }
 
-  return null;
+  const missRecruitment = !("recruitment_status" in data);
+  const missTech = !("tech_stack" in data);
+  if (missRecruitment || missTech) {
+    const { data: extra, error: exErr } = await supabase
+      .from("projects")
+      .select("recruitment_status, tech_stack")
+      .eq("id", id)
+      .maybeSingle();
+    if (!exErr && extra) {
+      const e = extra as Record<string, unknown>;
+      if (missRecruitment && "recruitment_status" in e) {
+        data.recruitment_status = e.recruitment_status;
+      }
+      if (missTech && "tech_stack" in e) {
+        data.tech_stack = e.tech_stack;
+      }
+    }
+  }
+
+  return data as unknown as ProjectRow;
 }
 
 /** applications.role 컬럼이 없는 DB(마이그레이션 미적용)에서도 400을 피하기 위한 타입 */

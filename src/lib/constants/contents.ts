@@ -159,6 +159,8 @@ export const PROJECT = {
   recruitmentHeadcountLabel: "모집 인원",
   overview: "개요",
   requiredTechStack: "필수 기술 스택",
+  /** 상세에 tech_stack 이 비었을 때 */
+  techStackEmptyHint: "등록된 필수 기술 스택이 없습니다.",
   projectMilestones: "프로젝트 마일스톤",
   milestonePhasePrefix: "단계",
   inProgressPercent: "진행 중",
