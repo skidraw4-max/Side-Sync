@@ -4,12 +4,12 @@ import type { Database } from "@/types/database";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   fetchApplicationCountsByPosition,
-  getApplySlotsFromTechStack,
+  getEffectiveRecruitmentSlots,
 } from "@/lib/project-application-positions";
 
 type ProjectRow = Pick<
   Database["public"]["Tables"]["projects"]["Row"],
-  "id" | "team_leader_id" | "recruitment_status" | "tech_stack"
+  "id" | "team_leader_id" | "recruitment_status"
 >;
 
 /**
@@ -61,13 +61,13 @@ export async function POST(
         ? body.role.trim()
         : "";
   if (!techStackRaw) {
-    return NextResponse.json({ error: "모집 중인 포지션(기술 스택)을 선택해주세요." }, { status: 400 });
+    return NextResponse.json({ error: "모집 중인 직군(포지션)을 선택해주세요." }, { status: 400 });
   }
 
   // 프로젝트 및 팀장 조회
   const { data, error: projectError } = await supabase
     .from("projects")
-    .select("id, team_leader_id, recruitment_status, tech_stack")
+    .select("id, team_leader_id, recruitment_status")
     .eq("id", projectId)
     .single();
 
@@ -83,17 +83,17 @@ export async function POST(
     );
   }
 
-  const techArr = Array.isArray(project.tech_stack) ? (project.tech_stack as string[]) : [];
-  const slots = getApplySlotsFromTechStack(techArr, project.recruitment_status);
+  const slots = getEffectiveRecruitmentSlots(project.recruitment_status);
   const matchedSlot = slots.find((s) => s.role === techStackRaw);
   if (!matchedSlot) {
     return NextResponse.json(
-      { error: "선택한 기술 스택이 프로젝트 필수 스택에 없거나 모집 정원과 맞지 않습니다." },
+      { error: "선택한 포지션이 직군별 모집 설정과 일치하지 않습니다." },
       { status: 400 }
     );
   }
 
-  const statsClient = createAdminClient() ?? supabase;
+  const admin = createAdminClient();
+  const statsClient = admin ?? supabase;
   const { accepted, pending } = await fetchApplicationCountsByPosition(statsClient, projectId);
   const taken = (accepted[techStackRaw] ?? 0) + (pending[techStackRaw] ?? 0);
   if (taken >= matchedSlot.total) {
@@ -129,7 +129,8 @@ export async function POST(
         rejection_reason: null as string | null,
         updated_at: new Date().toISOString(),
       };
-      const { error: reapplyError } = await supabase
+      const writeClient = admin ?? supabase;
+      const { error: reapplyError } = await writeClient
         .from("applications")
         // @ts-expect-error Supabase client incorrectly infers 'never' for applications.update()
         .update(updatePayload)
@@ -142,7 +143,6 @@ export async function POST(
         );
       }
       if (project.team_leader_id) {
-        const admin = createAdminClient();
         if (admin) {
           // @ts-expect-error Supabase admin client infers never for insert with custom Database type
           await admin.from("notifications").insert({
@@ -175,8 +175,9 @@ export async function POST(
     tech_stack: techStackRaw,
   };
 
+  const writeClient = admin ?? supabase;
   // @ts-expect-error Supabase client incorrectly infers 'never' for applications.insert()
-  const { error: insertError } = await supabase.from("applications").insert(insertPayload);
+  const { error: insertError } = await writeClient.from("applications").insert(insertPayload);
 
   if (insertError) {
     return NextResponse.json(
@@ -187,7 +188,6 @@ export async function POST(
 
   // 팀장에게 알림 생성 (Admin 클라이언트로 RLS 우회)
   if (project.team_leader_id) {
-    const admin = createAdminClient();
     if (admin) {
       // @ts-expect-error Supabase admin client infers never for insert with custom Database type
       await admin.from("notifications").insert({

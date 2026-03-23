@@ -10,7 +10,7 @@ import EmptyState from "@/components/EmptyState";
 import { ManageApplicantsSkeleton } from "@/components/Skeleton";
 import { createClient } from "@/lib/supabase/client";
 import { fetchAcceptedApplicationsForProject } from "@/lib/supabase-project-queries";
-import { getApplySlotsFromTechStack } from "@/lib/project-application-positions";
+import { getEffectiveRecruitmentSlots } from "@/lib/project-application-positions";
 import { PROJECT } from "@/lib/constants/contents";
 
 interface ApplicantProfile {
@@ -111,9 +111,8 @@ export default function ManageApplicantsPage() {
     });
 
     const map: Record<string, { total: number; filled: number }> = {};
-    const techStack = Array.isArray(project.tech_stack) ? project.tech_stack : [];
-    const applySlots = getApplySlotsFromTechStack(techStack, rawStatus);
-    applySlots.forEach((s) => {
+    const effectiveSlots = getEffectiveRecruitmentSlots(rawStatus);
+    effectiveSlots.forEach((s) => {
       map[s.role] = { total: s.total, filled: filledByRole[s.role] ?? 0 };
     });
     setRoleFilledMap(map);

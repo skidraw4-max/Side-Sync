@@ -8,7 +8,7 @@ interface ApplyModalProps {
   onClose: () => void;
   projectId: string;
   projectTitle: string;
-  /** 지원 가능한 항목만 전달 — 보통 프로젝트 필수 기술 스택과 동일한 라벨 (부모가 정원·pending 반영) */
+  /** 지원 가능한 직군만 전달 — 직군별 모집 설정(recruitment_status)과 동일 라벨·정원 (부모가 pending 반영) */
   roles: { role: string; total: number; filled: number }[];
   onSubmitSuccess?: () => void;
 }
@@ -49,17 +49,17 @@ export default function ApplyModal({
     setError(null);
 
     if (openRoles.length === 0) {
-      setError("현재 지원 가능한 기술 스택이 없습니다.");
+      setError("현재 지원 가능한 모집 직군이 없습니다.");
       return;
     }
 
     const position = selectedPosition.trim() || defaultPosition;
     if (!position) {
-      setError("필수 기술 스택 중 지원할 항목을 하나 선택해주세요.");
+      setError("모집 직군(포지션)을 하나 선택해주세요.");
       return;
     }
     if (!openRoles.some((r) => r.role === position)) {
-      setError("선택한 기술 스택은 현재 지원할 수 없습니다. 다시 선택해주세요.");
+      setError("선택한 직군은 현재 지원할 수 없습니다. 다시 선택해주세요.");
       return;
     }
 
@@ -130,10 +130,10 @@ export default function ApplyModal({
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label htmlFor="apply-position" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500">
-              필수 기술 스택 (필수)
+              모집 직군 (필수)
             </label>
             <p className="mb-2 text-xs text-gray-500">
-              상세 페이지에 표시된 필수 기술 스택과 동일한 목록입니다. 지원할 스택을 선택해 주세요.
+              프로젝트 개설 시 설정한 직군별 모집과 동일합니다. 지원할 직군을 선택해 주세요.
             </p>
             <select
               id="apply-position"
@@ -143,7 +143,7 @@ export default function ApplyModal({
               className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20"
             >
               {openRoles.length === 0 ? (
-                <option value="">지원 가능한 기술 스택이 없습니다</option>
+                <option value="">지원 가능한 모집 직군이 없습니다</option>
               ) : (
                 openRoles.map((r) => (
                   <option key={r.role} value={r.role}>

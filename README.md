@@ -53,6 +53,9 @@ npm run lint    # ESLint
 
 Vercel 등에 Git 연동 배포를 사용할 수 있습니다. Supabase **RLS·마이그레이션**은 운영 DB에도 반영해야 합니다.
 
+- 지원 신청 RLS 오류 대응: `supabase/migrations/20260327120000_applications_rls_insert_fix.sql` 적용.
+- Vercel에 **`SUPABASE_SERVICE_ROLE_KEY`** 설정 시, 지원 INSERT/재신청이 RLS와 무관하게 서버에서 안전하게 처리됩니다(본인 `applicant_id`만 사용).
+
 ### AI 프로젝트 추천 알림 (Stitch / LLM)
 
 - 마이그레이션: `supabase/migrations/20260326000000_ai_recommendation_notifications.sql` (`notifications` 확장, `profiles.primary_stack`).

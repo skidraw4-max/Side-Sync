@@ -7,10 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import ApplyModal from "./ApplyModal";
 import type { RecruitmentStatusRow } from "@/types/database";
 import { PROJECT } from "@/lib/constants/contents";
-import {
-  getApplySlotsFromTechStack,
-  getEffectiveRecruitmentSlots,
-} from "@/lib/project-application-positions";
+import { getEffectiveRecruitmentSlots } from "@/lib/project-application-positions";
 
 /** role 컬럼이 없을 때 모집 정원(total) 순으로 accepted 명수를 배분 (표시용) */
 function distributeFilledGreedy(
@@ -98,18 +95,15 @@ export default function ProjectDetailStitch({
   /** 매 렌더마다 새 인스턴스면 realtime useEffect가 무한에 가깝게 재실행됨 */
   const supabase = useMemo(() => createClient(), []);
 
-  /** 사이드바·포지션 현황 카드용 — 모집 공고(recruitment_status) 기준 */
-  const recruitmentSlotEntries = useMemo(() => {
+  /**
+   * 직군별 모집 설정(recruitment_status)만 사용 — 상세 모집인원·참여신청 모달·정원이 동일합니다.
+   */
+  const roleEntries = useMemo(() => {
     return getEffectiveRecruitmentSlots(recruitmentStatus);
   }, [recruitmentStatus]);
 
-  /** 참여 신청 모달·openRoles — 필수 기술 스택(tech_stack)과 동일 라벨 */
-  const applySlotEntries = useMemo(() => {
-    return getApplySlotsFromTechStack(techStack, recruitmentStatus);
-  }, [techStack, recruitmentStatus]);
-
   /** 서버에서 이미 acceptedApplicants를 내려주므로 클라이언트에서 applications 재조회하지 않음 (400·중복 요청 방지) */
-  const { recruitmentRolesWithFilled, membersCount } = useMemo(() => {
+  const { rolesWithFilled, membersCount } = useMemo(() => {
     const apps = acceptedApplicants;
     const byRole: Record<string, number> = {};
     const hasRolePerRow = apps.some((a) => a.role != null && String(a.role).trim() !== "");
@@ -119,11 +113,11 @@ export default function ProjectDetailStitch({
         const r = a.role ?? PROJECT.roleGeneral;
         byRole[r] = (byRole[r] ?? 0) + 1;
       });
-    } else if (apps.length > 0 && recruitmentSlotEntries.length > 0) {
-      Object.assign(byRole, distributeFilledGreedy(apps.length, recruitmentSlotEntries));
+    } else if (apps.length > 0 && roleEntries.length > 0) {
+      Object.assign(byRole, distributeFilledGreedy(apps.length, roleEntries));
     }
 
-    const withFilled = recruitmentSlotEntries.map((e) => ({
+    const withFilled = roleEntries.map((e) => ({
       role: e.role,
       total: e.total,
       filled: byRole[e.role] ?? 0,
@@ -131,39 +125,18 @@ export default function ProjectDetailStitch({
     const totalFromSlots = withFilled.reduce((s, r) => s + r.filled, 0);
     const acceptedCount = hasRolePerRow ? totalFromSlots : apps.length;
     return {
-      recruitmentRolesWithFilled: withFilled,
+      rolesWithFilled: withFilled,
       membersCount: acceptedCount + (teamLeader ? 1 : 0),
     };
-  }, [acceptedApplicants, recruitmentSlotEntries, teamLeader]);
+  }, [acceptedApplicants, roleEntries, teamLeader]);
 
-  const applyRolesWithFilled = useMemo(() => {
-    const apps = acceptedApplicants;
-    const byRole: Record<string, number> = {};
-    const hasRolePerRow = apps.some((a) => a.role != null && String(a.role).trim() !== "");
-
-    if (hasRolePerRow) {
-      apps.forEach((a) => {
-        const r = a.role ?? PROJECT.roleGeneral;
-        byRole[r] = (byRole[r] ?? 0) + 1;
-      });
-    } else if (apps.length > 0 && applySlotEntries.length > 0) {
-      Object.assign(byRole, distributeFilledGreedy(apps.length, applySlotEntries));
-    }
-
-    return applySlotEntries.map((e) => ({
-      role: e.role,
-      total: e.total,
-      filled: byRole[e.role] ?? 0,
-    }));
-  }, [acceptedApplicants, applySlotEntries]);
-
-  /** 합류+지원 중이 정원 미만인 포지션만 신청 가능 (기술 스택 슬롯 기준) */
+  /** 합류+지원 중이 정원 미만인 직군만 신청 가능 */
   const openRoles = useMemo(() => {
-    return applyRolesWithFilled.filter((r) => {
+    return rolesWithFilled.filter((r) => {
       const pending = pendingCountsByPosition[r.role] ?? 0;
       return r.filled + pending < r.total;
     });
-  }, [applyRolesWithFilled, pendingCountsByPosition]);
+  }, [rolesWithFilled, pendingCountsByPosition]);
 
   useEffect(() => {
     const members: TeamMember[] = [];
@@ -231,7 +204,7 @@ export default function ProjectDetailStitch({
     };
   }, [projectId, viewerId, isLeader, supabase, router]);
 
-  const totalSlots = recruitmentRolesWithFilled.reduce((s, r) => s + r.total, 0);
+  const totalSlots = rolesWithFilled.reduce((s, r) => s + r.total, 0);
 
   /** 합류+지원 중 기준으로 아직 자리가 있는지 (참여하기 노출 조건) */
   const recruitmentHasVacancy = openRoles.length > 0;
@@ -459,7 +432,7 @@ export default function ProjectDetailStitch({
                     {PROJECT.recruitmentStatusCard}
                   </h3>
                   <ul className="mt-4 space-y-3">
-                    {recruitmentRolesWithFilled.map((r) => {
+                    {rolesWithFilled.map((r) => {
                       const pendingN = pendingCountsByPosition[r.role] ?? 0;
                       const activeN = r.filled + pendingN;
                       const status =
@@ -577,7 +550,7 @@ export default function ProjectDetailStitch({
           </div>
 
           {/* 포지션별 현황: 합류 + 지원 중 / 정원 */}
-          {recruitmentRolesWithFilled.length > 0 && (
+          {rolesWithFilled.length > 0 && (
             <section
               className="mt-10 rounded-xl border border-gray-200 bg-white p-6 shadow-md md:mt-12 md:p-8"
               aria-labelledby="position-status-heading"
@@ -592,7 +565,7 @@ export default function ProjectDetailStitch({
                 <p className="text-xs text-gray-500">{PROJECT.positionStatusRatioHint}</p>
               </div>
               <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {recruitmentRolesWithFilled.map((slot) => {
+                {rolesWithFilled.map((slot) => {
                   const pending = pendingCountsByPosition[slot.role] ?? 0;
                   const joined = slot.filled;
                   const total = slot.total;
