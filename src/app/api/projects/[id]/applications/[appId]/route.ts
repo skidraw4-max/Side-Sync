@@ -129,9 +129,9 @@ export async function PATCH(
     }
   }
 
+  // updated_at 은 일부 운영 DB에 컬럼이 없어 스키마 캐시 오류(PGRST204)가 납니다 — status 만 갱신
   const updatePayload: Record<string, unknown> = {
     status,
-    updated_at: new Date().toISOString(),
   };
   if (status === "rejected") {
     updatePayload.rejection_reason = rejectReason;

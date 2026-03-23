@@ -132,7 +132,6 @@ export async function POST(
         role: techStackRaw,
         tech_stack: techStackRaw,
         rejection_reason: null as string | null,
-        updated_at: new Date().toISOString(),
       };
       const writeClient = admin ?? supabase;
       const { error: reapplyError } = await writeClient
