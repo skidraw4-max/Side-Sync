@@ -24,9 +24,15 @@ interface ApplicationWithProfile {
   applicant_id: string;
   message: string | null;
   role: string | null;
+  /** 지원 시 선택한 모집 포지션(기술 스택 라벨) */
+  tech_stack: string | null;
   status: "pending" | "accepted" | "rejected";
   created_at: string;
   applicant: ApplicantProfile | null;
+}
+
+function applicationPosition(a: ApplicationWithProfile): string {
+  return a.tech_stack?.trim() || a.role?.trim() || "General";
 }
 
 export default function ManageApplicantsPage() {
@@ -43,6 +49,8 @@ export default function ManageApplicantsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [toast, setToast] = useState<{ show: boolean; name: string } | null>(null);
   const [viewArchived, setViewArchived] = useState(false);
+  const [rejectModalAppId, setRejectModalAppId] = useState<string | null>(null);
+  const [rejectReasonInput, setRejectReasonInput] = useState("");
 
   const fetchData = useCallback(async () => {
     const supabase = createClient();
@@ -133,6 +141,7 @@ export default function ManageApplicantsPage() {
         applicant_id: String(r.applicant_id),
         message: (typeof r.message === "string" ? r.message : null) as string | null,
         role: typeof r.role === "string" ? r.role : null,
+        tech_stack: typeof r.tech_stack === "string" ? r.tech_stack : null,
         status: r.status as "pending" | "accepted" | "rejected",
         created_at: String(r.created_at),
       };
@@ -185,9 +194,9 @@ export default function ManageApplicantsPage() {
     ? applications.filter((a) => {
         const name = a.applicant?.full_name?.toLowerCase() ?? "";
         const stack = (a.applicant?.tech_stack ?? []).join(" ").toLowerCase();
-        const role = (a.role ?? "").toLowerCase();
+        const pos = applicationPosition(a).toLowerCase();
         const q = searchQuery.toLowerCase();
-        return name.includes(q) || stack.includes(q) || role.includes(q);
+        return name.includes(q) || stack.includes(q) || pos.includes(q);
       })
     : applications;
 
@@ -230,7 +239,10 @@ export default function ManageApplicantsPage() {
     setUpdatingId(null);
   };
 
-  const handleReject = async (applicationId: string) => {
+  const submitReject = async (applicationId: string, reason: string) => {
+    const trimmed = reason.trim();
+    if (!trimmed) return;
+
     setUpdatingId(applicationId);
 
     setApplications((prev) =>
@@ -244,7 +256,7 @@ export default function ManageApplicantsPage() {
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "rejected" }),
+        body: JSON.stringify({ status: "rejected", rejectReason: trimmed }),
       }
     );
 
@@ -260,6 +272,8 @@ export default function ManageApplicantsPage() {
 
     setApplications((prev) => prev.filter((a) => a.id !== applicationId));
     setUpdatingId(null);
+    setRejectModalAppId(null);
+    setRejectReasonInput("");
   };
 
   const handleExportCsv = () => {
@@ -273,7 +287,7 @@ export default function ManageApplicantsPage() {
     ];
     const rows = applications.map((a) => [
       a.applicant?.full_name ?? "-",
-      a.role ?? "-",
+      applicationPosition(a),
       (a.applicant?.tech_stack ?? []).filter((t) => t && t !== "__skipped__").join(", "),
       a.status,
       new Date(a.created_at).toLocaleString(),
@@ -448,12 +462,16 @@ export default function ManageApplicantsPage() {
                         </span>
                       </div>
                       <div>
-                        <p className="font-semibold text-slate-900">
-                          {app.applicant?.full_name ?? "Unknown"}
-                        </p>
-                        <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
-                          {app.role ?? "General"}
-                        </p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-semibold text-slate-900">
+                            {app.applicant?.full_name ?? "Unknown"}
+                          </p>
+                          {(app.tech_stack?.trim() || app.role?.trim()) && (
+                            <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-900 ring-1 ring-indigo-200/80">
+                              {app.tech_stack?.trim() || app.role}
+                            </span>
+                          )}
+                        </div>
                         <div className="mt-2 flex flex-wrap gap-1.5">
                           {(app.applicant?.tech_stack ?? [])
                             .filter((t: string) => t && t !== "__skipped__")
@@ -503,7 +521,7 @@ export default function ManageApplicantsPage() {
                           {app.status === "accepted" ? "Accepted" : "Rejected"}
                         </span>
                       ) : (() => {
-                        const appRole = app.role?.trim() || "General";
+                        const appRole = applicationPosition(app);
                         const roleInfo = roleFilledMap[appRole];
                         const isRoleFull = roleInfo && roleInfo.filled >= roleInfo.total;
                         return (
@@ -519,16 +537,19 @@ export default function ManageApplicantsPage() {
                               disabled={updatingId === app.id}
                               className="rounded-lg bg-[#2563EB] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8] disabled:opacity-60"
                             >
-                              {updatingId === app.id ? "처리 중..." : "Accept"}
+                              {updatingId === app.id ? "처리 중..." : "수락"}
                             </button>
                           )}
                           <button
                             type="button"
-                            onClick={() => handleReject(app.id)}
+                            onClick={() => {
+                              setRejectModalAppId(app.id);
+                              setRejectReasonInput("");
+                            }}
                             disabled={updatingId === app.id}
                             className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60"
                           >
-                            Reject
+                            거절
                           </button>
                         </>
                         );
@@ -568,6 +589,51 @@ export default function ManageApplicantsPage() {
 
         <Footer variant="compact" />
       </div>
+
+      {rejectModalAppId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div
+            className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reject-modal-title"
+          >
+            <h2 id="reject-modal-title" className="text-lg font-semibold text-slate-900">
+              거절 사유 입력
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              신청자에게 알림으로 전달됩니다. (형식: 사유: 입력 내용)
+            </p>
+            <textarea
+              value={rejectReasonInput}
+              onChange={(e) => setRejectReasonInput(e.target.value)}
+              rows={4}
+              className="mt-4 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-[#2563EB] focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
+              placeholder="예: 현재 포지션이 마감되었습니다."
+            />
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setRejectModalAppId(null);
+                  setRejectReasonInput("");
+                }}
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                disabled={!rejectReasonInput.trim() || updatingId === rejectModalAppId}
+                onClick={() => void submitReject(rejectModalAppId, rejectReasonInput)}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                거절 확정
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

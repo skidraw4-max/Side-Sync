@@ -143,9 +143,11 @@ export async function fetchAcceptedApplicationsForProject(
       const r = row as Record<string, unknown>;
       const applicantId = r.applicant_id;
       if (typeof applicantId !== "string") return null;
+      const stackVal = r.tech_stack;
       const roleVal = r.role;
-      const role =
-        typeof roleVal === "string" && roleVal.trim() !== "" ? roleVal : null;
+      const fromStack = typeof stackVal === "string" && stackVal.trim() !== "" ? stackVal.trim() : null;
+      const fromRole = typeof roleVal === "string" && roleVal.trim() !== "" ? roleVal.trim() : null;
+      const role = fromStack ?? fromRole;
       return { applicant_id: applicantId, role };
     })
     .filter((x): x is AcceptedApplicationRow => x !== null);

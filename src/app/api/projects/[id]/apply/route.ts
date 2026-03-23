@@ -2,15 +2,19 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  fetchApplicationCountsByPosition,
+  parseRecruitmentSlots,
+} from "@/lib/project-application-positions";
 
 type ProjectRow = Pick<
   Database["public"]["Tables"]["projects"]["Row"],
-  "id" | "team_leader_id"
+  "id" | "team_leader_id" | "recruitment_status"
 >;
 
 /**
  * POST: 프로젝트 지원 신청
- * - applications 테이블에 저장 (applicant_id, project_id, message, role, status: pending)
+ * - applications 테이블에 저장 (tech_stack·role·message, status: pending)
  * - 팀장에게 notifications 테이블에 "새로운 지원자가 있습니다!" 알림 생성
  */
 export async function POST(
@@ -31,7 +35,7 @@ export async function POST(
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
-  let body: { motivation?: string; role?: string; agreeShareProfile?: boolean };
+  let body: { motivation?: string; role?: string; techStack?: string; agreeShareProfile?: boolean };
   try {
     body = await request.json();
   } catch {
@@ -50,12 +54,20 @@ export async function POST(
     );
   }
 
-  const role = typeof body.role === "string" ? body.role.trim() : null;
+  const techStackRaw =
+    typeof body.techStack === "string"
+      ? body.techStack.trim()
+      : typeof body.role === "string"
+        ? body.role.trim()
+        : "";
+  if (!techStackRaw) {
+    return NextResponse.json({ error: "모집 중인 포지션(기술 스택)을 선택해주세요." }, { status: 400 });
+  }
 
   // 프로젝트 및 팀장 조회
   const { data, error: projectError } = await supabase
     .from("projects")
-    .select("id, team_leader_id")
+    .select("id, team_leader_id, recruitment_status")
     .eq("id", projectId)
     .single();
 
@@ -71,19 +83,81 @@ export async function POST(
     );
   }
 
-  // 이미 지원했는지 확인
-  const { data: existing } = await supabase
+  const slots = parseRecruitmentSlots(project.recruitment_status);
+  if (slots.length === 0) {
+    return NextResponse.json(
+      { error: "등록된 모집 포지션이 없어 지원할 수 없습니다." },
+      { status: 400 }
+    );
+  }
+  const matchedSlot = slots.find((s) => s.role === techStackRaw);
+  if (!matchedSlot) {
+    return NextResponse.json({ error: "선택한 포지션이 모집 공고와 일치하지 않습니다." }, { status: 400 });
+  }
+
+  const statsClient = createAdminClient() ?? supabase;
+  const { accepted, pending } = await fetchApplicationCountsByPosition(statsClient, projectId);
+  const taken = (accepted[techStackRaw] ?? 0) + (pending[techStackRaw] ?? 0);
+  if (taken >= matchedSlot.total) {
+    return NextResponse.json(
+      { error: "해당 포지션은 모집 정원이 찼습니다. 다른 포지션을 선택해 주세요." },
+      { status: 400 }
+    );
+  }
+
+  // 이미 지원했는지 확인 (거절된 경우 재신청: pending으로 갱신)
+  const { data: existingRaw } = await supabase
     .from("applications")
-    .select("id")
+    .select("id, status")
     .eq("project_id", projectId)
     .eq("applicant_id", user.id)
     .maybeSingle();
 
+  const existing = existingRaw as { id: string; status: string } | null;
+
   if (existing) {
-    return NextResponse.json(
-      { error: "이미 지원했습니다." },
-      { status: 409 }
-    );
+    if (existing.status === "pending") {
+      return NextResponse.json({ error: "이미 신청이 접수되었습니다. 승인을 기다려주세요." }, { status: 409 });
+    }
+    if (existing.status === "accepted") {
+      return NextResponse.json({ error: "이미 이 프로젝트 팀원입니다." }, { status: 409 });
+    }
+    if (existing.status === "rejected") {
+      const updatePayload = {
+        status: "pending" as const,
+        message: motivation,
+        role: techStackRaw,
+        tech_stack: techStackRaw,
+        rejection_reason: null as string | null,
+        updated_at: new Date().toISOString(),
+      };
+      const { error: reapplyError } = await supabase
+        .from("applications")
+        // @ts-expect-error Supabase client incorrectly infers 'never' for applications.update()
+        .update(updatePayload)
+        .eq("id", existing.id);
+
+      if (reapplyError) {
+        return NextResponse.json(
+          { error: reapplyError.message || "재신청 저장에 실패했습니다." },
+          { status: 500 }
+        );
+      }
+      if (project.team_leader_id) {
+        const admin = createAdminClient();
+        if (admin) {
+          // @ts-expect-error Supabase admin client infers never for insert with custom Database type
+          await admin.from("notifications").insert({
+            user_id: project.team_leader_id,
+            title: "지원자가 다시 신청했습니다",
+            message: "거절했던 지원자가 프로젝트에 다시 지원했습니다. 검토해 주세요.",
+            link: `/projects/${projectId}/manage`,
+          });
+        }
+      }
+      return NextResponse.json({ ok: true, reapplied: true });
+    }
+    return NextResponse.json({ error: "이미 지원했습니다." }, { status: 409 });
   }
 
   // applications 삽입
@@ -92,14 +166,16 @@ export async function POST(
     applicant_id: string;
     message: string;
     status: "pending";
-    role?: string;
+    role: string;
+    tech_stack: string;
   } = {
     project_id: projectId,
     applicant_id: user.id,
     message: motivation,
     status: "pending",
+    role: techStackRaw,
+    tech_stack: techStackRaw,
   };
-  if (role) insertPayload.role = role;
 
   // @ts-expect-error Supabase client incorrectly infers 'never' for applications.insert()
   const { error: insertError } = await supabase.from("applications").insert(insertPayload);

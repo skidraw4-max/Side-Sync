@@ -52,3 +52,13 @@ npm run lint    # ESLint
 ## Deploy
 
 Vercel 등에 Git 연동 배포를 사용할 수 있습니다. Supabase **RLS·마이그레이션**은 운영 DB에도 반영해야 합니다.
+
+### AI 프로젝트 추천 알림 (Stitch / LLM)
+
+- 마이그레이션: `supabase/migrations/20260326000000_ai_recommendation_notifications.sql` (`notifications` 확장, `profiles.primary_stack`).
+- **알림** 페이지(`/notifications`)에서 **AI 매칭 새로고침**으로 `runAiProjectRecommendationsAction` 실행.
+- LLM 호출 우선순위는 `src/lib/stitch-llm.ts` 주석 참고. 예시 환경변수:
+  - `STITCH_HTTP_PROMPT_URL` — `{ "prompt": "..." }` POST 후 `{ "text" }` 등을 반환하는 프록시 (MCP 연동용).
+  - `STITCH_MCP_URL` / `STITCH_ACCESS_TOKEN` — JSON-RPC MCP 시도.
+  - `GEMINI_API_KEY` — 로컬·스테이징에서 Stitch 미구성 시 Gemini REST 폴백.
+- 실패 시 알림 본문은 기본 문구(`사용자님의 스택에 꼭 맞는 프로젝트입니다.`)로 저장됩니다.

@@ -5,7 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export default function LoginForm() {
+function safeInternalPath(path: string | undefined): string {
+  if (!path || !path.startsWith("/") || path.startsWith("//")) return "/projects";
+  return path;
+}
+
+export default function LoginForm({ redirectTo }: { redirectTo?: string }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,7 +37,7 @@ export default function LoginForm() {
         return;
       }
 
-      router.push("/projects");
+      router.push(safeInternalPath(redirectTo));
       router.refresh();
     } catch {
       setError("로그인 중 오류가 발생했습니다.");

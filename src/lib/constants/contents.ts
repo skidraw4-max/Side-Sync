@@ -119,8 +119,13 @@ export const PROJECT = {
   recruitmentFilled: "충원 완료",
   /** 지원 */
   apply: "지원하기",
+  /** 상세·사이드바 참여 CTA */
+  applyParticipate: "참여 신청하기",
+  approvalPending: "승인 대기 중",
+  goToWorkspaceBoard: "워크보드(워크스페이스) 이동",
   applyClosed: "지원 마감",
   applyAgain: "다시 지원하기",
+  rejectedApplyHint: "지원이 거절되었습니다. 다시 신청하려면 아래 버튼을 눌러주세요.",
   applicantsManage: "지원자 관리",
   /** 프로젝트 카드·상세 */
   projectDetail: "프로젝트 상세",
@@ -177,6 +182,13 @@ export const PROJECT = {
   milestoneProgressLabel: "진행 중",
   teamLeaderRoleDefault: "프로젝트 리드",
   roleGeneral: "일반",
+  /** 포지션별 현황 (상세 하단) */
+  positionStatusSection: "포지션별 현황",
+  positionStatusJoined: "합류",
+  positionStatusPendingApply: "지원 중",
+  positionStatusCapacity: "정원",
+  positionStatusFullBadge: "모집 완료",
+  positionStatusRatioHint: "숫자: (합류+지원 중)/정원",
   /** 데모 모집 카드 배지 (ProjectDetailContent) */
   demoStatusHiring: "모집 중",
   demoStatusUrgent: "급구",

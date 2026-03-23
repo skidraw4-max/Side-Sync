@@ -35,7 +35,7 @@ type RowMinimal = Pick<
   content?: string | null;
 };
 
-function mapRowToCard(row: RowMinimal): ProjectWithId {
+function mapRowToCard(row: RowMinimal, opts?: { showWorkspaceLink?: boolean }): ProjectWithId {
   const r = row as RowMinimal & { gradient?: string | null };
   return {
     id: row.id,
@@ -48,7 +48,24 @@ function mapRowToCard(row: RowMinimal): ProjectWithId {
       row.status,
       row.recruitment_status as RecruitmentStatusRow[] | null
     ),
+    showWorkspaceLink: opts?.showWorkspaceLink ?? false,
   };
+}
+
+async function fetchAcceptedProjectIdsForViewer(
+  supabase: ReturnType<typeof createClient>
+): Promise<Set<string>> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return new Set();
+  const { data: apps, error } = await supabase
+    .from("applications")
+    .select("project_id")
+    .eq("applicant_id", user.id)
+    .eq("status", "accepted");
+  if (error || !apps) return new Set();
+  return new Set(apps.map((a) => (a as { project_id: string }).project_id));
 }
 
 async function fetchAllProjectsRows(supabase: ReturnType<typeof createClient>): Promise<RowMinimal[]> {
@@ -99,12 +116,16 @@ async function fetchProjects(searchQuery?: string): Promise<ProjectWithId[]> {
   const supabase = createClient();
 
   try {
+    const acceptedIds = await fetchAcceptedProjectIdsForViewer(supabase);
+
     if (tokens.length === 0) {
       const rows = await fetchAllProjectsRows(supabase);
       if (rows.length === 0) {
         return FALLBACK_PROJECTS;
       }
-      return rows.map(mapRowToCard);
+      return rows.map((row) =>
+        mapRowToCard(row, { showWorkspaceLink: acceptedIds.has(row.id) })
+      );
     }
 
     const { data: rpcData, error: rpcError } = await (
@@ -115,12 +136,16 @@ async function fetchProjects(searchQuery?: string): Promise<ProjectWithId[]> {
 
     if (!rpcError && rpcData !== null && Array.isArray(rpcData)) {
       const rows = rpcData as unknown as RowMinimal[];
-      return rows.map(mapRowToCard);
+      return rows.map((row) =>
+        mapRowToCard(row, { showWorkspaceLink: acceptedIds.has(row.id) })
+      );
     }
 
     const rows = await fetchAllProjectsRows(supabase);
     const filtered = rows.filter((r) => projectMatchesSearchTokens(r, tokens));
-    return filtered.map(mapRowToCard);
+    return filtered.map((row) =>
+      mapRowToCard(row, { showWorkspaceLink: acceptedIds.has(row.id) })
+    );
   } catch {
     if (tokens.length === 0) return FALLBACK_PROJECTS;
     return [];
@@ -153,7 +178,7 @@ export function useProjects(searchQuery: string = "") {
     if (!isSupabaseConfigured() || !shouldEnableSupabaseRealtimeSubscriptions()) return;
 
     const supabase = createClient();
-    const channel = supabase
+    const main = supabase
       .channel("projects-realtime")
       .on(
         "postgres_changes",
@@ -168,8 +193,31 @@ export function useProjects(searchQuery: string = "") {
       )
       .subscribe();
 
+    let appsChannel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
+    void supabase.auth.getUser().then(({ data: { user } }) => {
+      if (cancelled || !user) return;
+      appsChannel = supabase
+        .channel(`projects-realtime-apps-${user.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "applications",
+            filter: `applicant_id=eq.${user.id}`,
+          },
+          () => {
+            void queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY });
+          }
+        )
+        .subscribe();
+    });
+
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      supabase.removeChannel(main);
+      if (appsChannel) supabase.removeChannel(appsChannel);
     };
   }, [queryClient]);
 

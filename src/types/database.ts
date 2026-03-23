@@ -173,6 +173,9 @@ export interface Database {
           message: string;
           link: string | null;
           read: boolean;
+          is_ai_recommendation: boolean;
+          ai_comment: string | null;
+          source_project_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -182,6 +185,9 @@ export interface Database {
           message: string;
           link?: string | null;
           read?: boolean;
+          is_ai_recommendation?: boolean;
+          ai_comment?: string | null;
+          source_project_id?: string | null;
           created_at?: string;
         };
         Update: {
@@ -190,6 +196,9 @@ export interface Database {
           message?: string;
           link?: string | null;
           read?: boolean;
+          is_ai_recommendation?: boolean;
+          ai_comment?: string | null;
+          source_project_id?: string | null;
         };
       };
       applications: {
@@ -198,8 +207,10 @@ export interface Database {
           project_id: string;
           applicant_id: string;
           role: string | null;
+          tech_stack: string | null;
           message: string | null;
           status: "pending" | "accepted" | "rejected";
+          rejection_reason: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -208,8 +219,10 @@ export interface Database {
           project_id: string;
           applicant_id: string;
           role?: string | null;
+          tech_stack?: string | null;
           message?: string | null;
           status?: "pending" | "accepted" | "rejected";
+          rejection_reason?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -217,7 +230,10 @@ export interface Database {
           project_id?: string;
           applicant_id?: string;
           message?: string | null;
+          role?: string | null;
+          tech_stack?: string | null;
           status?: "pending" | "accepted" | "rejected";
+          rejection_reason?: string | null;
           updated_at?: string;
         };
       };
@@ -277,6 +293,7 @@ export interface Database {
           manner_temp_target: string | null;
           badges: string[];
           tech_stack: string[];
+          primary_stack: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -290,6 +307,7 @@ export interface Database {
           manner_temp_target?: string | null;
           badges?: string[];
           tech_stack?: string[];
+          primary_stack?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -302,6 +320,7 @@ export interface Database {
           manner_temp_target?: string | null;
           badges?: string[];
           tech_stack?: string[];
+          primary_stack?: string | null;
           updated_at?: string;
         };
       };

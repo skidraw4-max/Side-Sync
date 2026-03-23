@@ -6,18 +6,23 @@ import ProjectDetailStitch from "@/components/ProjectDetailStitch";
 import Footer from "@/components/Footer";
 import { getDemoProjectById } from "@/lib/demo-projects";
 import { fetchAcceptedApplicationsForProject, fetchProjectDetailById } from "@/lib/supabase-project-queries";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchApplicationCountsByPosition } from "@/lib/project-application-positions";
 import type { RecruitmentStatusRow } from "@/types/database";
 import { PROJECT } from "@/lib/constants/contents";
 
 interface ProjectDetailPageProps {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ apply?: string }>;
 }
 
 /** 쿠키 기반 세션으로 매 요청 조회 (목록→상세 이동 시 캐시로 인한 404 방지) */
 export const dynamic = "force-dynamic";
 
-export default async function ProjectDetailPage({ params }: ProjectDetailPageProps) {
+export default async function ProjectDetailPage({ params, searchParams }: ProjectDetailPageProps) {
   const { id } = await params;
+  const sp = searchParams ? await searchParams : {};
+  const autoOpenApplyModal = sp.apply === "1";
   const supabase = await createClient();
 
   const {
@@ -56,11 +61,14 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
           acceptedApplicants={[]}
           profilesMap={{}}
           isLeader={false}
-          hasApplied={false}
+          viewerApplicationStatus="guest"
+          viewerId={null}
           visibility="Public"
           durationMonths={6}
           estLaunch="TBD"
           milestones={defaultMilestones}
+          pendingCountsByPosition={{}}
+          autoOpenApplyModal={autoOpenApplyModal}
         />
         <Footer variant="stitch" />
       </div>
@@ -132,16 +140,29 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
     });
   }
 
-  // 현재 사용자 지원 여부
-  let hasApplied = false;
+  /** 포지션별 대기 인원 (공개 상세는 service role로 집계, 없으면 세션 클라이언트 시도) */
+  let pendingCountsByPosition: Record<string, number> = {};
+  const adminStats = createAdminClient();
+  if (adminStats) {
+    const { pending } = await fetchApplicationCountsByPosition(adminStats, id);
+    pendingCountsByPosition = pending;
+  } else {
+    const { pending } = await fetchApplicationCountsByPosition(supabase, id);
+    pendingCountsByPosition = pending;
+  }
+
+  /** 비로그인 guest | 로그인 시 지원서 없음 none | pending | accepted | rejected */
+  let viewerApplicationStatus: "guest" | "none" | "pending" | "accepted" | "rejected" = "guest";
   if (user) {
     const { data: myApp } = await supabase
       .from("applications")
-      .select("id")
+      .select("status")
       .eq("project_id", id)
       .eq("applicant_id", user.id)
       .maybeSingle();
-    hasApplied = !!myApp;
+    const st = (myApp as { status?: string } | null)?.status;
+    viewerApplicationStatus =
+      st === "pending" || st === "accepted" || st === "rejected" ? st : "none";
   }
 
   // 마일스톤 (recruitment_status 기반)
@@ -200,11 +221,14 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
         acceptedApplicants={acceptedApplicants}
         profilesMap={profilesMap}
         isLeader={isLeader}
-        hasApplied={hasApplied}
+        viewerApplicationStatus={viewerApplicationStatus}
+        viewerId={user?.id ?? null}
         visibility={(project as { visibility?: string }).visibility ?? "Public"}
         durationMonths={(project as { duration_months?: number }).duration_months ?? 6}
         estLaunch={(project as { est_launch?: string }).est_launch ?? "Dec 2024"}
         milestones={milestones}
+        pendingCountsByPosition={pendingCountsByPosition}
+        autoOpenApplyModal={autoOpenApplyModal}
       />
 
       <Footer variant="stitch" />

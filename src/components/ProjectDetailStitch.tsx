@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import ApplyModal from "./ApplyModal";
 import type { RecruitmentStatusRow } from "@/types/database";
@@ -46,13 +47,20 @@ interface ProjectDetailStitchProps {
   teamLeader: { name: string; role: string; avatarUrl: string | null } | null;
   recruitmentStatus: RecruitmentStatusRow[] | null;
   acceptedApplicants: { applicant_id: string; role: string | null }[];
+  /** 포지션명 → 승인 대기(pending) 인원 수 */
+  pendingCountsByPosition: Record<string, number>;
   profilesMap: Record<string, { full_name: string | null; avatar_url: string | null; manner_temp_target: string | null }>;
   isLeader: boolean;
-  hasApplied: boolean;
+  /** 비로그인 guest — 참여 신청은 로그인 후 가능 */
+  viewerApplicationStatus: "guest" | "none" | "pending" | "accepted" | "rejected";
+  /** Realtime·router.refresh용 (로그인 시 본인 id) */
+  viewerId: string | null;
   visibility?: string;
   durationMonths?: number;
   estLaunch?: string;
   milestones?: { label: string; percent: number; icon: "check" | "sync" | "lock" }[];
+  /** 알림 링크 `?apply=1` 로 진입 시 지원 모달 자동 오픈 */
+  autoOpenApplyModal?: boolean;
 }
 
 export default function ProjectDetailStitch({
@@ -64,9 +72,11 @@ export default function ProjectDetailStitch({
   teamLeader,
   recruitmentStatus,
   acceptedApplicants,
+  pendingCountsByPosition,
   profilesMap,
   isLeader,
-  hasApplied,
+  viewerApplicationStatus,
+  viewerId,
   visibility = "Public",
   durationMonths = 6,
   estLaunch = "Dec 2024",
@@ -75,9 +85,12 @@ export default function ProjectDetailStitch({
     { label: "Sync Engine (Current)", percent: 65, icon: "sync" as const },
     { label: "Public Beta", percent: 0, icon: "lock" as const },
   ],
+  autoOpenApplyModal = false,
 }: ProjectDetailStitchProps) {
+  const router = useRouter();
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [showApplyModal, setShowApplyModal] = useState(false);
+  const applyIntentHandled = useRef(false);
   /** 매 렌더마다 새 인스턴스면 realtime useEffect가 무한에 가깝게 재실행됨 */
   const supabase = useMemo(() => createClient(), []);
 
@@ -92,7 +105,7 @@ export default function ProjectDetailStitch({
     }
     return rawStatus.map((r) => ({
       role: r.role,
-      total: "count" in r ? (r as { count: number }).count : 1,
+      total: typeof r.total === "number" ? r.total : "count" in r ? (r as { count: number }).count : 1,
     }));
   }, [recruitmentStatus]);
 
@@ -124,6 +137,14 @@ export default function ProjectDetailStitch({
     };
   }, [acceptedApplicants, roleEntries, teamLeader]);
 
+  /** 합류+지원 중이 정원 미만인 포지션만 신청 가능 */
+  const openRoles = useMemo(() => {
+    return rolesWithFilled.filter((r) => {
+      const pending = pendingCountsByPosition[r.role] ?? 0;
+      return r.filled + pending < r.total;
+    });
+  }, [rolesWithFilled, pendingCountsByPosition]);
+
   useEffect(() => {
     const members: TeamMember[] = [];
     if (teamLeader) {
@@ -149,7 +170,7 @@ export default function ProjectDetailStitch({
     setTeamMembers(members);
   }, [teamLeader, acceptedApplicants, profilesMap, mannerTempTarget]);
 
-  /** projects만 구독: applications Realtime은 일부 환경에서 불필요한 REST 트래픽/400을 유발할 수 있어 제외 */
+  /** 프로젝트 메타 변경 시 전체 새로고침 */
   useEffect(() => {
     const sub = supabase
       .channel(`project-detail-${projectId}`)
@@ -164,11 +185,73 @@ export default function ProjectDetailStitch({
     };
   }, [projectId, supabase]);
 
+  /** 본인 지원서 상태(수락/거절 등) 변경 시 서버 컴포넌트 데이터 갱신 */
+  useEffect(() => {
+    if (!viewerId || isLeader) return;
+    const sub = supabase
+      .channel(`project-detail-apps-${projectId}-${viewerId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "applications",
+          filter: `project_id=eq.${projectId}`,
+        },
+        (payload) => {
+          const row = (payload.new ?? payload.old) as { applicant_id?: string } | undefined;
+          if (row?.applicant_id === viewerId) {
+            router.refresh();
+          }
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(sub);
+    };
+  }, [projectId, viewerId, isLeader, supabase, router]);
+
   const totalSlots = rolesWithFilled.reduce((s, r) => s + r.total, 0);
 
-  const showApplyButton = !isLeader && !hasApplied;
-  const openRoles = rolesWithFilled.filter((r) => r.filled < r.total);
   const anyOpen = openRoles.length > 0;
+
+  /** AI 알림 등에서 ?apply=1 진입 시 모달 오픈 (1회) */
+  useEffect(() => {
+    if (!autoOpenApplyModal || applyIntentHandled.current) return;
+    if (isLeader || !anyOpen) return;
+    if (viewerApplicationStatus === "pending" || viewerApplicationStatus === "accepted") return;
+
+    applyIntentHandled.current = true;
+
+    if (viewerApplicationStatus === "guest") {
+      const next = encodeURIComponent(`/projects/${projectId}?apply=1`);
+      router.replace(`/login?next=${next}`);
+      return;
+    }
+
+    if (viewerApplicationStatus === "none" || viewerApplicationStatus === "rejected") {
+      setShowApplyModal(true);
+      router.replace(`/projects/${projectId}`, { scroll: false });
+    }
+  }, [
+    autoOpenApplyModal,
+    anyOpen,
+    isLeader,
+    projectId,
+    router,
+    viewerApplicationStatus,
+  ]);
+
+  const showLoginToApply = !isLeader && anyOpen && viewerApplicationStatus === "guest";
+
+  const showApplyButtonLoggedIn =
+    !isLeader &&
+    anyOpen &&
+    (viewerApplicationStatus === "none" || viewerApplicationStatus === "rejected");
+
+  const showPendingState = !isLeader && viewerApplicationStatus === "pending";
+  const showMemberWorkspace = !isLeader && viewerApplicationStatus === "accepted";
+  const showRejectedHint = !isLeader && viewerApplicationStatus === "rejected" && anyOpen;
 
   return (
     <>
@@ -352,13 +435,15 @@ export default function ProjectDetailStitch({
                   </h3>
                   <ul className="mt-4 space-y-3">
                     {rolesWithFilled.map((r) => {
+                      const pendingN = pendingCountsByPosition[r.role] ?? 0;
+                      const activeN = r.filled + pendingN;
                       const status =
-                        r.filled >= r.total
+                        activeN >= r.total
                           ? PROJECT.roleJoined
-                          : r.filled > 0
-                            ? `${r.filled}/${r.total}`
+                          : activeN > 0
+                            ? `${activeN}/${r.total}`
                             : PROJECT.roleOpen;
-                      const isJoined = r.filled >= r.total;
+                      const isJoined = activeN >= r.total;
                       return (
                         <li key={r.role} className="flex items-center justify-between">
                           <span className="text-sm font-medium text-gray-900">{r.role}</span>
@@ -375,19 +460,40 @@ export default function ProjectDetailStitch({
                       );
                     })}
                   </ul>
-                  {showApplyButton && anyOpen ? (
+                  {showMemberWorkspace ? (
+                    <Link
+                      href={`/projects/${projectId}/workspace`}
+                      className="mt-5 flex w-full items-center justify-center whitespace-nowrap rounded-xl bg-[#2563EB] px-3 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8]"
+                    >
+                      {PROJECT.goToWorkspaceBoard}
+                    </Link>
+                  ) : showPendingState ? (
+                    <div className="mt-5 w-full rounded-xl border border-amber-200 bg-amber-50 py-3.5 text-center text-sm font-semibold text-amber-900">
+                      {PROJECT.approvalPending}
+                    </div>
+                  ) : showLoginToApply ? (
+                    <Link
+                      href={`/login?next=/projects/${projectId}`}
+                      className="mt-5 flex w-full items-center justify-center whitespace-nowrap rounded-xl bg-[#2563EB] px-3 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8]"
+                    >
+                      로그인 후 참여 신청
+                    </Link>
+                  ) : showApplyButtonLoggedIn ? (
                     <button
                       type="button"
                       onClick={() => setShowApplyModal(true)}
                       className="mt-5 w-full whitespace-nowrap rounded-xl bg-[#2563EB] px-3 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8]"
                     >
-                      {PROJECT.apply}
+                      {PROJECT.applyParticipate}
                     </button>
-                  ) : hasApplied ? (
+                  ) : viewerApplicationStatus === "rejected" && !anyOpen ? (
                     <div className="mt-5 w-full rounded-xl border border-gray-200 py-3.5 text-center text-sm font-medium text-gray-600">
-                      {PROJECT.applyComplete}
+                      {PROJECT.applyClosed}
                     </div>
                   ) : null}
+                  {showRejectedHint && (
+                    <p className="mt-2 text-xs text-gray-500">{PROJECT.rejectedApplyHint}</p>
+                  )}
                   <p className="mt-3 text-xs text-gray-500">{PROJECT.avgResponseTime}</p>
                 </div>
 
@@ -430,8 +536,121 @@ export default function ProjectDetailStitch({
               </div>
             </aside>
           </div>
+
+          {/* 포지션별 현황: 합류 + 지원 중 / 정원 */}
+          {rolesWithFilled.length > 0 && (
+            <section
+              className="mt-10 rounded-xl border border-gray-200 bg-white p-6 shadow-md md:mt-12 md:p-8"
+              aria-labelledby="position-status-heading"
+            >
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <h2
+                  id="position-status-heading"
+                  className="text-lg font-bold text-gray-900 md:text-xl"
+                >
+                  {PROJECT.positionStatusSection}
+                </h2>
+                <p className="text-xs text-gray-500">{PROJECT.positionStatusRatioHint}</p>
+              </div>
+              <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {rolesWithFilled.map((slot) => {
+                  const pending = pendingCountsByPosition[slot.role] ?? 0;
+                  const joined = slot.filled;
+                  const total = slot.total;
+                  const active = joined + pending;
+                  const isFull = active >= total;
+                  return (
+                    <li
+                      key={slot.role}
+                      className={`rounded-xl border px-4 py-4 ${
+                        isFull ? "border-emerald-200 bg-emerald-50/60" : "border-gray-100 bg-gray-50/80"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-semibold text-gray-900">{slot.role}</p>
+                        {isFull && (
+                          <span className="shrink-0 rounded-full bg-emerald-600 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white sm:text-xs">
+                            {PROJECT.positionStatusFullBadge}
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-3 text-2xl font-bold tabular-nums text-[#2563EB]">
+                        {active}
+                        <span className="text-lg font-semibold text-gray-400">/{total}</span>
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-600">
+                        <span>
+                          {PROJECT.positionStatusJoined}{" "}
+                          <strong className="text-gray-900">{joined}</strong>
+                        </span>
+                        <span>
+                          {PROJECT.positionStatusPendingApply}{" "}
+                          <strong className="text-amber-800">{pending}</strong>
+                        </span>
+                        <span>
+                          {PROJECT.positionStatusCapacity}{" "}
+                          <strong className="text-gray-900">{total}</strong>
+                        </span>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
         </main>
       </div>
+
+      {/* 비리더 하단 고정 CTA */}
+      {!isLeader && (
+        <div className="sticky bottom-0 z-20 border-t border-gray-200 bg-white/95 px-6 py-4 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] backdrop-blur-sm md:px-12 lg:px-24">
+          <div className="mx-auto flex max-w-6xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-gray-600">
+              {showMemberWorkspace
+                ? "팀 워크스페이스에서 태스크와 채팅을 이용할 수 있습니다."
+                : showPendingState
+                  ? "리더가 검토 중입니다. 알림으로 결과를 안내해 드립니다."
+                  : showApplyButtonLoggedIn
+                    ? "프로젝트에 참여하려면 신청서를 제출해 주세요."
+                    : showLoginToApply
+                      ? "로그인 후 참여 신청이 가능합니다."
+                      : null}
+            </p>
+            <div className="flex shrink-0 gap-2">
+              {showMemberWorkspace && (
+                <Link
+                  href={`/projects/${projectId}/workspace`}
+                  className="inline-flex w-full items-center justify-center rounded-xl bg-[#2563EB] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8] sm:w-auto"
+                >
+                  {PROJECT.goToWorkspaceBoard}
+                </Link>
+              )}
+              {showPendingState && (
+                <span className="inline-flex w-full items-center justify-center rounded-xl border border-amber-200 bg-amber-50 px-5 py-3 text-sm font-semibold text-amber-900 sm:w-auto">
+                  {PROJECT.approvalPending}
+                </span>
+              )}
+              {showApplyButtonLoggedIn && (
+                <button
+                  type="button"
+                  onClick={() => setShowApplyModal(true)}
+                  className="inline-flex w-full items-center justify-center rounded-xl bg-[#2563EB] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8] sm:w-auto"
+                >
+                  {PROJECT.applyParticipate}
+                </button>
+              )}
+              {showLoginToApply && (
+                <Link
+                  href={`/login?next=/projects/${projectId}`}
+                  className="inline-flex w-full items-center justify-center rounded-xl bg-[#2563EB] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8] sm:w-auto"
+                >
+                  로그인 후 참여 신청
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <ApplyModal
         isOpen={showApplyModal}
@@ -439,7 +658,10 @@ export default function ProjectDetailStitch({
         projectId={projectId}
         projectTitle={projectTitle}
         roles={rolesWithFilled}
-        onSubmitSuccess={() => setShowApplyModal(false)}
+        onSubmitSuccess={() => {
+          setShowApplyModal(false);
+          router.refresh();
+        }}
       />
     </>
   );

@@ -190,13 +190,13 @@ export default function ProjectCard({
             href={`/projects/${id}`}
             className="block w-full rounded-md border border-gray-200 py-2 text-center text-[11px] font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:text-xs"
           >
-            View Details
+            상세 보기
           </Link>
           <Link
-            href={`/projects/${id}/workspace/tasks`}
+            href={`/projects/${id}/workspace`}
             className="mt-1.5 block w-full rounded-md bg-[#2563EB] py-2 text-center text-[11px] font-semibold text-white transition-colors hover:bg-[#1d4ed8] sm:text-xs"
           >
-            Go to workspace
+            워크보드(워크스페이스) 이동
           </Link>
         </div>
       </article>

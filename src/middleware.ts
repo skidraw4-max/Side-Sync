@@ -4,7 +4,7 @@ import type { Database } from "@/types/database";
 import { getPublicSiteOriginFromRequest } from "@/lib/public-site-url";
 
 const AUTH_ROUTES = ["/login", "/signup"];
-const PROTECTED_ROUTES = ["/onboarding", "/projects", "/workspace", "/profile"];
+const PROTECTED_ROUTES = ["/onboarding", "/projects", "/workspace", "/profile", "/notifications"];
 const PROJECTS_PATH = "/projects";
 const ONBOARDING_PATH = "/onboarding";
 

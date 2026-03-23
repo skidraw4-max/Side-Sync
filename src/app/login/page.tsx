@@ -5,11 +5,12 @@ import LoginForm from "@/components/LoginForm";
 import SocialLoginButtons from "@/components/SocialLoginButtons";
 
 type LoginPageProps = {
-  searchParams: Promise<{ message?: string }>;
+  searchParams: Promise<{ message?: string; next?: string; redirectTo?: string }>;
 };
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const { message } = await searchParams;
+  const { message, next, redirectTo } = await searchParams;
+  const afterLogin = next || redirectTo;
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -38,7 +39,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               {message}
             </p>
           )}
-          <LoginForm />
+          <LoginForm redirectTo={afterLogin} />
 
           <div className="mt-8 flex items-center gap-4">
             <div className="h-px flex-1 bg-gray-200" />

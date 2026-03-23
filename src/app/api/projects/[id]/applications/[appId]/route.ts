@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  applicationPositionKey,
+  fetchApplicationCountsByPosition,
+  parseRecruitmentSlots,
+} from "@/lib/project-application-positions";
 
 type ProjectRow = Pick<
   Database["public"]["Tables"]["projects"]["Row"],
@@ -36,7 +41,7 @@ export async function PATCH(
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
-  let body: { status?: "accepted" | "rejected" };
+  let body: { status?: "accepted" | "rejected"; rejectReason?: string };
   try {
     body = await request.json();
   } catch {
@@ -46,6 +51,12 @@ export async function PATCH(
   const status = body.status;
   if (status !== "accepted" && status !== "rejected") {
     return NextResponse.json({ error: "status must be 'accepted' or 'rejected'" }, { status: 400 });
+  }
+
+  const rejectReason =
+    typeof body.rejectReason === "string" ? body.rejectReason.trim() : "";
+  if (status === "rejected" && !rejectReason) {
+    return NextResponse.json({ error: "거절 사유를 입력해주세요." }, { status: 400 });
   }
 
   const { data } = await supabase
@@ -78,40 +89,39 @@ export async function PATCH(
         applicant_id: String(raw.applicant_id),
         status: raw.status as ApplicationRow["status"],
         role: typeof raw.role === "string" ? raw.role : null,
-      } as ApplicationRow)
+        tech_stack: typeof raw.tech_stack === "string" ? raw.tech_stack : null,
+      } as ApplicationRow & { tech_stack: string | null })
     : null;
   if (!application) {
     return NextResponse.json({ error: "지원서를 찾을 수 없습니다." }, { status: 404 });
   }
 
-  // 수락 시: 해당 역할 모집 인원이 다 찼는지 검증
+  // 수락 시: 해당 포지션(tech_stack·role) 합류 인원이 정원을 넘지 않는지 검증
   if (status === "accepted") {
-    const rawStatus = project.recruitment_status as Array<{ role: string; count?: number; total?: number }> | null;
-    const appRole = (application as { role?: string | null }).role?.trim() || null;
-    if (appRole && Array.isArray(rawStatus) && rawStatus.length > 0) {
-      const roleEntry = rawStatus.find((r) => r.role === appRole || r.role?.trim() === appRole);
-      if (roleEntry) {
-        const total = roleEntry.total ?? roleEntry.count ?? 1;
-        const { count: filled } = await supabase
-          .from("applications")
-          .select("id", { count: "exact", head: true })
-          .eq("project_id", projectId)
-          .eq("status", "accepted")
-          .eq("role", appRole);
-        if ((filled ?? 0) >= total) {
-          return NextResponse.json(
-            { error: "해당 포지션 모집이 완료되었습니다." },
-            { status: 400 }
-          );
-        }
+    const positionKey = applicationPositionKey(application);
+    const slots = parseRecruitmentSlots(project.recruitment_status);
+    const slot = slots.find((s) => s.role === positionKey);
+    if (slot) {
+      const statsClient = createAdminClient() ?? supabase;
+      const { accepted } = await fetchApplicationCountsByPosition(statsClient, projectId);
+      const filled = accepted[positionKey] ?? 0;
+      if (filled >= slot.total) {
+        return NextResponse.json(
+          { error: "해당 포지션 모집이 완료되었습니다." },
+          { status: 400 }
+        );
       }
     }
   }
 
-  const updatePayload = {
+  const updatePayload: Record<string, unknown> = {
     status,
     updated_at: new Date().toISOString(),
   };
+  if (status === "rejected") {
+    updatePayload.rejection_reason = rejectReason;
+  }
+
   const { error: updateError } = await supabase
     .from("applications")
     // @ts-expect-error Supabase client incorrectly infers 'never' for applications.update()
@@ -123,6 +133,19 @@ export async function PATCH(
       { error: updateError.message || "상태 업데이트에 실패했습니다." },
       { status: 500 }
     );
+  }
+
+  if (status === "rejected" && application.applicant_id) {
+    const admin = createAdminClient();
+    if (admin) {
+      // @ts-expect-error Supabase admin client infers never for insert with custom Database type
+      await admin.from("notifications").insert({
+        user_id: application.applicant_id,
+        title: "프로젝트 지원 결과",
+        message: `사유: ${rejectReason}`,
+        link: `/projects/${projectId}`,
+      });
+    }
   }
 
   if (status === "accepted" && application.applicant_id) {

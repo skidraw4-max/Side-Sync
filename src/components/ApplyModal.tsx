@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { PROJECT } from "@/lib/constants/contents";
 
 interface ApplyModalProps {
   isOpen: boolean;
@@ -19,23 +20,23 @@ export default function ApplyModal({
   roles,
   onSubmitSuccess,
 }: ApplyModalProps) {
-  const [selectedRole, setSelectedRole] = useState("");
+  const [selectedPosition, setSelectedPosition] = useState("");
   const [motivation, setMotivation] = useState("");
   const [agreeShare, setAgreeShare] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const openRoles = roles.filter((r) => r.filled < r.total);
-  const defaultRole = openRoles[0]?.role ?? "";
+  const defaultPosition = openRoles[0]?.role ?? "";
 
   useEffect(() => {
     if (isOpen) {
-      setSelectedRole(defaultRole);
+      setSelectedPosition(defaultPosition);
       setMotivation("");
       setAgreeShare(false);
       setError(null);
     }
-  }, [isOpen, defaultRole]);
+  }, [isOpen, defaultPosition]);
 
   const handleClose = () => {
     onClose();
@@ -45,6 +46,22 @@ export default function ApplyModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (openRoles.length === 0) {
+      setError("현재 모집 중인 포지션이 없습니다.");
+      return;
+    }
+
+    const position = selectedPosition.trim() || defaultPosition;
+    if (!position) {
+      setError("모집 중인 기술 스택(포지션)을 하나 선택해주세요.");
+      return;
+    }
+    if (!openRoles.some((r) => r.role === position)) {
+      setError("선택한 포지션은 현재 지원할 수 없습니다. 다시 선택해주세요.");
+      return;
+    }
+
     if (!motivation.trim()) {
       setError("지원 동기를 입력해주세요.");
       return;
@@ -53,16 +70,17 @@ export default function ApplyModal({
       setError("프로필 및 포트폴리오 공유에 동의해주세요.");
       return;
     }
+
     setIsSubmitting(true);
     try {
       const res = await fetch(`/api/projects/${projectId}/apply`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-        role: selectedRole || null,
-        motivation: motivation.trim(),
-        agreeShareProfile: agreeShare,
-      }),
+          techStack: position,
+          motivation: motivation.trim(),
+          agreeShareProfile: agreeShare,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -95,7 +113,7 @@ export default function ApplyModal({
         onKeyDown={(e) => e.key === "Escape" && handleClose()}
       >
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Apply to Join</h2>
+          <h2 className="text-lg font-semibold text-gray-900">참여 신청 · {projectTitle}</h2>
           <button
             type="button"
             onClick={handleClose}
@@ -110,13 +128,17 @@ export default function ApplyModal({
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label htmlFor="role" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Selected Role
+            <label htmlFor="apply-position" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500">
+              모집 포지션 (필수)
             </label>
+            <p className="mb-2 text-xs text-gray-500">
+              프로젝트에서 모집 중인 포지션 중 하나를 선택해야 신청할 수 있습니다.
+            </p>
             <select
-              id="role"
-              value={selectedRole || defaultRole}
-              onChange={(e) => setSelectedRole(e.target.value)}
+              id="apply-position"
+              required
+              value={selectedPosition || defaultPosition}
+              onChange={(e) => setSelectedPosition(e.target.value)}
               className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20"
             >
               {openRoles.length === 0 ? (
@@ -124,7 +146,7 @@ export default function ApplyModal({
               ) : (
                 openRoles.map((r) => (
                   <option key={r.role} value={r.role}>
-                    {r.role}
+                    {r.role} ({r.filled}/{r.total}명)
                   </option>
                 ))
               )}
@@ -133,14 +155,14 @@ export default function ApplyModal({
 
           <div>
             <label htmlFor="motivation" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Motivation
+              지원 동기
             </label>
             <textarea
               id="motivation"
               rows={5}
               value={motivation}
               onChange={(e) => setMotivation(e.target.value)}
-              placeholder="Tell the project lead why you're a good fit..."
+              placeholder="프로젝트에 기여할 수 있는 경험과 각오를 적어주세요."
               className="w-full resize-none rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20"
             />
           </div>
@@ -153,20 +175,18 @@ export default function ApplyModal({
               className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#2563EB] focus:ring-[#2563EB]"
             />
             <span className="text-sm text-gray-600">
-              I agree to share my public profile and portfolio with the project leadership team.
+              공개 프로필 및 포트폴리오를 프로젝트 리더에게 공유하는 데 동의합니다.
             </span>
           </label>
 
-          {error && (
-            <p className="text-sm text-red-600">{error}</p>
-          )}
+          {error && <p className="text-sm text-red-600">{error}</p>}
 
           <button
             type="submit"
             disabled={isSubmitting || openRoles.length === 0}
             className="w-full rounded-xl bg-[#2563EB] py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8] disabled:opacity-60"
           >
-            {isSubmitting ? "제출 중..." : "Submit Application"}
+            {isSubmitting ? "제출 중..." : PROJECT.applyParticipate}
           </button>
         </form>
       </div>

@@ -110,23 +110,32 @@ export function useMyProjects(userId: string) {
           void queryClient.invalidateQueries({ queryKey: ["projects", "mine"] });
         }
       )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "applications",
-        },
-        () => {
-          void queryClient.invalidateQueries({ queryKey: ["projects", "mine"] });
-        }
-      )
       .subscribe();
+
+    let appsCh: ReturnType<typeof supabase.channel> | null = null;
+    if (userId) {
+      appsCh = supabase
+        .channel(`my-projects-apps-${userId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "applications",
+            filter: `applicant_id=eq.${userId}`,
+          },
+          () => {
+            void queryClient.invalidateQueries({ queryKey: ["projects", "mine"] });
+          }
+        )
+        .subscribe();
+    }
 
     return () => {
       supabase.removeChannel(channel);
+      if (appsCh) supabase.removeChannel(appsCh);
     };
-  }, [queryClient]);
+  }, [queryClient, userId]);
 
   return query;
 }
