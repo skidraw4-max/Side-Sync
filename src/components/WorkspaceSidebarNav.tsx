@@ -48,7 +48,7 @@ export default function WorkspaceSidebarNav({
     { label: "Tasks", href: `/projects/${projectId}/workspace/tasks`, icon: "checklist" },
     { label: "Chat", href: `/projects/${projectId}/workspace/chat`, icon: "chat", disabled: true },
     { label: "Notices", href: `/projects/${projectId}/workspace/notices`, icon: "megaphone" },
-    { label: "Files", href: "#", icon: "folder" },
+    { label: "Files", href: "#", icon: "folder", disabled: true },
     { label: "Settings", href: "#", icon: "gear" },
   ];
 

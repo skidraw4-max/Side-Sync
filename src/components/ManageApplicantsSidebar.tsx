@@ -105,7 +105,7 @@ export default function ManageApplicantsSidebar({
 
       <div className="border-t border-slate-100 p-3">
         <Link
-          href={`/projects/${projectId}/edit`}
+          href={`/projects/${projectId}/manage`}
           className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2563EB] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8]"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

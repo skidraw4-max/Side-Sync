@@ -172,7 +172,7 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
             <span className="text-sm font-medium">You are the leader of this project</span>
           </div>
           <Link
-            href={`/projects/${id}/edit`}
+            href={`/projects/${id}/manage`}
             className="rounded border border-white/40 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-white/10"
           >
             EDIT PROJECT

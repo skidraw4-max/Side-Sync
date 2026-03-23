@@ -627,35 +627,16 @@ export default function KanbanTasksBoard({
     { id: "done" as const, title: "Done", tasks: doneTasks },
   ];
 
+  const currentMember =
+    currentUserId && teamMembers.length > 0
+      ? teamMembers.find((m) => m.id === currentUserId) ?? null
+      : null;
+
   return (
     <>
       <header className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-white px-4 py-3 sm:px-8 sm:py-4">
         <h1 className="text-xl font-bold text-gray-900">Project Kanban Board</h1>
         <div className="flex items-center gap-4">
-          <div className="flex -space-x-2">
-            {teamMembers.slice(0, 4).map((m) =>
-              m.avatarUrl ? (
-                <img
-                  key={m.id}
-                  src={m.avatarUrl}
-                  alt=""
-                  className="h-8 w-8 rounded-full border-2 border-white object-cover"
-                />
-              ) : (
-                <div
-                  key={m.id}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-gray-600 text-xs font-medium text-white"
-                >
-                  {(m.fullName?.[0] ?? "?").toUpperCase()}
-                </div>
-              )
-            )}
-            {teamMembers.length > 4 && (
-              <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-gray-200 text-xs font-medium text-gray-600">
-                +{teamMembers.length - 4}
-              </div>
-            )}
-          </div>
           <div className="relative hidden sm:block">
             <input
               type="search"
@@ -679,7 +660,17 @@ export default function KanbanTasksBoard({
               <path d="M13 3a2 2 0 0 1-2 2c0-.7.3-1.4.7-1.9" />
             </svg>
           </button>
-          <div className="h-8 w-8 rounded-full bg-gray-200" />
+          {currentMember?.avatarUrl ? (
+            <img
+              src={currentMember.avatarUrl}
+              alt=""
+              className="h-8 w-8 shrink-0 rounded-full border border-gray-200 object-cover"
+            />
+          ) : currentMember ? (
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-100 text-xs font-medium text-gray-700">
+              {(currentMember.fullName?.[0] ?? "?").toUpperCase()}
+            </div>
+          ) : null}
         </div>
       </header>
 
