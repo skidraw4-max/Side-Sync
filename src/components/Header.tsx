@@ -107,9 +107,9 @@ export default function Header({ variant = "default" }: HeaderProps) {
       ) : !authReady ? (
         <div className="h-10 w-[88px] shrink-0 animate-pulse rounded-xl bg-slate-200" aria-hidden aria-busy />
       ) : isLoggedIn ? (
-        <div className="flex items-center gap-2">
+        <div className="flex min-h-[36px] min-w-0 shrink-0 items-center gap-2">
           <NotificationDropdown />
-          <div className="relative" ref={dropdownRef}>
+          <div className="relative shrink-0" ref={dropdownRef}>
             <button
               type="button"
               onClick={() => setDropdownOpen((o) => !o)}

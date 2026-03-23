@@ -5,6 +5,7 @@ import ProjectDetailSidebar from "./ProjectDetailSidebar";
 import ApplyModal from "./ApplyModal";
 
 import type { TeamLeaderInfo } from "./ProjectDetailSidebar";
+import { PROJECT } from "@/lib/constants/contents";
 
 export interface ProjectDetailContentProps {
   projectId: string;
@@ -23,10 +24,37 @@ const RECENT_PROJECTS = [
 ];
 
 const RECRUITMENT_STATUS = [
-  { role: "Frontend", count: "1/2", status: "HIRING", statusColor: "bg-[#2563EB]/10 text-[#2563EB]", barColor: "bg-[#2563EB]", barWidth: "50%" },
-  { role: "UI Designer", count: "0/1", status: "URGENT", statusColor: "bg-orange-100 text-orange-600", barColor: "bg-orange-500", barWidth: "0%" },
-  { role: "Backend", count: "1/1", status: "FILLED", statusColor: "bg-gray-100 text-gray-600", barColor: "bg-green-500", barWidth: "100%" },
+  {
+    role: "Frontend",
+    count: "1/2",
+    statusKey: "HIRING" as const,
+    statusColor: "bg-[#2563EB]/10 text-[#2563EB]",
+    barColor: "bg-[#2563EB]",
+    barWidth: "50%",
+  },
+  {
+    role: "UI Designer",
+    count: "0/1",
+    statusKey: "URGENT" as const,
+    statusColor: "bg-orange-100 text-orange-600",
+    barColor: "bg-orange-500",
+    barWidth: "0%",
+  },
+  {
+    role: "Backend",
+    count: "1/1",
+    statusKey: "FILLED" as const,
+    statusColor: "bg-gray-100 text-gray-600",
+    barColor: "bg-green-500",
+    barWidth: "100%",
+  },
 ];
+
+const DEMO_STATUS_LABEL: Record<(typeof RECRUITMENT_STATUS)[number]["statusKey"], string> = {
+  HIRING: PROJECT.demoStatusHiring,
+  URGENT: PROJECT.demoStatusUrgent,
+  FILLED: PROJECT.demoStatusFilled,
+};
 
 export default function ProjectDetailContent({
   projectId,
@@ -71,7 +99,7 @@ export default function ProjectDetailContent({
                   <line x1="16" y1="17" x2="8" y2="17" />
                 </svg>
                 <h2 className="text-lg font-semibold text-gray-900">
-                  Project Introduction
+                  {PROJECT.projectIntroduction}
                 </h2>
               </div>
               <p className="mt-4 text-gray-600 leading-relaxed">{introduction}</p>
@@ -81,7 +109,7 @@ export default function ProjectDetailContent({
               <div className="flex items-center gap-2">
                 <div className="h-5 w-1 rounded-full bg-[#2563EB]" />
                 <h2 className="text-lg font-semibold text-gray-900">
-                  Technical Stack
+                  {PROJECT.technicalStack}
                 </h2>
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
@@ -102,7 +130,7 @@ export default function ProjectDetailContent({
         <ProjectDetailSidebar
           teamLeader={
             teamLeader ?? {
-              name: "Unknown",
+              name: PROJECT.unknownUser,
               role: "-",
               successRate: "-",
               mannerTemp: "-",
@@ -131,15 +159,19 @@ export default function ProjectDetailContent({
             <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
             <path d="M16 3.13a4 4 0 0 1 0 7.75" />
           </svg>
-          <h2 className="text-lg font-semibold text-gray-900">Recruitment Status</h2>
+          <h2 className="text-lg font-semibold text-gray-900">
+            {PROJECT.recruitmentStatusHeading}
+          </h2>
         </div>
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
           {RECRUITMENT_STATUS.map((item) => (
             <div key={item.role} className="rounded-xl border border-gray-100 p-4">
-              <div className="flex items-center justify-between">
-                <span className="font-medium text-gray-900">{item.role}</span>
-                <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${item.statusColor}`}>
-                  {item.status}
+              <div className="flex items-center justify-between gap-2">
+                <span className="min-w-0 font-medium text-gray-900">{item.role}</span>
+                <span
+                  className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${item.statusColor}`}
+                >
+                  {DEMO_STATUS_LABEL[item.statusKey]}
                 </span>
               </div>
               <p className="mt-1 text-sm text-gray-500">{item.count}</p>

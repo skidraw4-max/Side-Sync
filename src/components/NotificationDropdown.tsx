@@ -191,14 +191,23 @@ export default function NotificationDropdown() {
   const newActivity = notifications.filter((n) => new Date(n.created_at) >= todayStart || !n.read);
   const earlierToday = notifications.filter((n) => new Date(n.created_at) < todayStart && n.read);
 
-  if (!userId) return null;
+  // userId 비동기 로드 전에도 동일한 너비를 유지해 헤더 메뉴가 밀리지 않도록 함
+  if (!userId) {
+    return (
+      <div
+        className="h-9 w-9 shrink-0 rounded-full bg-gray-100 animate-pulse"
+        aria-hidden
+        aria-busy="true"
+      />
+    );
+  }
 
   return (
     <div className="relative" ref={dropdownRef}>
       <button
         type="button"
         onClick={() => setIsOpen((o) => !o)}
-        className="relative flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors hover:bg-gray-200"
+        className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors hover:bg-gray-200"
         aria-label="알림"
       >
         <svg

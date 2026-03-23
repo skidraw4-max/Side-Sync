@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import { getDemoProjectById } from "@/lib/demo-projects";
 import { fetchAcceptedApplicationsForProject, fetchProjectDetailById } from "@/lib/supabase-project-queries";
 import type { RecruitmentStatusRow } from "@/types/database";
+import { PROJECT } from "@/lib/constants/contents";
 
 interface ProjectDetailPageProps {
   params: Promise<{ id: string }>;
@@ -100,8 +101,8 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
     const profile = profileRaw as { full_name: string | null; role: string | null; avatar_url: string | null } | null;
     if (profile) {
       teamLeader = {
-        name: profile.full_name ?? "Unknown",
-        role: profile.role ?? "Project Lead",
+        name: profile.full_name ?? PROJECT.unknownUser,
+        role: profile.role ?? PROJECT.teamLeaderRoleDefault,
         avatarUrl: profile.avatar_url,
       };
     }
@@ -169,20 +170,20 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
             </svg>
-            <span className="text-sm font-medium">You are the leader of this project</span>
+            <span className="text-sm font-medium">{PROJECT.leaderBanner}</span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Link
               href={`/projects/${id}/manage`}
-              className="rounded border border-white/40 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-white/10"
+              className="whitespace-nowrap rounded border border-white/40 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/10 sm:px-4"
             >
-              Manage Applicants
+              {PROJECT.applicantsManage}
             </Link>
             <Link
               href={`/projects/${id}/edit`}
-              className="rounded border border-white/40 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-white/10"
+              className="whitespace-nowrap rounded border border-white/40 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/10 sm:px-4"
             >
-              Edit Project
+              {PROJECT.projectEdit}
             </Link>
           </div>
         </div>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import ApplyModal from "./ApplyModal";
 import type { RecruitmentStatusRow } from "@/types/database";
+import { PROJECT } from "@/lib/constants/contents";
 
 /** role 컬럼이 없을 때 모집 정원(total) 순으로 accepted 명수를 배분 (표시용) */
 function distributeFilledGreedy(
@@ -103,7 +104,7 @@ export default function ProjectDetailStitch({
 
     if (hasRolePerRow) {
       apps.forEach((a) => {
-        const r = a.role ?? "General";
+        const r = a.role ?? PROJECT.roleGeneral;
         byRole[r] = (byRole[r] ?? 0) + 1;
       });
     } else if (apps.length > 0 && roleEntries.length > 0) {
@@ -139,8 +140,8 @@ export default function ProjectDetailStitch({
       if (!p) return;
       members.push({
         id: a.applicant_id,
-        name: p.full_name ?? "Anonymous",
-        role: a.role ?? "Member",
+        name: p.full_name ?? PROJECT.unknownUser,
+        role: a.role ?? PROJECT.member,
         avatarUrl: p.avatar_url ?? null,
         mannerTemp: p.manner_temp_target ?? mannerTempTarget,
       });
@@ -179,23 +180,27 @@ export default function ProjectDetailStitch({
         />
 
         <main className="px-6 pb-16 pt-8 md:px-12 lg:px-24">
-          <nav className="mb-6 text-sm text-gray-500">
-            <Link href="/" className="hover:text-gray-700">Home</Link>
-            <span className="mx-2">›</span>
-            <Link href="/projects" className="hover:text-gray-700">Projects</Link>
-            <span className="mx-2">›</span>
-            <span className="text-gray-900">{projectTitle}</span>
+          <nav className="mb-6 flex flex-wrap items-center gap-x-1 text-sm text-gray-500">
+            <Link href="/" className="whitespace-nowrap hover:text-gray-700">
+              {PROJECT.navHome}
+            </Link>
+            <span className="mx-1">›</span>
+            <Link href="/projects" className="whitespace-nowrap hover:text-gray-700">
+              {PROJECT.navProjects}
+            </Link>
+            <span className="mx-1">›</span>
+            <span className="min-w-0 break-words text-gray-900">{projectTitle}</span>
           </nav>
 
           <div className="flex flex-col gap-6 sm:gap-8 lg:flex-row lg:gap-10">
             {/* Left: main content */}
             <div className="flex-1 space-y-6">
               <div className="rounded-xl bg-white p-6 shadow-md md:p-8">
-                <span className="inline-block rounded-full bg-[#2563EB] px-3 py-1 text-xs font-semibold uppercase tracking-wider text-white">
-                  ACTIVE RECRUITMENT
+                <span className="inline-block whitespace-nowrap rounded-full bg-[#2563EB] px-3 py-1 text-xs font-semibold tracking-wide text-white">
+                  {PROJECT.activeRecruitmentBadge}
                 </span>
                 <h1 className="mt-4 text-2xl font-bold text-gray-900 md:text-3xl">
-                  Project: {projectTitle}
+                  {PROJECT.projectTitlePrefix}: {projectTitle}
                 </h1>
 
                 <div className="mt-5 flex flex-wrap items-center gap-6">
@@ -225,20 +230,25 @@ export default function ProjectDetailStitch({
                       <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
                       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                     </svg>
-                    <span className="text-sm font-medium">{membersCount}/{totalSlots || 5} Members Filled</span>
+                    <span className="text-sm font-medium">
+                      {PROJECT.recruitmentHeadcountLabel} {membersCount}/{totalSlots || 5}명
+                    </span>
                   </div>
                 </div>
 
                 <section className="mt-8">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">OVERVIEW</h3>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    {PROJECT.overview}
+                  </h3>
                   <p className="mt-2 text-sm leading-relaxed text-gray-700">
-                    {projectDescription ??
-                      "A comprehensive platform for tracking corporate carbon footprints using IoT sensors and real-time analytics. The project aims to help enterprises achieve sustainability goals through data-driven insights."}
+                    {projectDescription ?? PROJECT.defaultDescriptionFallback}
                   </p>
                 </section>
 
                 <section className="mt-8">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">REQUIRED TECH STACK</h3>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    {PROJECT.requiredTechStack}
+                  </h3>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {(techStack.length ? techStack : ["React", "Node.js", "Figma", "Tailwind CSS", "OpenAI API"]).map((tech, i) => (
                       <span
@@ -254,7 +264,9 @@ export default function ProjectDetailStitch({
                 </section>
 
                 <section className="mt-8">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">PROJECT MILESTONES</h3>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    {PROJECT.projectMilestones}
+                  </h3>
                   <div className="mt-4 space-y-4">
                     {milestones.map((m, i) => (
                       <div key={m.label} className="flex items-center gap-4">
@@ -282,9 +294,13 @@ export default function ProjectDetailStitch({
                           </div>
                         )}
                         <div>
-                          <p className="font-medium text-gray-900">Phase {i + 1}: {m.label}</p>
+                          <p className="font-medium text-gray-900">
+                            {PROJECT.milestonePhasePrefix} {i + 1}: {m.label}
+                          </p>
                           {m.percent < 100 && m.percent > 0 && (
-                            <p className="text-xs text-gray-500">In progress ({m.percent}%)</p>
+                            <p className="text-xs text-gray-500">
+                              {PROJECT.milestoneProgressLabel} ({m.percent}%)
+                            </p>
                           )}
                         </div>
                       </div>
@@ -296,7 +312,9 @@ export default function ProjectDetailStitch({
               {/* Team members & Manner temp */}
               {teamMembers.length > 0 && (
                 <div className="rounded-xl bg-white p-6 shadow-md md:p-8">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">TEAM MEMBERS</h3>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    {PROJECT.teamMembersHeading}
+                  </h3>
                   <div className="mt-4 space-y-3">
                     {teamMembers.map((m) => (
                       <div key={m.id} className="flex items-center justify-between gap-4 rounded-lg border border-gray-100 p-3">
@@ -314,7 +332,7 @@ export default function ProjectDetailStitch({
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-xs text-gray-500">Manner</p>
+                          <p className="text-xs text-gray-500">{PROJECT.mannerShort}</p>
                           <p className="font-semibold text-[#2563EB]">{m.mannerTemp}</p>
                         </div>
                       </div>
@@ -330,22 +348,22 @@ export default function ProjectDetailStitch({
                 {/* Recruitment Status Card */}
                 <div className="rounded-xl bg-white p-6 shadow-md">
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    RECRUITMENT STATUS
+                    {PROJECT.recruitmentStatusCard}
                   </h3>
                   <ul className="mt-4 space-y-3">
                     {rolesWithFilled.map((r) => {
                       const status =
                         r.filled >= r.total
-                          ? "Joined"
+                          ? PROJECT.roleJoined
                           : r.filled > 0
                             ? `${r.filled}/${r.total}`
-                            : "OPEN";
+                            : PROJECT.roleOpen;
                       const isJoined = r.filled >= r.total;
                       return (
                         <li key={r.role} className="flex items-center justify-between">
                           <span className="text-sm font-medium text-gray-900">{r.role}</span>
                           <span
-                            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                            className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                               isJoined
                                 ? "bg-[#2563EB] text-white"
                                 : "border border-gray-300 bg-white text-gray-700"
@@ -361,35 +379,51 @@ export default function ProjectDetailStitch({
                     <button
                       type="button"
                       onClick={() => setShowApplyModal(true)}
-                      className="mt-5 w-full rounded-xl bg-[#2563EB] py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8]"
+                      className="mt-5 w-full whitespace-nowrap rounded-xl bg-[#2563EB] px-3 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8]"
                     >
-                      Apply Now
+                      {PROJECT.apply}
                     </button>
                   ) : hasApplied ? (
                     <div className="mt-5 w-full rounded-xl border border-gray-200 py-3.5 text-center text-sm font-medium text-gray-600">
-                      지원 완료
+                      {PROJECT.applyComplete}
                     </div>
                   ) : null}
-                  <p className="mt-3 text-xs text-gray-500">Average response time: 24 hours</p>
+                  <p className="mt-3 text-xs text-gray-500">{PROJECT.avgResponseTime}</p>
                 </div>
 
                 {/* Project Info Card */}
                 <div className="rounded-xl bg-white p-6 shadow-md">
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    PROJECT INFO
+                    {PROJECT.projectInfoCard}
                   </h3>
                   <dl className="mt-4 space-y-3">
-                    <div className="flex justify-between">
-                      <dt className="text-sm text-gray-500">Visibility</dt>
-                      <dd className="font-semibold text-gray-900">{visibility}</dd>
+                    <div className="flex justify-between gap-3">
+                      <dt className="shrink-0 text-sm text-gray-500">
+                        {PROJECT.visibilityLabel}
+                      </dt>
+                      <dd className="min-w-0 text-right font-semibold text-gray-900">
+                        {visibility === "Public"
+                          ? PROJECT.visibilityPublic
+                          : visibility === "Private"
+                            ? PROJECT.visibilityPrivate
+                            : visibility}
+                      </dd>
                     </div>
-                    <div className="flex justify-between">
-                      <dt className="text-sm text-gray-500">Duration</dt>
-                      <dd className="font-semibold text-gray-900">{durationMonths} Months</dd>
+                    <div className="flex justify-between gap-3">
+                      <dt className="shrink-0 text-sm text-gray-500">
+                        {PROJECT.durationLabel}
+                      </dt>
+                      <dd className="font-semibold text-gray-900">
+                        {durationMonths} {PROJECT.monthsUnit}
+                      </dd>
                     </div>
-                    <div className="flex justify-between">
-                      <dt className="text-sm text-gray-500">Est. Launch</dt>
-                      <dd className="font-semibold text-gray-900">{estLaunch}</dd>
+                    <div className="flex justify-between gap-3">
+                      <dt className="shrink-0 text-sm text-gray-500">
+                        {PROJECT.estLaunchLabel}
+                      </dt>
+                      <dd className="min-w-0 break-words text-right font-semibold text-gray-900">
+                        {estLaunch}
+                      </dd>
                     </div>
                   </dl>
                 </div>

@@ -84,9 +84,11 @@ export async function PATCH(
     return NextResponse.json({ error: "수정할 내용이 없습니다." }, { status: 400 });
   }
 
+  // updated_at은 일부 환경에서 projects 테이블에 없어 PostgREST 스키마 캐시 오류가 날 수 있어 제외합니다.
+  // 필요 시 DB에 컬럼 추가 후 트리거로 갱신하세요.
   const { error: updateErr } = await (supabase as any)
     .from("projects")
-    .update({ ...patch, updated_at: new Date().toISOString() })
+    .update(patch)
     .eq("id", projectId);
 
   if (updateErr) {
