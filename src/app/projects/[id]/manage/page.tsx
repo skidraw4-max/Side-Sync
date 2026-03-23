@@ -1,6 +1,7 @@
 "use client";
+// 브라우저(Client)에서만 실행됩니다. F12 → Console 에서 🔍 쿼리 결과 data 로그를 확인하세요.
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import ManageApplicantsSidebar from "@/components/ManageApplicantsSidebar";
@@ -17,6 +18,10 @@ interface ApplicantProfile {
   avatar_url: string | null;
   tech_stack: string[];
   manner_temp_target: string | null;
+  /** profiles.role (계정 직무 등, applications.role 과 별개) */
+  profile_role?: string | null;
+  /** profiles 테이블 email */
+  email?: string | null;
 }
 
 interface ApplicationWithProfile {
@@ -29,6 +34,8 @@ interface ApplicationWithProfile {
   tech_stack: string | null;
   status: "pending" | "accepted" | "rejected";
   created_at: string;
+  /** 병합된 프로필(UI에서 profiles?.full_name 체이닝용, applicant 와 동일 객체 참조) */
+  profiles: ApplicantProfile | null;
   applicant: ApplicantProfile | null;
 }
 
@@ -36,10 +43,49 @@ function applicationPosition(a: ApplicationWithProfile): string {
   return a.tech_stack?.trim() || a.role?.trim() || "General";
 }
 
+/** Supabase 임베드 `profiles(...)` 결과 (객체 또는 배열 1건) */
+function normalizeProfileEmbed(raw: unknown): ApplicantProfile | null {
+  if (raw == null) return null;
+  const node = Array.isArray(raw) ? raw[0] : raw;
+  if (!node || typeof node !== "object") return null;
+  const o = node as Record<string, unknown>;
+  const ts = o.tech_stack;
+  return {
+    full_name: typeof o.full_name === "string" ? o.full_name : null,
+    avatar_url: typeof o.avatar_url === "string" ? o.avatar_url : null,
+    tech_stack: Array.isArray(ts) ? (ts as string[]) : [],
+    manner_temp_target: typeof o.manner_temp_target === "string" ? o.manner_temp_target : null,
+    email: typeof o.email === "string" ? o.email : null,
+    profile_role: typeof o.role === "string" ? o.role : null,
+  };
+}
+
+/** UI에서 profiles / applicant 둘 다 옵셔널 체이닝 지원 */
+function applicantProfile(app: ApplicationWithProfile): ApplicantProfile | null {
+  return app.profiles ?? app.applicant ?? null;
+}
+
+function mergeApplicantProfiles(
+  batch: ApplicantProfile | null,
+  embed: ApplicantProfile | null
+): ApplicantProfile | null {
+  if (!batch && !embed) return null;
+  if (!batch) return embed;
+  if (!embed) return batch;
+  return {
+    full_name: embed.full_name ?? batch.full_name,
+    avatar_url: embed.avatar_url ?? batch.avatar_url,
+    email: embed.email ?? batch.email,
+    profile_role: embed.profile_role ?? batch.profile_role,
+    tech_stack: embed.tech_stack.length > 0 ? embed.tech_stack : batch.tech_stack,
+    manner_temp_target: embed.manner_temp_target ?? batch.manner_temp_target,
+  };
+}
+
 export default function ManageApplicantsPage() {
   const router = useRouter();
   const params = useParams();
-  const projectId = params.id as string;
+  const projectId = String(params?.id ?? "").trim();
 
   const [projectTitle, setProjectTitle] = useState("");
   const [teamLeaderName, setTeamLeaderName] = useState("");
@@ -53,149 +99,280 @@ export default function ManageApplicantsPage() {
   const [rejectModalAppId, setRejectModalAppId] = useState<string | null>(null);
   const [rejectReasonInput, setRejectReasonInput] = useState("");
 
-  const fetchData = useCallback(async () => {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      router.push("/login");
-      return;
-    }
-
-    const { data: projectRaw } = await supabase
-      .from("projects")
-      .select("id, title, team_leader_id, recruitment_status, tech_stack")
-      .eq("id", projectId)
-      .single();
-    const project = projectRaw as {
-      id: string;
-      title: string;
-      team_leader_id: string | null;
-      tech_stack?: string[];
-      recruitment_status?: Array<{ role: string; count?: number; total?: number }>;
-    } | null;
-
-    if (!project) {
-      router.push("/projects");
-      return;
-    }
-
-    if (project.team_leader_id !== user.id) {
-      setIsLeader(false);
-      return;
-    }
-
-    setIsLeader(true);
-    setProjectTitle(project.title);
-
-    if (project.team_leader_id) {
-      const { data } = await supabase
-        .from("profiles")
-        .select("full_name")
-        .eq("id", project.team_leader_id)
-        .single();
-      const leaderProfile = data as { full_name: string | null } | null;
-      setTeamLeaderName(leaderProfile?.full_name ?? "Unknown");
-    }
-
-    // 역할별 모집 현황 (filled/total) 계산 — role 컬럼 없는 DB는 select("*") 기반 헬퍼 사용
-    const rawStatus = (project as { recruitment_status?: Array<{ role: string; count?: number; total?: number }> }).recruitment_status;
-    const acceptedApps = await fetchAcceptedApplicationsForProject(supabase, projectId);
-
-    const filledByRole: Record<string, number> = {};
-    acceptedApps.forEach((a) => {
-      const r = a.role?.trim() || PROJECT.roleGeneral;
-      filledByRole[r] = (filledByRole[r] ?? 0) + 1;
-    });
-
-    const map: Record<string, { total: number; filled: number }> = {};
-    const effectiveSlots = getEffectiveRecruitmentSlots(rawStatus);
-    effectiveSlots.forEach((s) => {
-      map[s.role] = { total: s.total, filled: filledByRole[s.role] ?? 0 };
-    });
-    setRoleFilledMap(map);
-
-    const statusFilter = viewArchived
-      ? ["accepted", "rejected"]
-      : ["pending"];
-    const { data: appRows, error } = await supabase
-      .from("applications")
-      .select("*")
-      .eq("project_id", projectId)
-      .in("status", statusFilter)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error(error);
-      setApplications([]);
-      return;
-    }
-
-    const appRowsTyped = (appRows ?? []).map((row) => {
-      const r = row as Record<string, unknown>;
-      return {
-        id: String(r.id),
-        project_id: String(r.project_id),
-        applicant_id: String(r.applicant_id),
-        message: (typeof r.message === "string" ? r.message : null) as string | null,
-        role: typeof r.role === "string" ? r.role : null,
-        tech_stack: typeof r.tech_stack === "string" ? r.tech_stack : null,
-        status: r.status as "pending" | "accepted" | "rejected",
-        created_at: String(r.created_at),
-      };
-    });
-
-    const applicantIds = [...new Set(appRowsTyped.map((a) => a.applicant_id))];
-    if (applicantIds.length === 0) {
-      setApplications(appRowsTyped.map((a) => ({ ...a, applicant: null })));
-      return;
-    }
-
-    const { data: profileRows } = await supabase
-      .from("profiles")
-      .select("id, full_name, avatar_url, tech_stack, manner_temp_target")
-      .in("id", applicantIds);
-
-    const profileRowsTyped = (profileRows ?? []) as Array<{
-      id: string;
-      full_name: string | null;
-      avatar_url: string | null;
-      tech_stack: unknown;
-      manner_temp_target: string | null;
-    }>;
-
-    const profileMap = new Map(
-      profileRowsTyped.map((p) => [
-        p.id,
-        {
-          full_name: p.full_name,
-          avatar_url: p.avatar_url,
-          tech_stack: Array.isArray(p.tech_stack) ? p.tech_stack : [],
-          manner_temp_target: p.manner_temp_target,
-        },
-      ])
-    );
-
-    setApplications(
-      appRowsTyped.map((a) => ({
-        ...a,
-        applicant: profileMap.get(a.applicant_id) ?? null,
-      }))
-    );
-  }, [projectId, router, viewArchived]);
-
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    let cancelled = false;
+
+    async function fetchApplicantsInEffect() {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+
+      if (!projectId) {
+        console.warn("[manage] missing project id in route params");
+        router.push("/projects");
+        return;
+      }
+
+      const { data: projectRaw } = await supabase
+        .from("projects")
+        .select("id, title, team_leader_id, recruitment_status, tech_stack")
+        .eq("id", projectId)
+        .single();
+      const project = projectRaw as {
+        id: string;
+        title: string;
+        team_leader_id: string | null;
+        tech_stack?: string[];
+        recruitment_status?: Array<{ role: string; count?: number; total?: number }>;
+      } | null;
+
+      if (!project) {
+        router.push("/projects");
+        return;
+      }
+
+      if (project.team_leader_id !== user.id) {
+        if (!cancelled) setIsLeader(false);
+        return;
+      }
+
+      if (!cancelled) {
+        setIsLeader(true);
+        setProjectTitle(project.title);
+      }
+
+      if (project.team_leader_id) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", project.team_leader_id)
+          .single();
+        const leaderProfile = data as { full_name: string | null } | null;
+        if (!cancelled) setTeamLeaderName(leaderProfile?.full_name ?? "Unknown");
+      }
+
+      // 역할별 모집 현황 (filled/total) 계산 — role 컬럼 없는 DB는 select("*") 기반 헬퍼 사용
+      const rawStatus = (project as { recruitment_status?: Array<{ role: string; count?: number; total?: number }> }).recruitment_status;
+      const acceptedApps = await fetchAcceptedApplicationsForProject(supabase, projectId);
+
+      const filledByRole: Record<string, number> = {};
+      acceptedApps.forEach((a) => {
+        const r = a.role?.trim() || PROJECT.roleGeneral;
+        filledByRole[r] = (filledByRole[r] ?? 0) + 1;
+      });
+
+      const map: Record<string, { total: number; filled: number }> = {};
+      const effectiveSlots = getEffectiveRecruitmentSlots(rawStatus);
+      effectiveSlots.forEach((s) => {
+        map[s.role] = { total: s.total, filled: filledByRole[s.role] ?? 0 };
+      });
+      if (!cancelled) setRoleFilledMap(map);
+
+      const statusFilter = viewArchived
+        ? ["accepted", "rejected"]
+        : ["pending"];
+
+      // 진단: 클라이언트 세션으로 전체 지원 건수(탭과 무관)
+      const { count: totalCount, error: countErr } = await supabase
+        .from("applications")
+        .select("id", { count: "exact", head: true })
+        .eq("project_id", projectId);
+      if (!countErr && typeof totalCount === "number") {
+        console.log("[manage] applications total count (all statuses):", totalCount, "| current tab filter:", statusFilter);
+      }
+
+      console.log("🔍 현재 프로젝트 ID:", projectId);
+
+      /** 서버 API(팀장 검증 + 선택적 service role) 우선 — 브라우저 RLS로 목록만 비는 문제 완화 */
+      const tabParam = viewArchived ? "archived" : "pending";
+      let merged: ApplicationWithProfile[] | null = null;
+      try {
+        const apiRes = await fetch(
+          `/api/projects/${encodeURIComponent(projectId)}/applications?tab=${tabParam}`,
+          { credentials: "include", cache: "no-store" }
+        );
+        if (apiRes.ok) {
+          const body = (await apiRes.json()) as {
+            items?: Array<{
+              id: string;
+              project_id: string;
+              applicant_id: string;
+              message: string | null;
+              role: string | null;
+              tech_stack: string | null;
+              status: "pending" | "accepted" | "rejected";
+              created_at: string;
+              profile: ApplicantProfile | null;
+            }>;
+            usedServiceRole?: boolean;
+          };
+          const items = body.items ?? [];
+          console.log(
+            "🔍 쿼리 결과 data (API):",
+            items,
+            "| usedServiceRole:",
+            Boolean(body.usedServiceRole)
+          );
+          merged = items.map((item) => {
+            const prof = item.profile;
+            return {
+              id: item.id,
+              project_id: item.project_id,
+              applicant_id: item.applicant_id,
+              message: item.message,
+              role: item.role,
+              tech_stack: item.tech_stack,
+              status: item.status,
+              created_at: item.created_at,
+              applicant: prof,
+              profiles: prof,
+            };
+          });
+        } else {
+          const errText = await apiRes.text().catch(() => "");
+          console.warn("[manage] GET /applications API failed:", apiRes.status, errText);
+        }
+      } catch (e) {
+        console.warn("[manage] GET /applications API network error:", e);
+      }
+
+      if (merged === null) {
+        // 폴백: 클라이언트 Supabase 직접 조회
+        const { data, error } = await supabase
+          .from("applications")
+          .select("*")
+          .eq("project_id", projectId)
+          .in("status", statusFilter)
+          .order("created_at", { ascending: false });
+
+        console.log("🔍 쿼리 결과 data (클라이언트):", data);
+        console.log("🔍 쿼리 에러 error:", error);
+
+        if (error) {
+          console.error("[manage] applications select('*') only:", error);
+          if (!cancelled) setApplications([]);
+          return;
+        }
+
+        const appRows = data ?? [];
+        const appRowsTyped = appRows.map((row) => {
+          const r = row as Record<string, unknown>;
+          return {
+            id: String(r.id),
+            project_id: String(r.project_id),
+            applicant_id: String(r.applicant_id),
+            message: (typeof r.message === "string" ? r.message : null) as string | null,
+            role: typeof r.role === "string" ? r.role : null,
+            tech_stack: typeof r.tech_stack === "string" ? r.tech_stack : null,
+            status: r.status as "pending" | "accepted" | "rejected",
+            created_at: String(r.created_at),
+          };
+        });
+
+        const applicantIds = [...new Set(appRowsTyped.map((a) => a.applicant_id).filter(Boolean))];
+        let profileMap = new Map<string, ApplicantProfile>();
+
+        if (applicantIds.length > 0) {
+          let profileRows = await supabase
+            .from("profiles")
+            .select("id, full_name, avatar_url, email, role, tech_stack, manner_temp_target")
+            .in("id", applicantIds);
+
+          if (profileRows.error?.message?.toLowerCase().includes("column")) {
+            profileRows = await supabase
+              .from("profiles")
+              .select("id, full_name, avatar_url, role, tech_stack, manner_temp_target")
+              .in("id", applicantIds);
+          }
+
+          if (profileRows.error) {
+            console.warn("[manage] profiles batch select:", profileRows.error.message);
+          } else {
+            const rows = (profileRows.data ?? []) as Array<{
+              id: string;
+              full_name: string | null;
+              avatar_url: string | null;
+              email?: string | null;
+              role: string | null;
+              tech_stack: unknown;
+              manner_temp_target: string | null;
+            }>;
+            profileMap = new Map(
+              rows.map((p) => [
+                p.id,
+                {
+                  full_name: p.full_name,
+                  avatar_url: p.avatar_url,
+                  email: p.email ?? null,
+                  profile_role: p.role,
+                  tech_stack: Array.isArray(p.tech_stack) ? p.tech_stack : [],
+                  manner_temp_target: p.manner_temp_target,
+                },
+              ])
+            );
+          }
+        }
+
+        const embeddedSelect = `
+      id,
+      profiles (
+        full_name,
+        avatar_url,
+        email,
+        role,
+        tech_stack,
+        manner_temp_target
+      )
+    `;
+        const embedRes = await supabase
+          .from("applications")
+          .select(embeddedSelect)
+          .eq("project_id", projectId)
+          .in("status", statusFilter);
+
+        const embedByAppId = new Map<string, unknown>();
+        if (!embedRes.error && embedRes.data) {
+          for (const row of embedRes.data as Array<{ id: string; profiles: unknown }>) {
+            if (row?.id) embedByAppId.set(String(row.id), row.profiles);
+          }
+        } else if (embedRes.error) {
+          console.warn("[manage] optional embed join skipped:", embedRes.error.message);
+        }
+
+        merged = appRowsTyped.map((a) => {
+          const fromMap = profileMap.get(a.applicant_id) ?? null;
+          const fromEmbed = normalizeProfileEmbed(embedByAppId.get(a.id));
+          const applicant = mergeApplicantProfiles(fromMap, fromEmbed);
+          return { ...a, applicant, profiles: applicant };
+        });
+      }
+
+      if (cancelled) return;
+
+      setApplications(merged);
+    }
+
+    void fetchApplicantsInEffect();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, viewArchived, router]);
 
   const filteredApplications = searchQuery.trim()
     ? applications.filter((a) => {
-        const name = a.applicant?.full_name?.toLowerCase() ?? "";
-        const stack = (a.applicant?.tech_stack ?? []).join(" ").toLowerCase();
+        const pf = applicantProfile(a);
+        const name = pf?.full_name?.toLowerCase() ?? "";
+        const email = pf?.email?.toLowerCase() ?? "";
+        const stack = (pf?.tech_stack ?? []).join(" ").toLowerCase();
         const pos = applicationPosition(a).toLowerCase();
         const q = searchQuery.toLowerCase();
-        return name.includes(q) || stack.includes(q) || pos.includes(q);
+        return name.includes(q) || email.includes(q) || stack.includes(q) || pos.includes(q);
       })
     : applications;
 
@@ -204,7 +381,7 @@ export default function ManageApplicantsPage() {
     if (!app) return;
 
     setUpdatingId(applicationId);
-    const applicantName = app.applicant?.full_name ?? "Unknown";
+    const applicantName = applicantProfile(app)?.full_name ?? "Unknown";
 
     setApplications((prev) =>
       prev.map((a) =>
@@ -285,9 +462,9 @@ export default function ManageApplicantsPage() {
       "Message",
     ];
     const rows = applications.map((a) => [
-      a.applicant?.full_name ?? "-",
+      applicantProfile(a)?.full_name ?? "-",
       applicationPosition(a),
-      (a.applicant?.tech_stack ?? []).filter((t) => t && t !== "__skipped__").join(", "),
+      (applicantProfile(a)?.tech_stack ?? []).filter((t) => t && t !== "__skipped__").join(", "),
       a.status,
       new Date(a.created_at).toLocaleString(),
       (a.message ?? "").replace(/"/g, '""'),
@@ -449,7 +626,7 @@ export default function ManageApplicantsPage() {
                         </svg>
                       }
                       title="아직 지원자가 없습니다"
-                      description="홍보를 시작해보거나 조금 더 기다려주세요!"
+                      description="대기(pending) 지원이 없을 수 있습니다. 이미 수락·거절한 지원은 아래 「View Archived」에서 확인하세요. 홍보를 늘리거나 조금 더 기다려 주세요."
                       actions={[
                         { label: "공고 확인하기", href: `/projects/${projectId}`, primary: true },
                       ]}
@@ -466,26 +643,29 @@ export default function ManageApplicantsPage() {
                   >
                     <div className="flex shrink-0 items-start gap-4">
                       <div className="relative">
-                        {app.applicant?.avatar_url ? (
+                        {app.profiles?.avatar_url ? (
                           <img
-                            src={app.applicant.avatar_url}
+                            src={app.profiles.avatar_url}
                             alt=""
                             className="h-14 w-14 rounded-full object-cover"
                           />
                         ) : (
                           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-200 text-lg font-semibold text-slate-600">
-                            {(app.applicant?.full_name?.[0] ?? "?").toUpperCase()}
+                            {(app.profiles?.full_name?.[0] ?? "?").toUpperCase()}
                           </div>
                         )}
                         <span className="absolute -bottom-1 -right-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
-                          {app.applicant?.manner_temp_target ?? "36.5"}°C
+                          {app.profiles?.manner_temp_target ?? "36.5"}°C
                         </span>
                       </div>
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="font-semibold text-slate-900">
-                            {app.applicant?.full_name ?? "Unknown"}
+                            {app.profiles?.full_name ?? "Unknown"}
                           </p>
+                          {app.profiles?.email ? (
+                            <span className="text-xs text-slate-500">{app.profiles.email}</span>
+                          ) : null}
                           {(app.tech_stack?.trim() || app.role?.trim()) && (
                             <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-900 ring-1 ring-indigo-200/80">
                               {app.tech_stack?.trim() || app.role}
@@ -493,7 +673,7 @@ export default function ManageApplicantsPage() {
                           )}
                         </div>
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          {(app.applicant?.tech_stack ?? [])
+                          {(app.profiles?.tech_stack ?? [])
                             .filter((t: string) => t && t !== "__skipped__")
                             .slice(0, 5)
                             .map((tech: string) => (
