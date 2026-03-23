@@ -22,5 +22,13 @@ export async function createClient() {
         }
       },
     },
+    // Next.js App Router가 fetch를 캐시하면 지원 직후 상세에서 status가 갱신되지 않을 수 있음
+    global: {
+      fetch: (url, options = {}) =>
+        fetch(url, {
+          ...options,
+          cache: "no-store",
+        }),
+    },
   });
 }

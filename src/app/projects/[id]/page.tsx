@@ -22,6 +22,7 @@ interface ProjectDetailPageProps {
 
 /** 쿠키 기반 세션으로 매 요청 조회 (목록→상세 이동 시 캐시로 인한 404 방지) */
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function ProjectDetailPage({ params, searchParams }: ProjectDetailPageProps) {
   const { id } = await params;

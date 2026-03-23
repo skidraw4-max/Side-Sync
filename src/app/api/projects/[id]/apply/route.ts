@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -15,7 +16,7 @@ type ProjectRow = Pick<
 /**
  * POST: 프로젝트 지원 신청
  * - applications 테이블에 저장 (tech_stack·role·message, status: pending)
- * - 팀장에게 notifications 테이블에 "새로운 지원자가 있습니다!" 알림 생성
+ * - 팀장 알림: DB 트리거 `notify_leader_on_application_pending` (마이그레이션)에서 생성
  */
 export async function POST(
   request: Request,
@@ -142,17 +143,7 @@ export async function POST(
           { status: 500 }
         );
       }
-      if (project.team_leader_id) {
-        if (admin) {
-          // @ts-expect-error Supabase admin client infers never for insert with custom Database type
-          await admin.from("notifications").insert({
-            user_id: project.team_leader_id,
-            title: "지원자가 다시 신청했습니다",
-            message: "거절했던 지원자가 프로젝트에 다시 지원했습니다. 검토해 주세요.",
-            link: `/projects/${projectId}/manage`,
-          });
-        }
-      }
+      revalidatePath(`/projects/${projectId}`);
       return NextResponse.json({ ok: true, reapplied: true });
     }
     return NextResponse.json({ error: "이미 지원했습니다." }, { status: 409 });
@@ -186,18 +177,9 @@ export async function POST(
     );
   }
 
-  // 팀장에게 알림 생성 (Admin 클라이언트로 RLS 우회)
-  if (project.team_leader_id) {
-    if (admin) {
-      // @ts-expect-error Supabase admin client infers never for insert with custom Database type
-      await admin.from("notifications").insert({
-        user_id: project.team_leader_id,
-        title: "새로운 지원자가 있습니다!",
-        message: "프로젝트에 새로운 지원 요청이 들어왔습니다. 지원자를 검토해보세요.",
-        link: `/projects/${projectId}/manage`,
-      });
-    }
-  }
+  // 리더 알림: DB 트리거 notify_leader_on_application_pending (마이그레이션)에서 생성.
+  // service role 없을 때도 동작하도록 앱에서 notifications INSERT 제거.
 
+  revalidatePath(`/projects/${projectId}`);
   return NextResponse.json({ ok: true });
 }
