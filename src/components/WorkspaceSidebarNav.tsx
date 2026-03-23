@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
-import { BrandLogoWordmark } from "@/components/BrandLogo";
 import AdBanner from "@/components/AdBanner";
 import { ADSENSE_CLIENT_ID, ADSENSE_SLOTS } from "@/lib/ads-config";
 
@@ -126,12 +125,6 @@ export default function WorkspaceSidebarNav({
 
   return (
     <aside className="sticky top-0 flex h-screen w-56 shrink-0 flex-col border-r border-gray-200 bg-[#FAFAFA]">
-      <BrandLogoWordmark
-        size={32}
-        textClassName="font-semibold text-gray-800"
-        className="p-5 transition-opacity hover:opacity-90"
-      />
-
       {projectTitle && (
         <div className="mx-3 mb-2 flex items-center gap-2 rounded-lg bg-white px-3 py-2.5 shadow-sm">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-200 text-sm font-medium text-gray-600">

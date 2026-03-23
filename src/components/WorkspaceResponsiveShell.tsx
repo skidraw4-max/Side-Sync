@@ -39,7 +39,7 @@ export default function WorkspaceResponsiveShell({
   return (
     <div className="flex min-h-screen bg-[#F8FAFC]">
       {/* Mobile: hamburger + overlay */}
-      <div className="fixed left-0 top-0 z-40 flex h-14 w-full items-center justify-between border-b border-gray-200 bg-white px-4 sm:hidden">
+      <div className="fixed left-0 top-28 z-40 flex h-14 w-full items-center justify-between border-b border-gray-200 bg-white px-4 sm:hidden">
         <button
           type="button"
           onClick={() => setMobileMenuOpen((o) => !o)}

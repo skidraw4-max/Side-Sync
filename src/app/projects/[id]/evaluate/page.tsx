@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { fetchAcceptedApplicationsForProject } from "@/lib/supabase-project-queries";
-import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import EmptyState from "@/components/EmptyState";
 import { EvaluatePageSkeleton } from "@/components/Skeleton";
@@ -180,7 +179,6 @@ export default function EvaluatePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F8FAFC]">
-        <Header />
         <main className="px-6 py-12 md:px-12 lg:px-24">
           <EvaluatePageSkeleton />
         </main>
@@ -190,7 +188,6 @@ export default function EvaluatePage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      <Header />
       <main className="px-6 py-12 md:px-12 lg:px-24">
         <div className="mx-auto max-w-4xl">
           <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">

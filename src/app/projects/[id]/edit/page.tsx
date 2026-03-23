@@ -5,7 +5,6 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { createClient } from "@/lib/supabase/client";
 import type { Database, RecruitmentStatusRow } from "@/types/database";
@@ -207,7 +206,6 @@ export default function EditProjectPage() {
   if (!ready) {
     return (
       <div className="min-h-screen bg-[#FAFAFA]">
-        <Header />
         <main className="px-6 pb-16 pt-8 md:px-12 lg:px-24">
           <div className="mx-auto max-w-2xl animate-pulse space-y-4">
             <div className="h-8 w-48 rounded bg-gray-200" />
@@ -220,8 +218,6 @@ export default function EditProjectPage() {
 
   return (
     <div className="min-h-screen bg-[#FAFAFA]">
-      <Header />
-
       <main className="px-6 pb-16 pt-8 md:px-12 lg:px-24">
         <div className="mx-auto max-w-2xl">
           <div className="mb-8">

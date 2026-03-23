@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import ProjectDetailHeader from "@/components/ProjectDetailHeader";
 import ProjectDetailStitch from "@/components/ProjectDetailStitch";
 import Footer from "@/components/Footer";
 import { getDemoProjectById } from "@/lib/demo-projects";
@@ -43,7 +42,6 @@ export default async function ProjectDetailPage({ params, searchParams }: Projec
     ];
     return (
       <div className="min-h-screen bg-[#F9FAFB]">
-        <ProjectDetailHeader />
         <div className="border-b border-amber-200 bg-amber-50 px-6 py-2.5 text-center text-sm text-amber-900 md:px-12 lg:px-24">
           <span className="font-medium">샘플 프로젝트</span>
           <span className="text-amber-800">
@@ -190,8 +188,6 @@ export default async function ProjectDetailPage({ params, searchParams }: Projec
 
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
-      <ProjectDetailHeader />
-
       {isLeader && (
         <div className="flex items-center justify-between gap-4 bg-[#2563EB] px-6 py-3 md:px-12 lg:px-24">
           <div className="flex items-center gap-2 text-white">

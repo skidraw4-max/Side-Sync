@@ -15,7 +15,7 @@ interface HeaderProps {
 
 const NAV_LINKS = {
   default: [
-    { label: "Explore", href: "/#trending-projects" },
+    { label: "Explore", href: "/explore" },
     { label: "About", href: "/about" },
   ],
   onboarding: [
@@ -137,6 +137,13 @@ export default function Header({ variant = "default" }: HeaderProps) {
                 <Link href="/profile" onClick={() => setDropdownOpen(false)} className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
                   마이페이지
                 </Link>
+                <Link
+                  href="/projects/create"
+                  onClick={() => setDropdownOpen(false)}
+                  className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
+                >
+                  새 프로젝트
+                </Link>
                 <button type="button" onClick={handleLogout} className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
                   로그아웃
                 </button>
@@ -164,15 +171,8 @@ export default function Header({ variant = "default" }: HeaderProps) {
         <div className="hidden h-5 w-40 animate-pulse rounded bg-slate-100 md:block" aria-hidden />
       ) : isLoggedIn ? (
         <>
-          <Link
-            href="/projects/create"
-            className="hidden items-center gap-2 rounded-xl border-2 border-blue-600 bg-white px-3 py-2 text-sm font-semibold text-blue-600 transition hover:bg-blue-600 hover:text-white sm:inline-flex"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M5 12h14" />
-              <path d="M12 5v14" />
-            </svg>
-            새 프로젝트
+          <Link href="/explore" className={navLinkClass}>
+            프로젝트 탐색
           </Link>
           <Link href="/projects" className={navLinkClass}>
             내 프로젝트
@@ -189,8 +189,8 @@ export default function Header({ variant = "default" }: HeaderProps) {
   );
 
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-100 bg-white/95 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3.5 md:gap-8 md:px-8 lg:px-12">
+    <header className="sticky top-0 z-50 min-h-14 border-b border-slate-200 bg-white">
+      <div className="mx-auto flex min-h-14 max-w-7xl items-center justify-between gap-3 px-4 py-3 md:gap-8 md:px-8 lg:px-12">
         {/* 좌: 로고 + Side-Sync */}
         <div className="min-w-0 shrink-0">
           <BrandLogoWordmark size={36} />

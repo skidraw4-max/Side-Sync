@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
-import ManageApplicantsHeader from "@/components/ManageApplicantsHeader";
 import ManageApplicantsSidebar from "@/components/ManageApplicantsSidebar";
 import Footer from "@/components/Footer";
 import EmptyState from "@/components/EmptyState";
@@ -340,11 +339,32 @@ export default function ManageApplicantsPage() {
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <ManageApplicantsHeader
-          projectId={projectId}
-          searchValue={searchQuery}
-          onSearchChange={setSearchQuery}
-        />
+        <div className="border-b border-slate-200 bg-white px-6 py-3 md:px-10">
+          <div className="mx-auto flex max-w-4xl items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className="shrink-0 text-slate-400"
+              aria-hidden
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="지원자 검색..."
+              className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
+              aria-label="지원자 검색"
+            />
+          </div>
+        </div>
 
         <main className="flex-1 px-6 py-8 md:px-10">
           <div className="mx-auto max-w-4xl">
