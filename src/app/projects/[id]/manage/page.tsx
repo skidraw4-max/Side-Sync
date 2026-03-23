@@ -65,6 +65,22 @@ function applicantProfile(app: ApplicationWithProfile): ApplicantProfile | null 
   return app.profiles ?? app.applicant ?? null;
 }
 
+/** 동일 applicant_id 중복 행이 있으면 최신 지원 1건만 표시 (pending 탭 정리용) */
+function dedupeApplicationsByApplicantLatest(
+  list: ApplicationWithProfile[]
+): ApplicationWithProfile[] {
+  const byApplicant = new Map<string, ApplicationWithProfile>();
+  for (const a of list) {
+    const prev = byApplicant.get(a.applicant_id);
+    if (!prev || new Date(a.created_at).getTime() > new Date(prev.created_at).getTime()) {
+      byApplicant.set(a.applicant_id, a);
+    }
+  }
+  return [...byApplicant.values()].sort(
+    (x, y) => new Date(y.created_at).getTime() - new Date(x.created_at).getTime()
+  );
+}
+
 function mergeApplicantProfiles(
   batch: ApplicantProfile | null,
   embed: ApplicantProfile | null
@@ -98,6 +114,7 @@ export default function ManageApplicantsPage() {
   const [viewArchived, setViewArchived] = useState(false);
   const [rejectModalAppId, setRejectModalAppId] = useState<string | null>(null);
   const [rejectReasonInput, setRejectReasonInput] = useState("");
+  const [manageActionError, setManageActionError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -354,7 +371,8 @@ export default function ManageApplicantsPage() {
 
       if (cancelled) return;
 
-      setApplications(merged);
+      const forUi = viewArchived ? merged : dedupeApplicationsByApplicantLatest(merged);
+      setApplications(forUi);
     }
 
     void fetchApplicantsInEffect();
@@ -380,6 +398,7 @@ export default function ManageApplicantsPage() {
     const app = applications.find((a) => a.id === applicationId);
     if (!app) return;
 
+    setManageActionError(null);
     setUpdatingId(applicationId);
     const applicantName = applicantProfile(app)?.full_name ?? "Unknown";
 
@@ -390,16 +409,23 @@ export default function ManageApplicantsPage() {
     );
 
     const res = await fetch(
-      `/api/projects/${projectId}/applications/${applicationId}`,
+      `/api/projects/${encodeURIComponent(projectId)}/applications/${encodeURIComponent(applicationId)}`,
       {
         method: "PATCH",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "accepted" }),
       }
     );
 
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const msg =
+        data.error ??
+        (res.status === 404
+          ? "지원서를 찾을 수 없습니다. 새로고침 후 다시 시도해 주세요."
+          : "수락 처리에 실패했습니다.");
+      setManageActionError(msg);
       setApplications((prev) =>
         prev.map((a) =>
           a.id === applicationId ? { ...a, status: "pending" as const } : a
@@ -419,6 +445,7 @@ export default function ManageApplicantsPage() {
     const trimmed = reason.trim();
     if (!trimmed) return;
 
+    setManageActionError(null);
     setUpdatingId(applicationId);
 
     setApplications((prev) =>
@@ -428,15 +455,23 @@ export default function ManageApplicantsPage() {
     );
 
     const res = await fetch(
-      `/api/projects/${projectId}/applications/${applicationId}`,
+      `/api/projects/${encodeURIComponent(projectId)}/applications/${encodeURIComponent(applicationId)}`,
       {
         method: "PATCH",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "rejected", rejectReason: trimmed }),
       }
     );
 
     if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const msg =
+        data.error ??
+        (res.status === 404
+          ? "지원서를 찾을 수 없습니다. 새로고침 후 다시 시도해 주세요."
+          : "거절 처리에 실패했습니다.");
+      setManageActionError(msg);
       setApplications((prev) =>
         prev.map((a) =>
           a.id === applicationId ? { ...a, status: "pending" as const } : a
@@ -557,6 +592,23 @@ export default function ManageApplicantsPage() {
                 {filteredApplications.length} Active Applications
               </div>
             </div>
+
+            {manageActionError && (
+              <div
+                className="mt-6 flex items-start justify-between gap-4 rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-800"
+                role="alert"
+              >
+                <p>{manageActionError}</p>
+                <button
+                  type="button"
+                  onClick={() => setManageActionError(null)}
+                  className="shrink-0 rounded-lg p-1 text-red-600 hover:bg-red-100"
+                  aria-label="닫기"
+                >
+                  ×
+                </button>
+              </div>
+            )}
 
             {toast?.show && (
               <div className="mt-6 flex items-center justify-between gap-4 rounded-xl border border-blue-200 bg-blue-50 px-5 py-4">

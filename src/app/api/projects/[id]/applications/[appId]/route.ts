@@ -75,12 +75,23 @@ export async function PATCH(
     return NextResponse.json({ error: "팀장만 수락/거절할 수 있습니다." }, { status: 403 });
   }
 
-  const { data: appData } = await supabase
+  // 목록 API와 동일하게: 브라우저 RLS로 SELECT가 막히면 404가 나며 수락/거절이 무응답처럼 보임 → service role 우선
+  const admin = createAdminClient();
+  const db = admin ?? supabase;
+
+  const { data: appData, error: appSelectError } = await db
     .from("applications")
     .select("*")
     .eq("id", appId)
     .eq("project_id", projectId)
-    .single();
+    .maybeSingle();
+
+  if (appSelectError) {
+    return NextResponse.json(
+      { error: appSelectError.message || "지원서 조회에 실패했습니다." },
+      { status: 500 }
+    );
+  }
 
   const raw = appData as Record<string, unknown> | null;
   const application = raw
@@ -126,11 +137,12 @@ export async function PATCH(
     updatePayload.rejection_reason = rejectReason;
   }
 
-  const { error: updateError } = await supabase
+  const { error: updateError } = await db
     .from("applications")
     // @ts-expect-error Supabase client incorrectly infers 'never' for applications.update()
     .update(updatePayload)
-    .eq("id", appId);
+    .eq("id", appId)
+    .eq("project_id", projectId);
 
   if (updateError) {
     return NextResponse.json(
@@ -140,7 +152,6 @@ export async function PATCH(
   }
 
   if (status === "rejected" && application.applicant_id) {
-    const admin = createAdminClient();
     if (admin) {
       // @ts-expect-error Supabase admin client infers never for insert with custom Database type
       await admin.from("notifications").insert({
@@ -153,7 +164,6 @@ export async function PATCH(
   }
 
   if (status === "accepted" && application.applicant_id) {
-    const admin = createAdminClient();
     if (admin) {
       // 지원자에게 알림
       // @ts-expect-error Supabase admin client infers never for insert with custom Database type

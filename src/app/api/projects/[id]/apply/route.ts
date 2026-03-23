@@ -104,8 +104,9 @@ export async function POST(
     );
   }
 
-  // 이미 지원했는지 확인 (거절된 경우 재신청: pending으로 갱신)
-  const { data: existingRaw } = await supabase
+  // 이미 지원했는지 확인 — RLS로 본인 행이 안 보이면 중복 INSERT가 나갈 수 있어 service role(있으면)으로 조회
+  const dbRead = admin ?? supabase;
+  const { data: existingRaw } = await dbRead
     .from("applications")
     .select("id, status")
     .eq("project_id", projectId)
@@ -116,7 +117,10 @@ export async function POST(
 
   if (existing) {
     if (existing.status === "pending") {
-      return NextResponse.json({ error: "이미 신청이 접수되었습니다. 승인을 기다려주세요." }, { status: 409 });
+      return NextResponse.json(
+        { error: "이미 신청한 프로젝트입니다. 승인을 기다려 주세요." },
+        { status: 409 }
+      );
     }
     if (existing.status === "accepted") {
       return NextResponse.json({ error: "이미 이 프로젝트 팀원입니다." }, { status: 409 });
@@ -171,6 +175,13 @@ export async function POST(
   const { error: insertError } = await writeClient.from("applications").insert(insertPayload);
 
   if (insertError) {
+    const code = (insertError as { code?: string }).code;
+    if (code === "23505") {
+      return NextResponse.json(
+        { error: "이미 신청한 프로젝트입니다. 승인을 기다려 주세요." },
+        { status: 409 }
+      );
+    }
     return NextResponse.json(
       { error: insertError.message || "지원 저장에 실패했습니다." },
       { status: 500 }

@@ -213,6 +213,13 @@ export default function ProjectDetailStitch({
     }
   }, [viewerApplicationStatus]);
 
+  /** 신청 완료·검토 중이면 열려 있던 신청 모달을 닫아 중복 제출을 막음 */
+  useEffect(() => {
+    if (viewerApplicationStatus === "pending" || viewerApplicationStatus === "accepted") {
+      setShowApplyModal(false);
+    }
+  }, [viewerApplicationStatus]);
+
   const effectiveViewerStatus: ProjectDetailStitchProps["viewerApplicationStatus"] =
     optimisticPendingAfterApply &&
     viewerApplicationStatus !== "pending" &&
