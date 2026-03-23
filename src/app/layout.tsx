@@ -19,6 +19,10 @@ export const metadata: Metadata = {
     "협업 툴",
     "프로젝트 관리",
   ],
+  /** apex 도메인을 대표 URL로 고정 (www·미러 URL과의 혼선 방지) */
+  alternates: {
+    canonical: "https://sidesync.io",
+  },
   openGraph: {
     url: "https://sidesync.io",
     siteName: "Side-Sync",

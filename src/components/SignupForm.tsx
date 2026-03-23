@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getOAuthRedirectOrigin } from "@/lib/public-site-url";
 
 export default function SignupForm() {
   const router = useRouter();
@@ -42,7 +43,7 @@ export default function SignupForm() {
         email: email.trim(),
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${getOAuthRedirectOrigin()}/auth/callback`,
           data: {
             full_name: fullName.trim(),
             name: fullName.trim(),

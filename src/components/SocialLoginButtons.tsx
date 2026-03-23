@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { getOAuthRedirectOrigin } from "@/lib/public-site-url";
 
 interface SocialLoginButtonsProps {
   className?: string;
@@ -17,7 +18,7 @@ export default function SocialLoginButtons({ className = "mt-8" }: SocialLoginBu
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${getOAuthRedirectOrigin()}/auth/callback`,
         },
       });
       if (error) {

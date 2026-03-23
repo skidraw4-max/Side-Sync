@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/database";
+import { getPublicSiteOriginFromRequest } from "@/lib/public-site-url";
 
 const AUTH_ROUTES = ["/login", "/signup"];
 const PROTECTED_ROUTES = ["/onboarding", "/projects", "/workspace", "/profile"];
@@ -46,6 +47,7 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
   const pathname = request.nextUrl.pathname;
+  const siteOrigin = getPublicSiteOriginFromRequest(request);
 
   if (user) {
     const applyCookiesToRedirect = (redirectResponse: NextResponse) => {
@@ -66,8 +68,8 @@ export async function middleware(request: NextRequest) {
       const hasTechStack = Array.isArray(techStack) && techStack.length > 0;
 
       const redirectUrl = hasTechStack
-        ? new URL(PROJECTS_PATH, request.url)
-        : new URL(ONBOARDING_PATH, request.url);
+        ? new URL(PROJECTS_PATH, siteOrigin)
+        : new URL(ONBOARDING_PATH, siteOrigin);
       return applyCookiesToRedirect(NextResponse.redirect(redirectUrl));
     }
 
@@ -83,7 +85,7 @@ export async function middleware(request: NextRequest) {
 
       if (hasTechStack) {
         return applyCookiesToRedirect(
-          NextResponse.redirect(new URL(PROJECTS_PATH, request.url))
+          NextResponse.redirect(new URL(PROJECTS_PATH, siteOrigin))
         );
       }
     }
@@ -100,13 +102,13 @@ export async function middleware(request: NextRequest) {
 
       if (!hasTechStack) {
         return applyCookiesToRedirect(
-          NextResponse.redirect(new URL(ONBOARDING_PATH, request.url))
+          NextResponse.redirect(new URL(ONBOARDING_PATH, siteOrigin))
         );
       }
     }
   } else {
     if (isProtectedRoute(pathname)) {
-      const loginUrl = new URL("/login", request.url);
+      const loginUrl = new URL("/login", siteOrigin);
       loginUrl.searchParams.set("redirectTo", pathname);
       return NextResponse.redirect(loginUrl);
     }
