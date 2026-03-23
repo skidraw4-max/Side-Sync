@@ -70,7 +70,7 @@ export default function ProjectList({ userId }: ProjectListProps) {
           title="참여 중인 프로젝트가 없습니다"
           description="새 프로젝트를 만들거나 기존 프로젝트에 지원해보세요."
           actions={[
-            { label: "프로젝트 탐색하기", href: "/projects", primary: true },
+            { label: "프로젝트 탐색하기", href: "/dashboard", primary: true },
             { label: "새 프로젝트 만들기", href: "/projects/create", primary: false },
           ]}
         />
