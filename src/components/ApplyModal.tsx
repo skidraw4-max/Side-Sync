@@ -76,6 +76,7 @@ export default function ApplyModal({
     try {
       const res = await fetch(`/api/projects/${projectId}/apply`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           techStack: position,

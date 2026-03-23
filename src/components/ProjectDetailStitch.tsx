@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -89,8 +89,11 @@ export default function ProjectDetailStitch({
   autoOpenApplyModal = false,
 }: ProjectDetailStitchProps) {
   const router = useRouter();
+  const [, startTransition] = useTransition();
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [showApplyModal, setShowApplyModal] = useState(false);
+  /** 서버 RSC가 refresh 직후에도 지원 상태를 못 따라올 때 즉시 「승인 대기」UI 표시 */
+  const [optimisticPendingAfterApply, setOptimisticPendingAfterApply] = useState(false);
   const applyIntentHandled = useRef(false);
   /** 매 렌더마다 새 인스턴스면 realtime useEffect가 무한에 가깝게 재실행됨 */
   const supabase = useMemo(() => createClient(), []);
@@ -204,6 +207,19 @@ export default function ProjectDetailStitch({
     };
   }, [projectId, viewerId, isLeader, supabase, router]);
 
+  useEffect(() => {
+    if (viewerApplicationStatus === "pending" || viewerApplicationStatus === "accepted") {
+      setOptimisticPendingAfterApply(false);
+    }
+  }, [viewerApplicationStatus]);
+
+  const effectiveViewerStatus: ProjectDetailStitchProps["viewerApplicationStatus"] =
+    optimisticPendingAfterApply &&
+    viewerApplicationStatus !== "pending" &&
+    viewerApplicationStatus !== "accepted"
+      ? "pending"
+      : viewerApplicationStatus;
+
   const totalSlots = rolesWithFilled.reduce((s, r) => s + r.total, 0);
 
   /** 합류+지원 중 기준으로 아직 자리가 있는지 (참여하기 노출 조건) */
@@ -237,17 +253,17 @@ export default function ProjectDetailStitch({
   ]);
 
   const showLoginToApply =
-    !isLeader && recruitmentHasVacancy && viewerApplicationStatus === "guest";
+    !isLeader && recruitmentHasVacancy && effectiveViewerStatus === "guest";
 
   const showApplyButtonLoggedIn =
     !isLeader &&
     recruitmentHasVacancy &&
-    (viewerApplicationStatus === "none" || viewerApplicationStatus === "rejected");
+    (effectiveViewerStatus === "none" || effectiveViewerStatus === "rejected");
 
-  const showPendingState = !isLeader && viewerApplicationStatus === "pending";
-  const showMemberWorkspace = !isLeader && viewerApplicationStatus === "accepted";
+  const showPendingState = !isLeader && effectiveViewerStatus === "pending";
+  const showMemberWorkspace = !isLeader && effectiveViewerStatus === "accepted";
   const showRejectedHint =
-    !isLeader && viewerApplicationStatus === "rejected" && recruitmentHasVacancy;
+    !isLeader && effectiveViewerStatus === "rejected" && recruitmentHasVacancy;
 
   const loginNextWithApply = encodeURIComponent(`/projects/${projectId}?apply=1`);
 
@@ -536,9 +552,9 @@ export default function ProjectDetailStitch({
                           {PROJECT.applyParticipate}
                         </button>
                       ) : !recruitmentHasVacancy &&
-                        (viewerApplicationStatus === "guest" ||
-                          viewerApplicationStatus === "none" ||
-                          viewerApplicationStatus === "rejected") ? (
+                        (effectiveViewerStatus === "guest" ||
+                          effectiveViewerStatus === "none" ||
+                          effectiveViewerStatus === "rejected") ? (
                         <div className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3.5 text-center text-sm font-medium text-gray-600">
                           {PROJECT.applyClosed}
                         </div>
@@ -677,8 +693,11 @@ export default function ProjectDetailStitch({
         projectTitle={projectTitle}
         roles={openRoles}
         onSubmitSuccess={() => {
+          setOptimisticPendingAfterApply(true);
           setShowApplyModal(false);
-          router.refresh();
+          startTransition(() => {
+            router.refresh();
+          });
         }}
       />
     </>
