@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   fetchApplicationCountsByPosition,
-  parseRecruitmentSlots,
+  getEffectiveRecruitmentSlots,
 } from "@/lib/project-application-positions";
 import {
   DEFAULT_AI_RECOMMENDATION_FALLBACK,
@@ -103,7 +103,7 @@ export async function runAiProjectRecommendationsAction(): Promise<RunAiRecommen
     const vis = (row.visibility ?? "Public").toLowerCase();
     if (vis === "private") continue;
 
-    const slots = parseRecruitmentSlots(row.recruitment_status);
+    const slots = getEffectiveRecruitmentSlots(row.recruitment_status);
     if (slots.length === 0) continue;
 
     const { data: appRow } = await admin

@@ -4,7 +4,7 @@ import type { Database } from "@/types/database";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   fetchApplicationCountsByPosition,
-  parseRecruitmentSlots,
+  getEffectiveRecruitmentSlots,
 } from "@/lib/project-application-positions";
 
 type ProjectRow = Pick<
@@ -83,13 +83,7 @@ export async function POST(
     );
   }
 
-  const slots = parseRecruitmentSlots(project.recruitment_status);
-  if (slots.length === 0) {
-    return NextResponse.json(
-      { error: "등록된 모집 포지션이 없어 지원할 수 없습니다." },
-      { status: 400 }
-    );
-  }
+  const slots = getEffectiveRecruitmentSlots(project.recruitment_status);
   const matchedSlot = slots.find((s) => s.role === techStackRaw);
   if (!matchedSlot) {
     return NextResponse.json({ error: "선택한 포지션이 모집 공고와 일치하지 않습니다." }, { status: 400 });

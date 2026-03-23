@@ -8,6 +8,7 @@ interface ApplyModalProps {
   onClose: () => void;
   projectId: string;
   projectTitle: string;
+  /** 모집 가능한 포지션만 전달 (합류+지원 중이 정원 미만인 슬롯 — 부모가 계산) */
   roles: { role: string; total: number; filled: number }[];
   onSubmitSuccess?: () => void;
 }
@@ -26,7 +27,7 @@ export default function ApplyModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const openRoles = roles.filter((r) => r.filled < r.total);
+  const openRoles = roles;
   const defaultPosition = openRoles[0]?.role ?? "";
 
   useEffect(() => {

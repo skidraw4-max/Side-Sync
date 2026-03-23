@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import ApplyModal from "./ApplyModal";
 import type { RecruitmentStatusRow } from "@/types/database";
 import { PROJECT } from "@/lib/constants/contents";
+import { getEffectiveRecruitmentSlots } from "@/lib/project-application-positions";
 
 /** role 컬럼이 없을 때 모집 정원(total) 순으로 accepted 명수를 배분 (표시용) */
 function distributeFilledGreedy(
@@ -94,19 +95,9 @@ export default function ProjectDetailStitch({
   /** 매 렌더마다 새 인스턴스면 realtime useEffect가 무한에 가깝게 재실행됨 */
   const supabase = useMemo(() => createClient(), []);
 
+  /** 모집 공고가 비어 있어도 기본 슬롯으로 참여 신청 버튼이 뜨도록 통일 */
   const roleEntries = useMemo(() => {
-    const rawStatus = recruitmentStatus ?? [];
-    if (!Array.isArray(rawStatus)) {
-      return [
-        { role: "UI Designer", total: 1 },
-        { role: "Backend Dev", total: 1 },
-        { role: "Frontend Dev", total: 2 },
-      ];
-    }
-    return rawStatus.map((r) => ({
-      role: r.role,
-      total: typeof r.total === "number" ? r.total : "count" in r ? (r as { count: number }).count : 1,
-    }));
+    return getEffectiveRecruitmentSlots(recruitmentStatus);
   }, [recruitmentStatus]);
 
   /** 서버에서 이미 acceptedApplicants를 내려주므로 클라이언트에서 applications 재조회하지 않음 (400·중복 요청 방지) */
@@ -213,12 +204,13 @@ export default function ProjectDetailStitch({
 
   const totalSlots = rolesWithFilled.reduce((s, r) => s + r.total, 0);
 
-  const anyOpen = openRoles.length > 0;
+  /** 합류+지원 중 기준으로 아직 자리가 있는지 (참여하기 노출 조건) */
+  const recruitmentHasVacancy = openRoles.length > 0;
 
   /** AI 알림 등에서 ?apply=1 진입 시 모달 오픈 (1회) */
   useEffect(() => {
     if (!autoOpenApplyModal || applyIntentHandled.current) return;
-    if (isLeader || !anyOpen) return;
+    if (isLeader || !recruitmentHasVacancy) return;
     if (viewerApplicationStatus === "pending" || viewerApplicationStatus === "accepted") return;
 
     applyIntentHandled.current = true;
@@ -235,23 +227,27 @@ export default function ProjectDetailStitch({
     }
   }, [
     autoOpenApplyModal,
-    anyOpen,
+    recruitmentHasVacancy,
     isLeader,
     projectId,
     router,
     viewerApplicationStatus,
   ]);
 
-  const showLoginToApply = !isLeader && anyOpen && viewerApplicationStatus === "guest";
+  const showLoginToApply =
+    !isLeader && recruitmentHasVacancy && viewerApplicationStatus === "guest";
 
   const showApplyButtonLoggedIn =
     !isLeader &&
-    anyOpen &&
+    recruitmentHasVacancy &&
     (viewerApplicationStatus === "none" || viewerApplicationStatus === "rejected");
 
   const showPendingState = !isLeader && viewerApplicationStatus === "pending";
   const showMemberWorkspace = !isLeader && viewerApplicationStatus === "accepted";
-  const showRejectedHint = !isLeader && viewerApplicationStatus === "rejected" && anyOpen;
+  const showRejectedHint =
+    !isLeader && viewerApplicationStatus === "rejected" && recruitmentHasVacancy;
+
+  const loginNextWithApply = encodeURIComponent(`/projects/${projectId}?apply=1`);
 
   return (
     <>
@@ -460,41 +456,7 @@ export default function ProjectDetailStitch({
                       );
                     })}
                   </ul>
-                  {showMemberWorkspace ? (
-                    <Link
-                      href={`/projects/${projectId}/workspace`}
-                      className="mt-5 flex w-full items-center justify-center whitespace-nowrap rounded-xl bg-[#2563EB] px-3 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8]"
-                    >
-                      {PROJECT.goToWorkspaceBoard}
-                    </Link>
-                  ) : showPendingState ? (
-                    <div className="mt-5 w-full rounded-xl border border-amber-200 bg-amber-50 py-3.5 text-center text-sm font-semibold text-amber-900">
-                      {PROJECT.approvalPending}
-                    </div>
-                  ) : showLoginToApply ? (
-                    <Link
-                      href={`/login?next=/projects/${projectId}`}
-                      className="mt-5 flex w-full items-center justify-center whitespace-nowrap rounded-xl bg-[#2563EB] px-3 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8]"
-                    >
-                      로그인 후 참여 신청
-                    </Link>
-                  ) : showApplyButtonLoggedIn ? (
-                    <button
-                      type="button"
-                      onClick={() => setShowApplyModal(true)}
-                      className="mt-5 w-full whitespace-nowrap rounded-xl bg-[#2563EB] px-3 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8]"
-                    >
-                      {PROJECT.applyParticipate}
-                    </button>
-                  ) : viewerApplicationStatus === "rejected" && !anyOpen ? (
-                    <div className="mt-5 w-full rounded-xl border border-gray-200 py-3.5 text-center text-sm font-medium text-gray-600">
-                      {PROJECT.applyClosed}
-                    </div>
-                  ) : null}
-                  {showRejectedHint && (
-                    <p className="mt-2 text-xs text-gray-500">{PROJECT.rejectedApplyHint}</p>
-                  )}
-                  <p className="mt-3 text-xs text-gray-500">{PROJECT.avgResponseTime}</p>
+                  <p className="mt-4 text-xs text-gray-500">{PROJECT.avgResponseTime}</p>
                 </div>
 
                 {/* Project Info Card */}
@@ -533,6 +495,54 @@ export default function ProjectDetailStitch({
                     </div>
                   </dl>
                 </div>
+
+                {/* 참여 CTA: 모집 현황·프로젝트 정보 카드 아래 (비리더) */}
+                {!isLeader && (
+                  <div className="rounded-xl border border-[#2563EB]/15 bg-gradient-to-b from-white to-blue-50/40 p-6 shadow-md">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                      참여
+                    </h3>
+                    <div className="mt-4 space-y-3">
+                      {showMemberWorkspace ? (
+                        <Link
+                          href={`/projects/${projectId}/workspace`}
+                          className="flex w-full items-center justify-center whitespace-nowrap rounded-xl bg-[#2563EB] px-3 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8]"
+                        >
+                          {PROJECT.goToWorkspaceBoard}
+                        </Link>
+                      ) : showPendingState ? (
+                        <div className="w-full rounded-xl border border-amber-200 bg-amber-50 py-3.5 text-center text-sm font-semibold text-amber-900">
+                          {PROJECT.approvalPending}
+                        </div>
+                      ) : showLoginToApply ? (
+                        <Link
+                          href={`/login?next=${loginNextWithApply}`}
+                          className="flex w-full items-center justify-center whitespace-nowrap rounded-xl bg-[#2563EB] px-3 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8]"
+                        >
+                          로그인 후 참여 신청
+                        </Link>
+                      ) : showApplyButtonLoggedIn ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowApplyModal(true)}
+                          className="w-full whitespace-nowrap rounded-xl bg-[#2563EB] px-3 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8]"
+                        >
+                          {PROJECT.applyParticipate}
+                        </button>
+                      ) : !recruitmentHasVacancy &&
+                        (viewerApplicationStatus === "guest" ||
+                          viewerApplicationStatus === "none" ||
+                          viewerApplicationStatus === "rejected") ? (
+                        <div className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3.5 text-center text-sm font-medium text-gray-600">
+                          {PROJECT.applyClosed}
+                        </div>
+                      ) : null}
+                      {showRejectedHint && (
+                        <p className="text-xs text-gray-500">{PROJECT.rejectedApplyHint}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </aside>
           </div>
@@ -614,7 +624,9 @@ export default function ProjectDetailStitch({
                     ? "프로젝트에 참여하려면 신청서를 제출해 주세요."
                     : showLoginToApply
                       ? "로그인 후 참여 신청이 가능합니다."
-                      : null}
+                      : !recruitmentHasVacancy
+                        ? "현재 모집 정원이 모두 찼습니다."
+                        : null}
             </p>
             <div className="flex shrink-0 gap-2">
               {showMemberWorkspace && (
@@ -641,7 +653,7 @@ export default function ProjectDetailStitch({
               )}
               {showLoginToApply && (
                 <Link
-                  href={`/login?next=/projects/${projectId}`}
+                  href={`/login?next=${loginNextWithApply}`}
                   className="inline-flex w-full items-center justify-center rounded-xl bg-[#2563EB] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8] sm:w-auto"
                 >
                   로그인 후 참여 신청
@@ -657,7 +669,7 @@ export default function ProjectDetailStitch({
         onClose={() => setShowApplyModal(false)}
         projectId={projectId}
         projectTitle={projectTitle}
-        roles={rolesWithFilled}
+        roles={openRoles}
         onSubmitSuccess={() => {
           setShowApplyModal(false);
           router.refresh();

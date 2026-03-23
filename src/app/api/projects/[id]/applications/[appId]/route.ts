@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   applicationPositionKey,
   fetchApplicationCountsByPosition,
-  parseRecruitmentSlots,
+  getEffectiveRecruitmentSlots,
 } from "@/lib/project-application-positions";
 
 type ProjectRow = Pick<
@@ -99,7 +99,7 @@ export async function PATCH(
   // 수락 시: 해당 포지션(tech_stack·role) 합류 인원이 정원을 넘지 않는지 검증
   if (status === "accepted") {
     const positionKey = applicationPositionKey(application);
-    const slots = parseRecruitmentSlots(project.recruitment_status);
+    const slots = getEffectiveRecruitmentSlots(project.recruitment_status);
     const slot = slots.find((s) => s.role === positionKey);
     if (slot) {
       const statsClient = createAdminClient() ?? supabase;

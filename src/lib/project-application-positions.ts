@@ -1,5 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
+import { PROJECT } from "@/lib/constants/contents";
+
+/** 모집 공고가 비었을 때 참여 신청·정원 계산용 기본 슬롯 (PROJECT.roleGeneral 과 동일 라벨) */
+export const FALLBACK_OPEN_RECRUITMENT_SLOT = {
+  role: PROJECT.roleGeneral,
+  total: 99,
+} as const;
 
 /** 지원서 행에서 모집 포지션 키 (tech_stack 우선, 없으면 role) */
 export function applicationPositionKey(row: {
@@ -8,15 +15,16 @@ export function applicationPositionKey(row: {
 }): string {
   const t = row.tech_stack?.trim();
   const r = row.role?.trim();
-  return t || r || "General";
+  return t || r || PROJECT.roleGeneral;
 }
 
-/** recruitment_status JSON → 슬롯 목록 */
+/** recruitment_status JSON → 슬롯 목록 (role 누락 시 "General" 자리표 — 레거시) */
 export function parseRecruitmentSlots(recruitment_status: unknown): { role: string; total: number }[] {
   if (!Array.isArray(recruitment_status)) return [];
   return recruitment_status.map((item) => {
     const r = item as { role?: string; count?: number; total?: number };
-    const role = typeof r.role === "string" && r.role.trim() ? r.role.trim() : "General";
+    const role =
+      typeof r.role === "string" && r.role.trim() ? r.role.trim() : PROJECT.roleGeneral;
     const total =
       typeof r.total === "number" && r.total >= 0
         ? r.total
@@ -25,6 +33,35 @@ export function parseRecruitmentSlots(recruitment_status: unknown): { role: stri
           : 1;
     return { role, total };
   });
+}
+
+/**
+ * 실제 참여 신청·UI에 쓰는 모집 슬롯.
+ * 배열이 비었거나, 항목에 유효한 role 이 하나도 없으면 기본 슬롯 1개(일반/넉넉한 정원)를 반환합니다.
+ */
+export function getEffectiveRecruitmentSlots(recruitment_status: unknown): { role: string; total: number }[] {
+  if (!Array.isArray(recruitment_status) || recruitment_status.length === 0) {
+    return [{ role: FALLBACK_OPEN_RECRUITMENT_SLOT.role, total: FALLBACK_OPEN_RECRUITMENT_SLOT.total }];
+  }
+
+  const out: { role: string; total: number }[] = [];
+  for (const item of recruitment_status) {
+    const r = item as { role?: string; count?: number; total?: number };
+    if (typeof r.role !== "string" || !r.role.trim()) continue;
+    const role = r.role.trim();
+    const total =
+      typeof r.total === "number" && r.total >= 0
+        ? r.total
+        : typeof r.count === "number" && r.count >= 0
+          ? r.count
+          : 1;
+    out.push({ role, total });
+  }
+
+  if (out.length === 0) {
+    return [{ role: FALLBACK_OPEN_RECRUITMENT_SLOT.role, total: FALLBACK_OPEN_RECRUITMENT_SLOT.total }];
+  }
+  return out;
 }
 
 /** 포지션별 합류(accepted)·대기(pending) 건수 — RLS 우회 시 service role 클라이언트 권장 */

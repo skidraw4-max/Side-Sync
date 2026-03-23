@@ -10,6 +10,8 @@ import EmptyState from "@/components/EmptyState";
 import { ManageApplicantsSkeleton } from "@/components/Skeleton";
 import { createClient } from "@/lib/supabase/client";
 import { fetchAcceptedApplicationsForProject } from "@/lib/supabase-project-queries";
+import { getEffectiveRecruitmentSlots } from "@/lib/project-application-positions";
+import { PROJECT } from "@/lib/constants/contents";
 
 interface ApplicantProfile {
   full_name: string | null;
@@ -103,18 +105,15 @@ export default function ManageApplicantsPage() {
 
     const filledByRole: Record<string, number> = {};
     acceptedApps.forEach((a) => {
-      const r = a.role?.trim() || "General";
+      const r = a.role?.trim() || PROJECT.roleGeneral;
       filledByRole[r] = (filledByRole[r] ?? 0) + 1;
     });
 
     const map: Record<string, { total: number; filled: number }> = {};
-    if (Array.isArray(rawStatus)) {
-      rawStatus.forEach((r) => {
-        const role = r.role?.trim() || "General";
-        const total = r.total ?? r.count ?? 1;
-        map[role] = { total, filled: filledByRole[role] ?? 0 };
-      });
-    }
+    const effectiveSlots = getEffectiveRecruitmentSlots(rawStatus);
+    effectiveSlots.forEach((s) => {
+      map[s.role] = { total: s.total, filled: filledByRole[s.role] ?? 0 };
+    });
     setRoleFilledMap(map);
 
     const statusFilter = viewArchived
