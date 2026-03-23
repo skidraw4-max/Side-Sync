@@ -5,12 +5,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   applicationPositionKey,
   fetchApplicationCountsByPosition,
-  getEffectiveRecruitmentSlots,
+  getApplySlotsFromTechStack,
 } from "@/lib/project-application-positions";
 
 type ProjectRow = Pick<
   Database["public"]["Tables"]["projects"]["Row"],
-  "id" | "title" | "team_leader_id" | "recruitment_status"
+  "id" | "title" | "team_leader_id" | "recruitment_status" | "tech_stack"
 >;
 
 type ApplicationRow = Pick<
@@ -61,7 +61,7 @@ export async function PATCH(
 
   const { data } = await supabase
     .from("projects")
-    .select("id, title, team_leader_id, recruitment_status")
+    .select("id, title, team_leader_id, recruitment_status, tech_stack")
     .eq("id", projectId)
     .single();
 
@@ -96,21 +96,26 @@ export async function PATCH(
     return NextResponse.json({ error: "지원서를 찾을 수 없습니다." }, { status: 404 });
   }
 
-  // 수락 시: 해당 포지션(tech_stack·role) 합류 인원이 정원을 넘지 않는지 검증
+  // 수락 시: 해당 포지션(tech_stack·role) 합류 인원이 정원을 넘지 않는지 검증 (필수 기술 스택 슬롯 기준)
   if (status === "accepted") {
     const positionKey = applicationPositionKey(application);
-    const slots = getEffectiveRecruitmentSlots(project.recruitment_status);
+    const techArr = Array.isArray(project.tech_stack) ? (project.tech_stack as string[]) : [];
+    const slots = getApplySlotsFromTechStack(techArr, project.recruitment_status);
     const slot = slots.find((s) => s.role === positionKey);
-    if (slot) {
-      const statsClient = createAdminClient() ?? supabase;
-      const { accepted } = await fetchApplicationCountsByPosition(statsClient, projectId);
-      const filled = accepted[positionKey] ?? 0;
-      if (filled >= slot.total) {
-        return NextResponse.json(
-          { error: "해당 포지션 모집이 완료되었습니다." },
-          { status: 400 }
-        );
-      }
+    if (!slot) {
+      return NextResponse.json(
+        { error: "지원 포지션이 프로젝트 필수 기술 스택·모집 설정과 일치하지 않습니다." },
+        { status: 400 }
+      );
+    }
+    const statsClient = createAdminClient() ?? supabase;
+    const { accepted } = await fetchApplicationCountsByPosition(statsClient, projectId);
+    const filled = accepted[positionKey] ?? 0;
+    if (filled >= slot.total) {
+      return NextResponse.json(
+        { error: "해당 포지션 모집이 완료되었습니다." },
+        { status: 400 }
+      );
     }
   }
 

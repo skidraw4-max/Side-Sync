@@ -4,12 +4,12 @@ import type { Database } from "@/types/database";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   fetchApplicationCountsByPosition,
-  getEffectiveRecruitmentSlots,
+  getApplySlotsFromTechStack,
 } from "@/lib/project-application-positions";
 
 type ProjectRow = Pick<
   Database["public"]["Tables"]["projects"]["Row"],
-  "id" | "team_leader_id" | "recruitment_status"
+  "id" | "team_leader_id" | "recruitment_status" | "tech_stack"
 >;
 
 /**
@@ -67,7 +67,7 @@ export async function POST(
   // 프로젝트 및 팀장 조회
   const { data, error: projectError } = await supabase
     .from("projects")
-    .select("id, team_leader_id, recruitment_status")
+    .select("id, team_leader_id, recruitment_status, tech_stack")
     .eq("id", projectId)
     .single();
 
@@ -83,10 +83,14 @@ export async function POST(
     );
   }
 
-  const slots = getEffectiveRecruitmentSlots(project.recruitment_status);
+  const techArr = Array.isArray(project.tech_stack) ? (project.tech_stack as string[]) : [];
+  const slots = getApplySlotsFromTechStack(techArr, project.recruitment_status);
   const matchedSlot = slots.find((s) => s.role === techStackRaw);
   if (!matchedSlot) {
-    return NextResponse.json({ error: "선택한 포지션이 모집 공고와 일치하지 않습니다." }, { status: 400 });
+    return NextResponse.json(
+      { error: "선택한 기술 스택이 프로젝트 필수 스택에 없거나 모집 정원과 맞지 않습니다." },
+      { status: 400 }
+    );
   }
 
   const statsClient = createAdminClient() ?? supabase;

@@ -64,6 +64,30 @@ export function getEffectiveRecruitmentSlots(recruitment_status: unknown): { rol
   return out;
 }
 
+/**
+ * 참여 신청 모달·POST /apply·수락 시 정원 검증용 슬롯.
+ * `tech_stack`이 비어 있지 않으면 옵션 라벨이 **필수 기술 스택**과 동일한 순서·이름이 됩니다.
+ * recruitment_status에 동일 role 이 있으면 그 정원을 쓰고, 없으면 모집 슬롯 합(최소 1)을 기술 수로 나눈 값을 씁니다.
+ */
+export function getApplySlotsFromTechStack(
+  techStack: string[],
+  recruitment_status: unknown
+): { role: string; total: number }[] {
+  const normalized = [...new Set(techStack.map((t) => String(t).trim()).filter(Boolean))];
+  if (normalized.length === 0) {
+    return getEffectiveRecruitmentSlots(recruitment_status);
+  }
+
+  const rec = getEffectiveRecruitmentSlots(recruitment_status);
+  const sumTotals = rec.reduce((s, x) => s + x.total, 0);
+  const perUnmatched = Math.max(1, Math.ceil(Math.max(1, sumTotals) / normalized.length));
+
+  return normalized.map((tech) => {
+    const match = rec.find((s) => s.role === tech);
+    return { role: tech, total: match ? match.total : perUnmatched };
+  });
+}
+
 /** 포지션별 합류(accepted)·대기(pending) 건수 — RLS 우회 시 service role 클라이언트 권장 */
 export async function fetchApplicationCountsByPosition(
   client: SupabaseClient<Database>,
