@@ -6,8 +6,9 @@ import { createClient } from "@/lib/supabase/client";
 import { shouldEnableSupabaseRealtimeSubscriptions } from "@/lib/supabase/realtime-flags";
 import { DEMO_PROJECTS } from "@/lib/demo-projects";
 import { projectMatchesSearchTokens, tokenizeSearchQuery } from "@/lib/project-search";
-import type { Database } from "@/types/database";
+import type { Database, RecruitmentStatusRow } from "@/types/database";
 import type { ProjectCardProps } from "@/components/ProjectCard";
+import { inferProjectRecruitmentState } from "@/lib/project-recruitment-state";
 
 const PROJECTS_QUERY_KEY = ["projects"] as const;
 
@@ -17,14 +18,17 @@ export interface ProjectWithId extends ProjectCardProps {
   id: string;
 }
 
+const FALLBACK_RECRUITMENT = ["recruiting", "urgent", "recruiting"] as const;
+
 /** DB 미연결·오류 시 트렌딩 카드용 (상세는 demo-projects와 동일 ID로 렌더) */
-const FALLBACK_PROJECTS: ProjectWithId[] = DEMO_PROJECTS.map((p) => ({
+const FALLBACK_PROJECTS: ProjectWithId[] = DEMO_PROJECTS.map((p, i) => ({
   ...p,
+  recruitmentState: FALLBACK_RECRUITMENT[i % FALLBACK_RECRUITMENT.length],
 }));
 
 type RowMinimal = Pick<
   Database["public"]["Tables"]["projects"]["Row"],
-  "id" | "title" | "description" | "goal" | "tech_stack"
+  "id" | "title" | "description" | "goal" | "tech_stack" | "status" | "recruitment_status"
 > & {
   manner_temp_target?: string | null;
   summary?: string | null;
@@ -40,6 +44,10 @@ function mapRowToCard(row: RowMinimal): ProjectWithId {
     techStack: Array.isArray(row.tech_stack) ? row.tech_stack : [],
     mannerTemperature: row.manner_temp_target ?? "36.5°C",
     gradient: r.gradient?.trim() ? r.gradient : DEFAULT_GRADIENT,
+    recruitmentState: inferProjectRecruitmentState(
+      row.status,
+      row.recruitment_status as RecruitmentStatusRow[] | null
+    ),
   };
 }
 

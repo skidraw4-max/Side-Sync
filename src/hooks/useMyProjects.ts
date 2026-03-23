@@ -4,8 +4,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { shouldEnableSupabaseRealtimeSubscriptions } from "@/lib/supabase/realtime-flags";
-import type { Database } from "@/types/database";
+import type { Database, RecruitmentStatusRow } from "@/types/database";
 import type { ProjectCardProps } from "@/components/ProjectCard";
+import { inferProjectRecruitmentState } from "@/lib/project-recruitment-state";
 import { fetchLedProjectsForUser, fetchProjectsByIds } from "@/lib/supabase-project-queries";
 
 const DEFAULT_GRADIENT = "from-blue-200 via-indigo-200 to-purple-200";
@@ -57,6 +58,10 @@ async function fetchMyProjects(userId: string): Promise<ProjectWithId[]> {
       techStack: Array.isArray(row.tech_stack) ? row.tech_stack : [],
       mannerTemperature: (row as { manner_temp_target?: string | null }).manner_temp_target ?? "36.5°C",
       gradient: (row as { gradient?: string | null }).gradient ?? DEFAULT_GRADIENT,
+      recruitmentState: inferProjectRecruitmentState(
+        row.status,
+        row.recruitment_status as RecruitmentStatusRow[] | null
+      ),
     }));
   } catch (err) {
     console.error("[useMyProjects] fetchMyProjects 에러:", err);

@@ -32,18 +32,23 @@ export function Skeleton({ className = "", rounded = "md" }: SkeletonProps) {
 /** 프로젝트 카드 형태 스켈레톤 (메인/프로필) */
 export function ProjectCardSkeleton() {
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-      <Skeleton className="h-24 w-full" rounded="none" />
-      <div className="space-y-4 p-5">
-        <Skeleton className="h-5 w-3/4" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-2/3" />
-        <div className="flex gap-2">
-          <Skeleton className="h-6 w-16" rounded="md" />
-          <Skeleton className="h-6 w-14" rounded="md" />
-          <Skeleton className="h-6 w-20" rounded="md" />
+    <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+      <Skeleton className="h-[4.9rem] w-full sm:h-20" rounded="none" />
+      <div className="space-y-2 p-3.5">
+        <Skeleton className="h-4 w-3/4" rounded="md" />
+        <Skeleton className="h-3 w-full" rounded="md" />
+        <Skeleton className="h-3 w-2/3" rounded="md" />
+      </div>
+      <div className="border-t border-gray-100 bg-gray-50/60 px-3.5 py-2">
+        <Skeleton className="mb-1.5 h-2.5 w-16" rounded="md" />
+        <div className="flex gap-1.5">
+          <Skeleton className="h-5 w-14" rounded="md" />
+          <Skeleton className="h-5 w-12" rounded="md" />
+          <Skeleton className="h-5 w-16" rounded="md" />
         </div>
-        <Skeleton className="h-10 w-full" rounded="lg" />
+      </div>
+      <div className="border-t border-gray-100 px-3.5 py-3">
+        <Skeleton className="h-8 w-full" rounded="md" />
       </div>
     </div>
   );
