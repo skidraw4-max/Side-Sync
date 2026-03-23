@@ -236,6 +236,26 @@ export default function KanbanTasksBoard({
   const [editDueDate, setEditDueDate] = useState("");
   const [editStatus, setEditStatus] = useState<"todo" | "doing" | "done">("todo");
 
+  useEffect(() => {
+    setTasks(initialTasks);
+  }, [initialTasks]);
+
+  const patchTaskApi = useCallback(
+    async (taskId: string, body: Record<string, unknown>) => {
+      const res = await fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify(body),
+      });
+      const json = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        throw new Error(json.error ?? `저장 실패 (${res.status})`);
+      }
+    },
+    [projectId]
+  );
+
   const meInTeam = currentUserId && teamMembers.some((m) => m.id === currentUserId);
   const assigneeOptions = (() => {
     const opts: { value: string; label: string; isUser: boolean }[] = [];
@@ -390,28 +410,28 @@ export default function KanbanTasksBoard({
 
   const handleStatusChange = useCallback(
     async (taskId: string, newStatus: string) => {
-      const prevStatus = tasks.find((t) => t.id === taskId)?.status ?? "todo";
-      setTasks((prev) =>
-        prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
-      );
+      const safe =
+        newStatus === "todo" || newStatus === "doing" || newStatus === "done"
+          ? newStatus
+          : "todo";
+      let prevStatus = "todo";
+      setTasks((prev) => {
+        const t = prev.find((x) => x.id === taskId);
+        prevStatus = t?.status ?? "todo";
+        return prev.map((x) => (x.id === taskId ? { ...x, status: safe } : x));
+      });
 
-      const supabase = createClient();
-      const { error } = await (supabase as any)
-        .from("tasks")
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
-        .eq("id", taskId);
-
-      if (error) {
-        toast.error("상태 변경에 실패했습니다.");
+      try {
+        await patchTaskApi(taskId, { status: safe });
+        router.refresh();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "상태 변경에 실패했습니다.");
         setTasks((prev) =>
           prev.map((t) => (t.id === taskId ? { ...t, status: prevStatus } : t))
         );
-        return;
       }
-
-      router.refresh();
     },
-    [router, tasks]
+    [patchTaskApi, router]
   );
 
   const openNewTaskModal = (column: "todo" | "doing" | "done") => {
@@ -516,15 +536,20 @@ export default function KanbanTasksBoard({
 
   const handleAssigneeChange = useCallback(
     async (taskId: string, assigneeId: string | null) => {
-      const prevAssignee = tasks.find((t) => t.id === taskId)?.assignee ?? null;
-      const prevAssigneeId = tasks.find((t) => t.id === taskId)?.assignee_id ?? null;
       const dbValue = assigneeId && !assigneeId.startsWith("__role_") ? assigneeId : null;
       const newAssignee = dbValue
         ? teamMembers.find((m) => m.id === dbValue)
         : null;
 
-      setTasks((prev) =>
-        prev.map((t) =>
+      const rollbackRef: {
+        snapshot: { assignee_id: string | null; assignee: Assignee | null } | null;
+      } = { snapshot: null };
+      setTasks((prev) => {
+        const cur = prev.find((t) => t.id === taskId);
+        if (cur) {
+          rollbackRef.snapshot = { assignee_id: cur.assignee_id, assignee: cur.assignee };
+        }
+        return prev.map((t) =>
           t.id === taskId
             ? {
                 ...t,
@@ -534,31 +559,28 @@ export default function KanbanTasksBoard({
                   : null,
               }
             : t
-        )
-      );
-
-      const supabase = createClient();
-      const { error } = await (supabase as any)
-        .from("tasks")
-        .update({ assignee_id: dbValue, updated_at: new Date().toISOString() })
-        .eq("id", taskId);
-
-      if (error) {
-        toast.error("담당자 변경에 실패했습니다.");
-        setTasks((prev) =>
-          prev.map((t) =>
-            t.id === taskId
-              ? { ...t, assignee_id: prevAssigneeId, assignee: prevAssignee }
-              : t
-          )
         );
-        return;
-      }
+      });
 
-      toast.success("담당자가 변경되었습니다.");
-      router.refresh();
+      try {
+        await patchTaskApi(taskId, { assignee_id: dbValue });
+        toast.success("담당자가 변경되었습니다.");
+        router.refresh();
+      } catch {
+        toast.error("담당자 변경에 실패했습니다.");
+        const snap = rollbackRef.snapshot;
+        if (snap) {
+          setTasks((prev) =>
+            prev.map((t) =>
+              t.id === taskId
+                ? { ...t, assignee_id: snap.assignee_id, assignee: snap.assignee }
+                : t
+            )
+          );
+        }
+      }
     },
-    [router, tasks, teamMembers]
+    [router, teamMembers, patchTaskApi]
   );
 
   const openEditModal = (task: TaskWithAssignee) => {
@@ -574,27 +596,28 @@ export default function KanbanTasksBoard({
     if (!editingTask || !editTitle.trim()) return;
 
     setIsSubmitting(true);
-    const supabase = createClient();
     const updatePayload: Record<string, unknown> = {
       title: editTitle.trim(),
       priority: editPriority,
       assignee_id: editAssigneeId && !editAssigneeId.startsWith("__role_") ? editAssigneeId : null,
       status: editStatus,
-      updated_at: new Date().toISOString(),
     };
+    if (editDueDate) {
+      updatePayload.due_date = editDueDate;
+    } else {
+      updatePayload.due_date = null;
+    }
 
-    const { error } = await (supabase as any)
-      .from("tasks")
-      .update(updatePayload)
-      .eq("id", editingTask.id);
+    try {
+      await patchTaskApi(editingTask.id, updatePayload);
+    } catch (e) {
+      setIsSubmitting(false);
+      toast.error(e instanceof Error ? e.message : "업무 수정에 실패했습니다.");
+      return;
+    }
 
     setIsSubmitting(false);
     setEditingTask(null);
-
-    if (error) {
-      toast.error("업무 수정에 실패했습니다.");
-      return;
-    }
 
     const editAssigneeDbValue = editAssigneeId && !editAssigneeId.startsWith("__role_") ? editAssigneeId : null;
     const newAssignee = editAssigneeDbValue

@@ -171,12 +171,20 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
             </svg>
             <span className="text-sm font-medium">You are the leader of this project</span>
           </div>
-          <Link
-            href={`/projects/${id}/manage`}
-            className="rounded border border-white/40 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-white/10"
-          >
-            EDIT PROJECT
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/projects/${id}/manage`}
+              className="rounded border border-white/40 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-white/10"
+            >
+              Manage Applicants
+            </Link>
+            <Link
+              href={`/projects/${id}/edit`}
+              className="rounded border border-white/40 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-white/10"
+            >
+              Edit Project
+            </Link>
+          </div>
         </div>
       )}
 
