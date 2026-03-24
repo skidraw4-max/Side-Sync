@@ -16,6 +16,7 @@ interface HeaderProps {
 const NAV_LINKS = {
   default: [
     { label: "Explore", href: "/explore" },
+    { label: "공지게시판", href: "/announcements" },
     { label: "About", href: "/about" },
   ],
   onboarding: [
@@ -202,6 +203,9 @@ export default function Header({ variant = "default" }: HeaderProps) {
         <>
           <Link href="/explore" className={navLinkClass}>
             프로젝트 탐색
+          </Link>
+          <Link href="/announcements" className={navLinkClass}>
+            공지게시판
           </Link>
           <Link href="/projects" className={navLinkClass}>
             내 프로젝트

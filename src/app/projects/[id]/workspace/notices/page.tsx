@@ -59,15 +59,43 @@ export default function NoticesPage() {
   const [formPinned, setFormPinned] = useState(false);
   const [formSendEmail, setFormSendEmail] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [supportsPinned, setSupportsPinned] = useState(true);
 
   const fetchNotices = useCallback(async () => {
     const supabase = createClient();
-    const { data: noticesData } = await supabase
+    const withPinnedQuery = supabase
       .from("notices")
       .select("id, title, content, category, author_id, pinned, created_at")
       .eq("project_id", projectId)
       .order("pinned", { ascending: false })
       .order("created_at", { ascending: false });
+
+    const { data: noticesDataWithPinned, error: noticesErrorWithPinned } =
+      await withPinnedQuery;
+
+    let noticesData = noticesDataWithPinned;
+    let pinnedAvailable = true;
+
+    if (noticesErrorWithPinned?.message?.includes("pinned")) {
+      pinnedAvailable = false;
+      const { data: noticesDataFallback, error: fallbackError } = await supabase
+        .from("notices")
+        .select("id, title, content, category, author_id, created_at")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false });
+      if (fallbackError) {
+        toast.error(fallbackError.message);
+        setIsLoading(false);
+        return;
+      }
+      noticesData = (noticesDataFallback ?? []).map((n) => ({ ...n, pinned: false }));
+    } else if (noticesErrorWithPinned) {
+      toast.error(noticesErrorWithPinned.message);
+      setIsLoading(false);
+      return;
+    }
+
+    setSupportsPinned(pinnedAvailable);
 
     const noticesTyped = (noticesData ?? []) as Array<{
       id: string;
@@ -116,7 +144,7 @@ export default function NoticesPage() {
       const q = searchQuery.toLowerCase();
       if (!n.title.toLowerCase().includes(q) && !n.content.toLowerCase().includes(q)) return false;
     }
-    if (activeTab === "pinned") return n.pinned;
+    if (activeTab === "pinned") return supportsPinned && n.pinned;
     return true;
   });
 
@@ -137,19 +165,37 @@ export default function NoticesPage() {
       return;
     }
 
-    const { data: notice, error: noticeError } = await (supabase as any)
+    const baseNoticePayload = {
+      project_id: projectId,
+      title: formTitle.trim(),
+      content: formContent.trim() || " ",
+      category: formCategory,
+      author_id: user.id,
+    };
+
+    let { data: notice, error: noticeError } = await (supabase as any)
       .from("notices")
       .insert({
-        project_id: projectId,
-        title: formTitle.trim(),
-        content: formContent.trim() || " ",
-        category: formCategory,
-        author_id: user.id,
+        ...baseNoticePayload,
         pinned: formPinned,
         send_email: formSendEmail,
       })
       .select("id")
       .single();
+
+    if (
+      noticeError?.message?.includes("pinned") ||
+      noticeError?.message?.includes("send_email")
+    ) {
+      const fallbackInsert = await (supabase as any)
+        .from("notices")
+        .insert(baseNoticePayload)
+        .select("id")
+        .single();
+      notice = fallbackInsert.data;
+      noticeError = fallbackInsert.error;
+      if (!fallbackInsert.error) setSupportsPinned(false);
+    }
 
     if (noticeError) {
       toast.error(noticeError.message);
@@ -279,11 +325,12 @@ export default function NoticesPage() {
                   key={tab}
                   type="button"
                   onClick={() => setActiveTab(tab)}
+                  disabled={tab === "pinned" && !supportsPinned}
                   className={`pb-2 text-sm font-medium capitalize ${
                     activeTab === tab
                       ? "border-b-2 border-[#2563EB] text-[#2563EB]"
                       : "text-gray-500 hover:text-gray-900"
-                  }`}
+                  } ${tab === "pinned" && !supportsPinned ? "cursor-not-allowed opacity-40" : ""}`}
                 >
                   {tab}
                 </button>
@@ -343,25 +390,27 @@ export default function NoticesPage() {
                   />
                 </div>
 
-                <div className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50/50 p-4">
-                  <div>
-                    <p className="font-medium text-gray-900">Pin this notice</p>
-                    <p className="text-sm text-gray-500">Pinned notices appear at the top of the feed</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setFormPinned((p) => !p)}
-                    className={`relative h-6 w-11 rounded-full transition-colors ${
-                      formPinned ? "bg-[#2563EB]" : "bg-gray-300"
-                    }`}
-                  >
-                    <span
-                      className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${
-                        formPinned ? "left-6" : "left-1"
+                {supportsPinned ? (
+                  <div className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50/50 p-4">
+                    <div>
+                      <p className="font-medium text-gray-900">Pin this notice</p>
+                      <p className="text-sm text-gray-500">Pinned notices appear at the top of the feed</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormPinned((p) => !p)}
+                      className={`relative h-6 w-11 rounded-full transition-colors ${
+                        formPinned ? "bg-[#2563EB]" : "bg-gray-300"
                       }`}
-                    />
-                  </button>
-                </div>
+                    >
+                      <span
+                        className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${
+                          formPinned ? "left-6" : "left-1"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                ) : null}
 
                 <div className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50/50 p-4">
                   <div>
@@ -462,7 +511,7 @@ export default function NoticesPage() {
                 key={notice.id}
                 className="relative rounded-xl border border-gray-100 bg-white p-6 shadow-sm"
               >
-                {notice.pinned && (
+                {supportsPinned && notice.pinned && (
                   <span className="absolute right-4 top-4 flex items-center gap-1 rounded-md bg-[#2563EB]/10 px-2 py-1 text-xs font-medium text-[#2563EB]">
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z" />
