@@ -15,8 +15,8 @@ interface HeaderProps {
 
 const NAV_LINKS = {
   default: [
-    { label: "Explore", href: "/explore" },
-    { label: "공지게시판", href: "/announcements" },
+    { label: "공지사항", href: "/announcements" },
+    { label: "프로젝트 탐색", href: "/explore" },
     { label: "About", href: "/about" },
   ],
   onboarding: [
@@ -201,11 +201,11 @@ export default function Header({ variant = "default" }: HeaderProps) {
         <div className="hidden h-5 w-40 animate-pulse rounded bg-slate-100 md:block" aria-hidden />
       ) : isLoggedIn ? (
         <>
+          <Link href="/announcements" className={navLinkClass}>
+            공지사항
+          </Link>
           <Link href="/explore" className={navLinkClass}>
             프로젝트 탐색
-          </Link>
-          <Link href="/announcements" className={navLinkClass}>
-            공지게시판
           </Link>
           <Link href="/projects" className={navLinkClass}>
             내 프로젝트
