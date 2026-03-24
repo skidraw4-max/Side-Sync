@@ -16,18 +16,23 @@ function isTransientAuthLockError(e: unknown): boolean {
   return msg.includes("Lock broken") || msg.includes("steal");
 }
 
+/** 오래된 DB(컬럼 누락)에서 먼저 성공하도록 최소 컬럼을 앞에 둠 → 400 로그 감소 */
 const LED_SELECT_VARIANTS = [
-  "id, title, description, gradient, tech_stack, manner_temp_target, team_leader_id, created_at",
-  "id, title, description, tech_stack, manner_temp_target, team_leader_id, created_at",
   "id, title, description, team_leader_id, created_at",
   "id, title, description, team_leader_id",
+  "id, title, description, tech_stack, team_leader_id, created_at",
+  "id, title, description, tech_stack, manner_temp_target, team_leader_id, created_at",
+  "id, title, description, gradient, tech_stack, manner_temp_target, team_leader_id, created_at",
+  "id, title, description, tech_stack, manner_temp_target, team_leader_id, created_at",
 ] as const;
 
 const BY_IDS_SELECT_VARIANTS = [
-  "id, title, description, gradient, tech_stack, manner_temp_target, team_leader_id, created_at",
-  "id, title, description, tech_stack, manner_temp_target, team_leader_id, created_at",
   "id, title, description, team_leader_id, created_at",
   "id, title, description, team_leader_id",
+  "id, title, description, tech_stack, team_leader_id, created_at",
+  "id, title, description, tech_stack, manner_temp_target, team_leader_id, created_at",
+  "id, title, description, gradient, tech_stack, manner_temp_target, team_leader_id, created_at",
+  "id, title, description, tech_stack, manner_temp_target, team_leader_id, created_at",
 ] as const;
 
 /** 내가 팀 리더인 프로젝트 (RLS 환경에서도 .eq로 본인 행만 조회) */
@@ -36,6 +41,30 @@ export async function fetchLedProjectsForUser(
   userId: string
 ): Promise<ProjectRow[]> {
   for (let attempt = 0; attempt < 3; attempt++) {
+    // 존재하지 않는 컬럼을 나열하면 PostgREST 400 — `*` 는 실제 컬럼만 반환
+    const full = await supabase
+      .from("projects")
+      .select("*")
+      .eq("team_leader_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (!full.error && full.data !== null) {
+      return full.data as unknown as ProjectRow[];
+    }
+    if (full.error && isTransientAuthLockError(full.error)) {
+      await new Promise((r) => setTimeout(r, 120 * (attempt + 1)));
+      continue;
+    }
+
+    const fullNoOrder = await supabase
+      .from("projects")
+      .select("*")
+      .eq("team_leader_id", userId);
+
+    if (!fullNoOrder.error && fullNoOrder.data !== null) {
+      return fullNoOrder.data as unknown as ProjectRow[];
+    }
+
     for (const sel of LED_SELECT_VARIANTS) {
       const { data, error } = await supabase
         .from("projects")
@@ -62,6 +91,22 @@ export async function fetchProjectsByIds(
 ): Promise<ProjectRow[]> {
   if (ids.length === 0) return [];
 
+  const full = await supabase
+    .from("projects")
+    .select("*")
+    .in("id", ids)
+    .order("created_at", { ascending: false });
+
+  if (!full.error && full.data !== null) {
+    return full.data as unknown as ProjectRow[];
+  }
+
+  const fullNoOrder = await supabase.from("projects").select("*").in("id", ids);
+
+  if (!fullNoOrder.error && fullNoOrder.data !== null) {
+    return fullNoOrder.data as unknown as ProjectRow[];
+  }
+
   for (const sel of BY_IDS_SELECT_VARIANTS) {
     const { data, error } = await supabase
       .from("projects")
@@ -82,6 +127,7 @@ export async function fetchProjectsByIds(
  * 마지막에 `*` 로 폴백합니다. (존재하지 않는 컬럼을 나열하면 PostgREST가 전체 요청을 실패시켜 404로 이어짐)
  */
 const DETAIL_SELECT_VARIANTS = [
+  "id, title, description, team_leader_id, created_at",
   "id, title, description, goal, tech_stack, team_leader_id, recruitment_status, manner_temp_target, visibility, duration_months, est_launch, created_at, gradient, summary, content, category, status",
   "id, title, description, goal, tech_stack, team_leader_id, recruitment_status, manner_temp_target, visibility, duration_months, est_launch, created_at",
   "id, title, description, tech_stack, team_leader_id, recruitment_status, manner_temp_target, visibility, duration_months, est_launch, created_at, gradient",
