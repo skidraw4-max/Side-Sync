@@ -121,7 +121,7 @@ export default function ProjectBoardClient({
   const fetchPosts = useCallback(async () => {
     setIsLoading(true);
     const supabase = createClient();
-    let query = supabase
+    let query = (supabase as any)
       .from("project_posts")
       .select("id, title, content, category, author_id, created_at, updated_at")
       .eq("project_id", projectId)
@@ -247,7 +247,7 @@ export default function ProjectBoardClient({
     }
     setIsSubmitting(true);
     const supabase = createClient();
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("project_posts")
       .insert({
         project_id: projectId,
@@ -285,7 +285,7 @@ export default function ProjectBoardClient({
     if (!ok) return;
 
     const supabase = createClient();
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("project_posts")
       .delete()
       .eq("id", post.id)
@@ -309,7 +309,7 @@ export default function ProjectBoardClient({
       return;
     }
     const supabase = createClient();
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("post_comments")
       .select("id, post_id, project_id, author_id, content, parent_id, created_at")
       .eq("post_id", selectedId)
@@ -403,7 +403,7 @@ export default function ProjectBoardClient({
     if (!selectedId || !commentInput.trim()) return;
     setIsCommentSubmitting(true);
     const supabase = createClient();
-    const { error } = await supabase.from("post_comments").insert({
+    const { error } = await (supabase as any).from("post_comments").insert({
       post_id: selectedId,
       project_id: projectId,
       author_id: currentUserId,
@@ -490,7 +490,7 @@ export default function ProjectBoardClient({
 
     const finalRows = Object.values(deduped);
     if (finalRows.length > 0) {
-      await supabase.from("notifications").insert(finalRows);
+      await (supabase as any).from("notifications").insert(finalRows);
     }
   };
 
@@ -547,7 +547,7 @@ export default function ProjectBoardClient({
     if (!ok) return;
 
     const supabase = createClient();
-    const { error } = await supabase.from("post_comments").delete().eq("id", comment.id);
+    const { error } = await (supabase as any).from("post_comments").delete().eq("id", comment.id);
     if (error) {
       toast.error(error.message);
       return;

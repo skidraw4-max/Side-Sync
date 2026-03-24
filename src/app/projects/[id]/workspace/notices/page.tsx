@@ -73,7 +73,23 @@ export default function NoticesPage() {
     const { data: noticesDataWithPinned, error: noticesErrorWithPinned } =
       await withPinnedQuery;
 
-    let noticesData = noticesDataWithPinned;
+    let noticesData: Array<{
+      id: string;
+      title: string;
+      content: string;
+      category: string;
+      author_id: string;
+      pinned: boolean;
+      created_at: string;
+    }> = ((noticesDataWithPinned ?? []) as Array<{
+      id: string;
+      title: string;
+      content: string;
+      category: string;
+      author_id: string;
+      pinned: boolean;
+      created_at: string;
+    }>);
     let pinnedAvailable = true;
 
     if (noticesErrorWithPinned?.message?.includes("pinned")) {
@@ -88,7 +104,14 @@ export default function NoticesPage() {
         setIsLoading(false);
         return;
       }
-      noticesData = (noticesDataFallback ?? []).map((n) => ({ ...n, pinned: false }));
+      noticesData = ((noticesDataFallback ?? []) as Array<{
+        id: string;
+        title: string;
+        content: string;
+        category: string;
+        author_id: string;
+        created_at: string;
+      }>).map((n) => ({ ...n, pinned: false }));
     } else if (noticesErrorWithPinned) {
       toast.error(noticesErrorWithPinned.message);
       setIsLoading(false);
