@@ -291,6 +291,7 @@ export default function ManageApplicantsPage() {
           };
         });
 
+        /** 지원자 프로필: profiles.id = applications.applicant_id (user_id 컬럼 없음) */
         const applicantIds = [...new Set(appRowsTyped.map((a) => a.applicant_id).filter(Boolean))];
         let profileMap = new Map<string, ApplicantProfile>();
 

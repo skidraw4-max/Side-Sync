@@ -201,6 +201,7 @@ export interface Database {
           source_project_id?: string | null;
         };
       };
+      /** 지원서 — 사용자 식별은 auth.users.id 와 동일한 `applicant_id` (컬럼명 user_id 아님) */
       applications: {
         Row: {
           id: string;
@@ -285,6 +286,8 @@ export interface Database {
       profiles: {
         Row: {
           id: string;
+          /** auth.users.email 과 동기화 (민감 정보 — RLS로 리더/팀원 등만 조회) */
+          email: string | null;
           full_name: string | null;
           role: string | null;
           avatar_url: string | null;
@@ -299,6 +302,7 @@ export interface Database {
         };
         Insert: {
           id: string;
+          email?: string | null;
           full_name?: string | null;
           role?: string | null;
           avatar_url?: string | null;
@@ -312,6 +316,7 @@ export interface Database {
           updated_at?: string;
         };
         Update: {
+          email?: string | null;
           full_name?: string | null;
           role?: string | null;
           avatar_url?: string | null;

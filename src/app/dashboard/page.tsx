@@ -6,7 +6,12 @@ import { createClient } from "@/lib/supabase/client";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Link from "next/link";
+import MyProjectsSection from "@/components/MyProjectsSection";
 
+/**
+ * 참여 중인 프로젝트 카드는 `MyProjectsSection` → `useMyProjects` →
+ * `applications` 에서 `.eq("applicant_id", userId).eq("status", "accepted")` 로 조회합니다.
+ */
 export default function DashboardPage() {
   const router = useRouter();
 
@@ -54,6 +59,10 @@ export default function DashboardPage() {
               메인으로
             </Link>
           </div>
+        </div>
+
+        <div className="mx-auto mt-14 max-w-6xl">
+          <MyProjectsSection />
         </div>
       </main>
       <Footer variant="stitch" />

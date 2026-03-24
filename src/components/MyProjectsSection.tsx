@@ -56,7 +56,7 @@ export default function MyProjectsSection() {
           title="아직 참여 중인 프로젝트가 없어요"
           description="멋진 프로젝트에 지원하거나 직접 만들어보세요!"
           actions={[
-            { label: "프로젝트 탐색하기", href: "/dashboard", primary: true },
+            { label: "프로젝트 탐색하기", href: "/projects", primary: true },
             { label: "새 프로젝트 만들기", href: "/projects/create", primary: false },
           ]}
         />

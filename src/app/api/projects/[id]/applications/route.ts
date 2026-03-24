@@ -69,6 +69,7 @@ export async function GET(
   }
 
   const rows = appRows ?? [];
+  /** profiles 조회 키 = applications.applicant_id (user_id 아님) */
   const applicantIds = [...new Set(rows.map((r) => (r as { applicant_id?: string }).applicant_id).filter(Boolean))] as string[];
 
   const profileClient = admin ?? supabase;

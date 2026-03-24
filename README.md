@@ -15,7 +15,7 @@ Next.js(App Router) 기반 랜딩·프로젝트 탐색·팀 워크스페이스 U
 | **`contexts/`** | **클라이언트 전역 컨텍스트**(예: 세션/인증 노출). |
 | **`hooks/`** | **데이터/도메인 훅** (`useProjects`, `useMyProjects` 등). |
 | **`lib/`** | **인프라·유틸**: Supabase `client`/`server`/`admin`, 프로젝트 쿼리·검색 헬퍼, 광고/사이트 URL 등 **비 UI 로직**. |
-| **`types/`** | Supabase 스키마 기반 **`database` 타입** 등. |
+| **`types/`** | Supabase 스키마 기반 **`database` 타입** 등. `applications` 지원자 식별은 **`applicant_id`** ( `user_id` 컬럼 없음 ). |
 | **`middleware.ts`** | 요청 단계 **라우트 보호·리다이렉트** 등. |
 
 **데이터 흐름(개략)**: 브라우저 → (페이지/컴포넌트) → Supabase 클라이언트 **또는** `app/api/*` → Supabase(서버 세션) → RLS 정책 적용.
