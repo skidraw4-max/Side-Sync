@@ -11,10 +11,10 @@ export async function GET() {
     .order("pinned", { ascending: false })
     .order("created_at", { ascending: false });
 
-  if (error?.message?.includes("pinned")) {
+  if (error?.message?.includes("pinned") || error?.message?.includes("category")) {
     const fallback = await (supabase as any)
       .from("announcements")
-      .select("id, title, content, category, created_at")
+      .select("id, title, content, created_at")
       .order("created_at", { ascending: false });
     if (fallback.error) {
       return NextResponse.json({ error: fallback.error.message }, { status: 500 });
@@ -23,9 +23,8 @@ export async function GET() {
       id: string;
       title: string;
       content: string;
-      category: string;
       created_at: string;
-    }>).map((r) => ({ ...r, pinned: false }));
+    }>).map((r) => ({ ...r, category: "general", pinned: false }));
     return NextResponse.json({ data: rows });
   }
 
@@ -69,8 +68,8 @@ export async function POST(req: Request) {
     .select("id")
     .single();
 
-  if (error?.message?.includes("pinned")) {
-    const fallbackInsert = await (supabase as any)
+  if (error?.message?.includes("pinned") || error?.message?.includes("category")) {
+    const fallbackInsertWithCategory = await (supabase as any)
       .from("announcements")
       .insert({
         title: body.title.trim(),
@@ -80,8 +79,21 @@ export async function POST(req: Request) {
       })
       .select("id")
       .single();
-    data = fallbackInsert.data;
-    error = fallbackInsert.error;
+    data = fallbackInsertWithCategory.data;
+    error = fallbackInsertWithCategory.error;
+    if (error?.message?.includes("category")) {
+      const fallbackInsertBare = await (supabase as any)
+        .from("announcements")
+        .insert({
+          title: body.title.trim(),
+          content: body.content.trim(),
+          author_id: user.id,
+        })
+        .select("id")
+        .single();
+      data = fallbackInsertBare.data;
+      error = fallbackInsertBare.error;
+    }
   }
 
   if (error) {

@@ -34,8 +34,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     })
     .eq("id", id);
 
-  if (error?.message?.includes("pinned")) {
-    const fallback = await (supabase as any)
+  if (error?.message?.includes("pinned") || error?.message?.includes("category")) {
+    const fallbackWithCategory = await (supabase as any)
       .from("announcements")
       .update({
         title: body.title?.trim(),
@@ -43,7 +43,17 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         category: body.category?.trim(),
       })
       .eq("id", id);
-    error = fallback.error;
+    error = fallbackWithCategory.error;
+    if (error?.message?.includes("category")) {
+      const fallbackBare = await (supabase as any)
+        .from("announcements")
+        .update({
+          title: body.title?.trim(),
+          content: body.content?.trim(),
+        })
+        .eq("id", id);
+      error = fallbackBare.error;
+    }
   }
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
