@@ -1,7 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
+import { APPLICATION_STATUS } from "@/lib/application-status";
 
 type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
+
+/**
+ * 참여 프로젝트 / 멤버십 관련 DB 조건 (전수 점검 요약):
+ * - `applications` 지원자 식별 컬럼은 **`applicant_id`** (auth.users id). **`user_id` 컬럼 없음**.
+ * - 승인 상태는 **`APPLICATION_STATUS.ACCEPTED`** (= DB 소문자 `'accepted'`).
+ */
 
 /** Navigator Lock steal/Abort 등 일시적 Auth 잠금 오류 */
 function isTransientAuthLockError(e: unknown): boolean {
@@ -35,11 +42,14 @@ const BY_IDS_SELECT_VARIANTS = [
   "id, title, description, tech_stack, manner_temp_target, team_leader_id, created_at",
 ] as const;
 
-/** 내가 팀 리더인 프로젝트 (RLS 환경에서도 .eq로 본인 행만 조회) */
+/** 내가 팀 리더인 프로젝트 — `projects.team_leader_id === userId` (세션 uid = auth.uid()) */
 export async function fetchLedProjectsForUser(
   supabase: SupabaseClient,
   userId: string
 ): Promise<ProjectRow[]> {
+  if (process.env.NODE_ENV === "development") {
+    console.log("🔍 fetchLedProjectsForUser team_leader_id (= 로그인 uid):", userId);
+  }
   for (let attempt = 0; attempt < 3; attempt++) {
     // 존재하지 않는 컬럼을 나열하면 PostgREST 400 — `*` 는 실제 컬럼만 반환
     const full = await supabase
@@ -84,11 +94,13 @@ export async function fetchLedProjectsForUser(
   return [];
 }
 
-/** ID 목록으로 프로젝트 조회 (멤버 참여 프로젝트 등) */
+/** ID 목록으로 프로젝트 조회 (멤버 참여: applications.applicant_id 로 모은 project_id 들) */
 export async function fetchProjectsByIds(
   supabase: SupabaseClient,
   ids: string[]
 ): Promise<ProjectRow[]> {
+  console.log("🔍 요청하는 프로젝트 ID 리스트:", ids);
+
   if (ids.length === 0) return [];
 
   const full = await supabase
@@ -203,7 +215,7 @@ export async function fetchAcceptedApplicationsForProject(
     .from("applications")
     .select("*")
     .eq("project_id", projectId)
-    .eq("status", "accepted");
+    .eq("status", APPLICATION_STATUS.ACCEPTED);
 
   if (error || !data || !Array.isArray(data)) {
     return [];

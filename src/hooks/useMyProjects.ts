@@ -7,6 +7,7 @@ import { shouldEnableSupabaseRealtimeSubscriptions } from "@/lib/supabase/realti
 import type { Database, RecruitmentStatusRow } from "@/types/database";
 import type { ProjectCardProps } from "@/components/ProjectCard";
 import { inferProjectRecruitmentState } from "@/lib/project-recruitment-state";
+import { APPLICATION_STATUS } from "@/lib/application-status";
 import { fetchLedProjectsForUser, fetchProjectsByIds } from "@/lib/supabase-project-queries";
 
 const DEFAULT_GRADIENT = "from-blue-200 via-indigo-200 to-purple-200";
@@ -33,13 +34,30 @@ async function fetchMyProjects(userId: string): Promise<ProjectWithId[]> {
   }
 
   try {
+    /** 세션 user id === applications.applicant_id (user_id 컬럼 없음) */
+    if (process.env.NODE_ENV === "development") {
+      console.log("🔍 [useMyProjects] applicant_id 필터 (= 로그인 uid / auth.uid()):", userId);
+    }
+
     const safeLedProjects = await fetchLedProjectsForUser(supabase, userId);
 
-    const { data: acceptedApps } = await supabase
+    const { data: acceptedApps, error: acceptedAppsError } = await supabase
       .from("applications")
       .select("project_id")
       .eq("applicant_id", userId)
-      .eq("status", "accepted");
+      .eq("status", APPLICATION_STATUS.ACCEPTED);
+
+    if (process.env.NODE_ENV === "development") {
+      if (acceptedAppsError) {
+        console.warn("🔍 [useMyProjects] applications 조회 오류:", acceptedAppsError.message);
+      } else {
+        console.log(
+          "🔍 [useMyProjects] status=accepted 인 지원 project_id 개수:",
+          acceptedApps?.length ?? 0,
+          acceptedApps
+        );
+      }
+    }
 
     const memberProjectIds = (acceptedApps ?? [])
       .map((a) => (a as { project_id: string }).project_id)

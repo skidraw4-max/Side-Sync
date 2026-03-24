@@ -8,6 +8,7 @@ import { DEMO_PROJECTS } from "@/lib/demo-projects";
 import { projectMatchesSearchTokens, tokenizeSearchQuery } from "@/lib/project-search";
 import type { Database, RecruitmentStatusRow } from "@/types/database";
 import type { ProjectCardProps } from "@/components/ProjectCard";
+import { APPLICATION_STATUS } from "@/lib/application-status";
 import { inferProjectRecruitmentState } from "@/lib/project-recruitment-state";
 
 const PROJECTS_QUERY_KEY = ["projects"] as const;
@@ -63,7 +64,7 @@ async function fetchAcceptedProjectIdsForViewer(
     .from("applications")
     .select("project_id")
     .eq("applicant_id", user.id)
-    .eq("status", "accepted");
+    .eq("status", APPLICATION_STATUS.ACCEPTED);
   if (error || !apps) return new Set();
   return new Set(apps.map((a) => (a as { project_id: string }).project_id));
 }

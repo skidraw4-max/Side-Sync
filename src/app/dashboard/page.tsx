@@ -9,8 +9,8 @@ import Link from "next/link";
 import MyProjectsSection from "@/components/MyProjectsSection";
 
 /**
- * 참여 중인 프로젝트 카드는 `MyProjectsSection` → `useMyProjects` →
- * `applications` 에서 `.eq("applicant_id", userId).eq("status", "accepted")` 로 조회합니다.
+ * 참여 중인 프로젝트: `MyProjectsSection` → `useMyProjects` →
+ * `applications`: `.eq("applicant_id", userId)` + `.eq("status", APPLICATION_STATUS.ACCEPTED)` (소문자, user_id 컬럼 없음)
  */
 export default function DashboardPage() {
   const router = useRouter();
