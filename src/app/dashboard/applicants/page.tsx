@@ -13,6 +13,21 @@ interface ApplicantProfile {
   full_name: string | null;
   avatar_url: string | null;
   tech_stack: string[];
+  email?: string | null;
+}
+
+function normalizeProfileEmbed(raw: unknown): ApplicantProfile | null {
+  if (raw == null) return null;
+  const node = Array.isArray(raw) ? raw[0] : raw;
+  if (!node || typeof node !== "object") return null;
+  const o = node as Record<string, unknown>;
+  const ts = o.tech_stack;
+  return {
+    full_name: typeof o.full_name === "string" ? o.full_name : null,
+    avatar_url: typeof o.avatar_url === "string" ? o.avatar_url : null,
+    tech_stack: Array.isArray(ts) ? (ts as string[]) : [],
+    email: typeof o.email === "string" ? o.email : null,
+  };
 }
 
 interface ApplicationWithProfile {
@@ -63,12 +78,40 @@ export default function ApplicantsDashboardPage() {
     const projectIds = myProjects.map((p) => p.id);
     const projectMap = new Map(myProjects.map((p) => [p.id, p.title]));
 
-    const { data: appRowsData, error: appError } = await supabase
+    const embeddedSelect = `
+      id,
+      project_id,
+      applicant_id,
+      message,
+      role,
+      status,
+      created_at,
+      profiles (
+        full_name,
+        avatar_url,
+        email,
+        tech_stack
+      )
+    `;
+
+    let { data: appRowsData, error: appError } = await supabase
       .from("applications")
-      .select("*")
+      .select(embeddedSelect)
       .in("project_id", projectIds)
       .eq("status", "pending")
       .order("created_at", { ascending: false });
+
+    if (appError) {
+      console.warn("[dashboard applicants] embedded select failed, falling back:", appError.message);
+      const fb = await supabase
+        .from("applications")
+        .select("*")
+        .in("project_id", projectIds)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false });
+      appRowsData = fb.data;
+      appError = fb.error;
+    }
 
     if (appError) {
       setError(appError.message);
@@ -77,7 +120,18 @@ export default function ApplicantsDashboardPage() {
       return;
     }
 
-    type AppRow = { id: string; project_id: string; applicant_id: string; message: string | null; role: string | null; status: "pending" | "accepted" | "rejected"; created_at: string };
+    console.log("Applications data:", appRowsData);
+
+    type AppRow = {
+      id: string;
+      project_id: string;
+      applicant_id: string;
+      message: string | null;
+      role: string | null;
+      status: "pending" | "accepted" | "rejected";
+      created_at: string;
+      _profilesRaw?: unknown;
+    };
     const appRows = (appRowsData ?? []).map((row) => {
       const r = row as Record<string, unknown>;
       return {
@@ -88,37 +142,54 @@ export default function ApplicantsDashboardPage() {
         role: typeof r.role === "string" ? r.role : null,
         status: r.status as AppRow["status"],
         created_at: String(r.created_at),
+        _profilesRaw: r.profiles,
       };
     });
-    const applicantIds = [...new Set(appRows.map((a) => a.applicant_id))];
+
+    const needsProfileFetch = appRows.some(
+      (a) => normalizeProfileEmbed(a._profilesRaw) == null && a.applicant_id
+    );
     let profileMap = new Map<string, ApplicantProfile>();
-
-    if (applicantIds.length > 0) {
-      const { data: profilesData } = await supabase
-        .from("profiles")
-        .select("id, full_name, avatar_url, tech_stack")
-        .in("id", applicantIds);
-
-      const profiles = (profilesData ?? []) as Array<{ id: string; full_name: string | null; avatar_url: string | null; tech_stack: string[] }>;
-      profileMap = new Map(
-        profiles.map((p) => [
-          p.id,
-          {
-            full_name: p.full_name,
-            avatar_url: p.avatar_url,
-            tech_stack: Array.isArray(p.tech_stack) ? p.tech_stack : [],
-          },
-        ])
-      );
+    if (needsProfileFetch) {
+      const applicantIds = [...new Set(appRows.map((a) => a.applicant_id))];
+      if (applicantIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("id, full_name, avatar_url, email, tech_stack")
+          .in("id", applicantIds);
+        const profiles = (profilesData ?? []) as Array<{
+          id: string;
+          full_name: string | null;
+          avatar_url: string | null;
+          email: string | null;
+          tech_stack: string[];
+        }>;
+        profileMap = new Map(
+          profiles.map((p) => [
+            p.id,
+            {
+              full_name: p.full_name,
+              avatar_url: p.avatar_url,
+              email: p.email,
+              tech_stack: Array.isArray(p.tech_stack) ? p.tech_stack : [],
+            },
+          ])
+        );
+      }
     }
 
     setApplications(
-      appRows.map((a): ApplicationWithProfile => ({
-        ...a,
-        status: a.status as "pending" | "accepted" | "rejected",
-        project_title: projectMap.get(a.project_id) ?? "Unknown",
-        applicant: profileMap.get(a.applicant_id) ?? null,
-      }))
+      appRows.map((a): ApplicationWithProfile => {
+        const fromEmbed = normalizeProfileEmbed(a._profilesRaw);
+        const applicant = fromEmbed ?? profileMap.get(a.applicant_id) ?? null;
+        const { _profilesRaw: _, ...rest } = a;
+        return {
+          ...rest,
+          status: a.status as "pending" | "accepted" | "rejected",
+          project_title: projectMap.get(a.project_id) ?? "Unknown",
+          applicant,
+        };
+      })
     );
     setLoading(false);
   }, [router]);
@@ -245,6 +316,9 @@ export default function ApplicantsDashboardPage() {
                       <p className="font-semibold text-gray-900">
                         {app.applicant?.full_name ?? "Unknown"}
                       </p>
+                      {app.applicant?.email ? (
+                        <p className="text-xs text-gray-500">{app.applicant.email}</p>
+                      ) : null}
                       <p className="text-sm text-gray-500">
                         {app.role ?? "General"} · {app.project_title}
                       </p>

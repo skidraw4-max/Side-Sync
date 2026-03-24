@@ -125,7 +125,7 @@ export async function POST(
     if (existing.status === "accepted") {
       return NextResponse.json({ error: "이미 이 프로젝트 팀원입니다." }, { status: 409 });
     }
-    if (existing.status === "rejected") {
+    if (existing.status === "rejected" || existing.status === "canceled") {
       const updatePayload = {
         status: "pending" as const,
         message: motivation,

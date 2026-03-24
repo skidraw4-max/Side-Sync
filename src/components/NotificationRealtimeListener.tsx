@@ -4,11 +4,16 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { shouldEnableSupabaseRealtimeSubscriptions } from "@/lib/supabase/realtime-flags";
 
 export default function NotificationRealtimeListener() {
   const router = useRouter();
 
   useEffect(() => {
+    if (!shouldEnableSupabaseRealtimeSubscriptions()) {
+      return;
+    }
+
     const supabase = createClient();
 
     const setupSubscription = async () => {

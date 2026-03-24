@@ -108,6 +108,7 @@ export default function OnboardingPage() {
 
       const payload: Record<string, unknown> = {
         id: user.id,
+        email: user.email ?? null,
         full_name: fullName.trim() || null,
         username: username.trim() || null,
         bio: bio.trim() || null,

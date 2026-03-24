@@ -46,6 +46,7 @@ export default function WorkspaceSidebarNav({
     { label: "Dashboard", href: "#", icon: "grid" },
     { label: "Tasks", href: `/projects/${projectId}/workspace/tasks`, icon: "checklist" },
     { label: "Chat", href: `/projects/${projectId}/workspace/chat`, icon: "chat", disabled: true },
+    { label: "Board", href: `/projects/${projectId}/workspace/board`, icon: "board" },
     { label: "Notices", href: `/projects/${projectId}/workspace/notices`, icon: "megaphone" },
     { label: "Files", href: "#", icon: "folder", disabled: true },
     { label: "Settings", href: "#", icon: "gear" },
@@ -73,9 +74,11 @@ export default function WorkspaceSidebarNav({
     const noticesHref = `/projects/${projectId}/workspace/notices`;
     const tasksHref = `/projects/${projectId}/workspace/tasks`;
     const chatHref = `/projects/${projectId}/workspace/chat`;
+    const boardHref = `/projects/${projectId}/workspace/board`;
     if (pathname.startsWith(noticesHref)) return href === noticesHref;
     if (pathname.startsWith(tasksHref)) return href === tasksHref;
     if (pathname.startsWith(chatHref)) return href === chatHref;
+    if (pathname.startsWith(boardHref)) return href === boardHref;
     if (pathname === `/projects/${projectId}/workspace`) return href === tasksHref;
     return false;
   };
@@ -99,6 +102,13 @@ export default function WorkspaceSidebarNav({
       {icon === "chat" && (
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </svg>
+      )}
+      {icon === "board" && (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="3" y="4" width="18" height="16" rx="2" />
+          <path d="M3 10h18" />
+          <path d="M8 14h8" />
         </svg>
       )}
       {icon === "megaphone" && (

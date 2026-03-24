@@ -166,6 +166,7 @@ export function useMyProjects(userId: string) {
           },
           () => {
             void queryClient.invalidateQueries({ queryKey: ["projects", "mine"] });
+            void queryClient.invalidateQueries({ queryKey: ["applications", "pending", userId] });
           }
         )
         .subscribe();

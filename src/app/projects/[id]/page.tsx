@@ -101,10 +101,13 @@ export default async function ProjectDetailPage({ params, searchParams }: Projec
 
   const isLeader = !!user && user.id === project.team_leader_id;
 
+  /** RLS로 비로그인 시 profiles 조회가 막힐 수 있어, 공개 표시용은 서비스 롤(이메일 미포함 select) 우선 */
+  const profilesForPublicDisplay = createAdminClient() ?? supabase;
+
   // 팀장 프로필
   let teamLeader: { name: string; role: string; avatarUrl: string | null } | null = null;
   if (project.team_leader_id) {
-    const { data: profileRaw } = await supabase
+    const { data: profileRaw } = await profilesForPublicDisplay
       .from("profiles")
       .select("full_name, role, avatar_url")
       .eq("id", project.team_leader_id)
@@ -130,7 +133,7 @@ export default async function ProjectDetailPage({ params, searchParams }: Projec
   // 프로필 맵 (applicant_id / team_leader_id -> profile)
   const profilesMap: Record<string, { full_name: string | null; avatar_url: string | null; manner_temp_target: string | null }> = {};
   if (applicantIds.length > 0) {
-    const { data: profiles } = await supabase
+    const { data: profiles } = await profilesForPublicDisplay
       .from("profiles")
       .select("id, full_name, avatar_url, manner_temp_target")
       .in("id", applicantIds);
@@ -164,8 +167,12 @@ export default async function ProjectDetailPage({ params, searchParams }: Projec
       .eq("applicant_id", user.id)
       .maybeSingle();
     const st = (myApp as { status?: string } | null)?.status;
-    viewerApplicationStatus =
-      st === "pending" || st === "accepted" || st === "rejected" ? st : "none";
+    if (st === "canceled") {
+      viewerApplicationStatus = "none";
+    } else {
+      viewerApplicationStatus =
+        st === "pending" || st === "accepted" || st === "rejected" ? st : "none";
+    }
   }
 
   // 마일스톤·모집 UI — JSON 문자열/roleKey 만 저장된 행도 동일 라벨로 복원

@@ -29,10 +29,16 @@ interface ProfileData {
   full_name: string | null;
 }
 
+interface AnnouncementTickerItem {
+  id: string;
+  title: string;
+}
+
 export default function Header({ variant = "default" }: HeaderProps) {
   const serverSession = useServerHydratedSession();
   const [user, setUser] = useState<User | null>(() => serverSession?.user ?? null);
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [latestAnnouncement, setLatestAnnouncement] = useState<AnnouncementTickerItem | null>(null);
   const [authReady, setAuthReady] = useState(() => serverSession !== undefined);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -84,6 +90,29 @@ export default function Header({ variant = "default" }: HeaderProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    const supabase = createClient();
+    let isMounted = true;
+
+    async function fetchLatestAnnouncement() {
+      const { data } = await supabase
+        .from("announcements")
+        .select("id, title")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (isMounted) {
+        setLatestAnnouncement((data as AnnouncementTickerItem | null) ?? null);
+      }
+    }
+
+    void fetchLatestAnnouncement();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const handleLogout = async () => {
     setDropdownOpen(false);
     await signOutClient();
@@ -98,7 +127,7 @@ export default function Header({ variant = "default" }: HeaderProps) {
   const signInButtonClass =
     "inline-flex shrink-0 items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2";
 
-  const RightSection = () => (
+  const renderRightSection = () => (
     <>
       {variant === "onboarding" ? (
         <Link href="/login" className={signInButtonClass}>
@@ -159,7 +188,7 @@ export default function Header({ variant = "default" }: HeaderProps) {
     </>
   );
 
-  const CenterNav = () => (
+  const renderCenterNav = () => (
     <nav className="flex min-w-0 flex-wrap items-center justify-center gap-4 sm:gap-8 md:gap-10" aria-label="메인">
       {variant === "onboarding" ? (
         links.map(({ label, href }) => (
@@ -177,6 +206,9 @@ export default function Header({ variant = "default" }: HeaderProps) {
           <Link href="/projects" className={navLinkClass}>
             내 프로젝트
           </Link>
+          <Link href="/about" className={navLinkClass}>
+            About
+          </Link>
         </>
       ) : (
         links.map(({ label, href }) => (
@@ -190,6 +222,16 @@ export default function Header({ variant = "default" }: HeaderProps) {
 
   return (
     <header className="sticky top-0 z-50 min-h-14 border-b border-slate-200 bg-white">
+      {variant === "default" && latestAnnouncement ? (
+        <Link
+          href="/announcements"
+          className="block border-b border-blue-100 bg-blue-50/80 px-4 py-2 text-center text-xs text-blue-800 hover:bg-blue-100/70 md:px-8"
+        >
+          <span className="font-semibold">공지</span>
+          <span className="mx-2">•</span>
+          <span className="truncate align-middle">{latestAnnouncement.title}</span>
+        </Link>
+      ) : null}
       <div className="mx-auto flex min-h-14 max-w-7xl items-center justify-between gap-3 px-4 py-3 md:gap-8 md:px-8 lg:px-12">
         {/* 좌: 로고 + Side-Sync */}
         <div className="min-w-0 shrink-0">
@@ -198,12 +240,12 @@ export default function Header({ variant = "default" }: HeaderProps) {
 
         {/* 중앙: Explore · About */}
         <div className="min-w-0 flex-1 px-2">
-          <CenterNav />
+          {renderCenterNav()}
         </div>
 
         {/* 우: Sign In 등 */}
         <div className="shrink-0">
-          <RightSection />
+          {renderRightSection()}
         </div>
       </div>
     </header>

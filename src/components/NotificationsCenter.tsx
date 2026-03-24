@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { fetchNotificationsForUser } from "@/lib/supabase-notification-query";
 import NotificationItem from "@/components/NotificationItem";
 import { runAiProjectRecommendationsAction } from "@/app/actions/recommendations";
 import type { NotificationListItem } from "@/types/notifications";
@@ -27,21 +28,11 @@ export default function NotificationsCenter() {
   const load = async (uid: string) => {
     setLoading(true);
     const supabase = createClient();
-    const { data, error } = await supabase
-      .from("notifications")
-      .select(
-        "id, user_id, title, message, link, read, created_at, is_ai_recommendation, ai_comment, source_project_id"
-      )
-      .eq("user_id", uid)
-      .order("created_at", { ascending: false })
-      .limit(100);
-
-    if (error) {
-      setItems([]);
-      setLoading(false);
-      return;
+    const { items, error } = await fetchNotificationsForUser(supabase, uid, { limit: 100 });
+    if (error && process.env.NODE_ENV === "development") {
+      console.warn("[NotificationsCenter] fetch:", error.message);
     }
-    setItems((data as NotificationListItem[]) ?? []);
+    setItems(items);
     setLoading(false);
   };
 

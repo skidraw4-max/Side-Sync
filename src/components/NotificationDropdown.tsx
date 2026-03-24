@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { shouldEnableSupabaseRealtimeSubscriptions } from "@/lib/supabase/realtime-flags";
+import { fetchNotificationsForUser } from "@/lib/supabase-notification-query";
 import EmptyState from "@/components/EmptyState";
 import NotificationItem from "@/components/NotificationItem";
 import type { NotificationListItem } from "@/types/notifications";
@@ -34,19 +36,19 @@ export default function NotificationDropdown() {
 
     const supabase = createClient();
 
-    const fetchNotifications = async () => {
-      const { data } = await supabase
-        .from("notifications")
-        .select(
-          "id, user_id, title, message, link, read, created_at, is_ai_recommendation, ai_comment, source_project_id"
-        )
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(20);
-      setNotifications((data as NotificationListItem[]) ?? []);
+    const load = async () => {
+      const { items, error } = await fetchNotificationsForUser(supabase, userId, { limit: 20 });
+      if (error && process.env.NODE_ENV === "development") {
+        console.warn("[NotificationDropdown] fetch:", error.message);
+      }
+      setNotifications(items);
     };
 
-    fetchNotifications();
+    void load();
+
+    if (!shouldEnableSupabaseRealtimeSubscriptions()) {
+      return;
+    }
 
     const channel = supabase
       .channel(`notifications:${userId}`)
@@ -86,6 +88,16 @@ export default function NotificationDropdown() {
       supabase.removeChannel(channel);
     };
   }, [userId]);
+
+  /** Realtime 미사용 시 드롭다운을 열 때마다 최신 목록 갱신 */
+  useEffect(() => {
+    if (!userId || !isOpen || shouldEnableSupabaseRealtimeSubscriptions()) return;
+    const supabase = createClient();
+    void (async () => {
+      const { items } = await fetchNotificationsForUser(supabase, userId, { limit: 20 });
+      setNotifications(items);
+    })();
+  }, [userId, isOpen]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {

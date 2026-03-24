@@ -7,6 +7,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Link from "next/link";
 import MyProjectsSection from "@/components/MyProjectsSection";
+import PendingApplicationsSection from "@/components/PendingApplicationsSection";
 
 /**
  * 참여 중인 프로젝트: `MyProjectsSection` → `useMyProjects` →
@@ -62,6 +63,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="mx-auto mt-14 max-w-6xl">
+          <PendingApplicationsSection />
           <MyProjectsSection />
         </div>
       </main>

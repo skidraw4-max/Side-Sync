@@ -165,6 +165,90 @@ export interface Database {
           updated_at?: string;
         };
       };
+      announcements: {
+        Row: {
+          id: string;
+          title: string;
+          content: string;
+          category: string;
+          author_id: string;
+          pinned: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          content: string;
+          category?: string;
+          author_id: string;
+          pinned?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          title?: string;
+          content?: string;
+          category?: string;
+          pinned?: boolean;
+          updated_at?: string;
+        };
+      };
+      project_posts: {
+        Row: {
+          id: string;
+          project_id: string;
+          title: string;
+          content: string;
+          category: string;
+          author_id: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          title: string;
+          content: string;
+          category?: string;
+          author_id: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          title?: string;
+          content?: string;
+          category?: string;
+          updated_at?: string;
+        };
+      };
+      post_comments: {
+        Row: {
+          id: string;
+          post_id: string;
+          project_id: string;
+          author_id: string;
+          content: string;
+          parent_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          post_id: string;
+          project_id: string;
+          author_id: string;
+          content: string;
+          parent_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          content?: string;
+          parent_id?: string | null;
+          updated_at?: string;
+        };
+      };
       notifications: {
         Row: {
           id: string;
@@ -210,7 +294,7 @@ export interface Database {
           role: string | null;
           tech_stack: string | null;
           message: string | null;
-          status: "pending" | "accepted" | "rejected";
+          status: "pending" | "accepted" | "rejected" | "canceled";
           rejection_reason: string | null;
           created_at: string;
           updated_at: string;
@@ -222,7 +306,7 @@ export interface Database {
           role?: string | null;
           tech_stack?: string | null;
           message?: string | null;
-          status?: "pending" | "accepted" | "rejected";
+          status?: "pending" | "accepted" | "rejected" | "canceled";
           rejection_reason?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -233,7 +317,7 @@ export interface Database {
           message?: string | null;
           role?: string | null;
           tech_stack?: string | null;
-          status?: "pending" | "accepted" | "rejected";
+          status?: "pending" | "accepted" | "rejected" | "canceled";
           rejection_reason?: string | null;
           updated_at?: string;
         };
