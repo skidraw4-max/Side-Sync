@@ -8,6 +8,7 @@ import type { Database, RecruitmentStatusRow } from "@/types/database";
 import type { ProjectCardProps } from "@/components/ProjectCard";
 import { inferProjectRecruitmentState } from "@/lib/project-recruitment-state";
 import { APPLICATION_STATUS } from "@/lib/application-status";
+import { isMyProjectsDebugEnabled } from "@/lib/debug-my-projects";
 import { fetchLedProjectsForUser, fetchProjectsByIds } from "@/lib/supabase-project-queries";
 
 const DEFAULT_GRADIENT = "from-blue-200 via-indigo-200 to-purple-200";
@@ -35,8 +36,14 @@ async function fetchMyProjects(userId: string): Promise<ProjectWithId[]> {
 
   try {
     /** 세션 user id === applications.applicant_id (user_id 컬럼 없음) */
-    if (process.env.NODE_ENV === "development") {
-      console.log("🔍 [useMyProjects] applicant_id 필터 (= 로그인 uid / auth.uid()):", userId);
+    if (isMyProjectsDebugEnabled()) {
+      const { data: authData } = await supabase.auth.getUser();
+      const authUid = authData.user?.id ?? null;
+      console.log("🔍 [useMyProjects] Step A — applicant_id로 쓰는 userId:", userId);
+      console.log("🔍 [useMyProjects] Step B — auth.getUser().id 와 동일?", authUid === userId, {
+        userId_for_applicant_id: userId,
+        auth_getUser_id: authUid,
+      });
     }
 
     const safeLedProjects = await fetchLedProjectsForUser(supabase, userId);
@@ -47,27 +54,42 @@ async function fetchMyProjects(userId: string): Promise<ProjectWithId[]> {
       .eq("applicant_id", userId)
       .eq("status", APPLICATION_STATUS.ACCEPTED);
 
-    if (process.env.NODE_ENV === "development") {
-      if (acceptedAppsError) {
-        console.warn("🔍 [useMyProjects] applications 조회 오류:", acceptedAppsError.message);
-      } else {
-        console.log(
-          "🔍 [useMyProjects] status=accepted 인 지원 project_id 개수:",
-          acceptedApps?.length ?? 0,
-          acceptedApps
-        );
-      }
-    }
-
     const memberProjectIds = (acceptedApps ?? [])
       .map((a) => (a as { project_id: string }).project_id)
       .filter((id) => id);
 
+    if (isMyProjectsDebugEnabled()) {
+      if (acceptedAppsError) {
+        console.warn("🔍 [useMyProjects] Step C — applications 조회 오류:", acceptedAppsError.message);
+      } else {
+        const empty = (acceptedApps?.length ?? 0) === 0;
+        console.log(
+          "🔍 [useMyProjects] Step C — status=accepted 행에서 나온 project_id 배열 (비었으면 []):",
+          memberProjectIds,
+          "| 빈 배열?", empty
+        );
+        console.log("🔍 [useMyProjects] Step C-raw — acceptedApps 원본:", acceptedApps);
+      }
+      console.log("🔍 [useMyProjects] Step D — 리더로 포함된 프로젝트 수:", safeLedProjects.length);
+    }
+
     const ledIds = new Set(safeLedProjects.map((p) => p.id));
     const memberIdsOnly = memberProjectIds.filter((id) => !ledIds.has(id));
+
+    if (isMyProjectsDebugEnabled()) {
+      console.log(
+        "🔍 [useMyProjects] Step E — 리더와 중복 제외 후 멤버만 조회할 project_id (비었으면 []):",
+        memberIdsOnly
+      );
+    }
+
     const memberProjects = await fetchProjectsByIds(supabase, memberIdsOnly);
 
     const combined = [...safeLedProjects, ...memberProjects] as ProjectRow[];
+
+    if (isMyProjectsDebugEnabled()) {
+      console.log("🔍 [useMyProjects] Step F — 최종 합쳐진 프로젝트 개수 (카드 수):", combined.length);
+    }
 
     return combined.map((row) => ({
       id: row.id,

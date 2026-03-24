@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import { APPLICATION_STATUS } from "@/lib/application-status";
+import { isMyProjectsDebugEnabled } from "@/lib/debug-my-projects";
 
 type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
 
@@ -47,8 +48,8 @@ export async function fetchLedProjectsForUser(
   supabase: SupabaseClient,
   userId: string
 ): Promise<ProjectRow[]> {
-  if (process.env.NODE_ENV === "development") {
-    console.log("🔍 fetchLedProjectsForUser team_leader_id (= 로그인 uid):", userId);
+  if (isMyProjectsDebugEnabled()) {
+    console.log("🔍 fetchLedProjectsForUser — team_leader_id 필터 (= 로그인 uid):", userId);
   }
   for (let attempt = 0; attempt < 3; attempt++) {
     // 존재하지 않는 컬럼을 나열하면 PostgREST 400 — `*` 는 실제 컬럼만 반환
@@ -99,7 +100,9 @@ export async function fetchProjectsByIds(
   supabase: SupabaseClient,
   ids: string[]
 ): Promise<ProjectRow[]> {
-  console.log("🔍 요청하는 프로젝트 ID 리스트:", ids);
+  if (isMyProjectsDebugEnabled()) {
+    console.log("🔍 fetchProjectsByIds — 요청하는 프로젝트 ID 리스트 (비었으면 []):", ids, "| length:", ids.length);
+  }
 
   if (ids.length === 0) return [];
 
