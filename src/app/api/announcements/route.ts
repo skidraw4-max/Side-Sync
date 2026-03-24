@@ -1,20 +1,33 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 
 const ADMIN_EMAIL = "skidraw4@gmail.com";
 
 export async function GET() {
-  const admin = createAdminClient();
-  if (!admin) {
-    return NextResponse.json({ error: "관리자 클라이언트를 사용할 수 없습니다." }, { status: 500 });
-  }
-
-  const { data, error } = await (admin as any)
+  const supabase = await createClient();
+  const { data, error } = await (supabase as any)
     .from("announcements")
     .select("id, title, content, category, pinned, created_at")
     .order("pinned", { ascending: false })
     .order("created_at", { ascending: false });
+
+  if (error?.message?.includes("pinned")) {
+    const fallback = await (supabase as any)
+      .from("announcements")
+      .select("id, title, content, category, created_at")
+      .order("created_at", { ascending: false });
+    if (fallback.error) {
+      return NextResponse.json({ error: fallback.error.message }, { status: 500 });
+    }
+    const rows = ((fallback.data ?? []) as Array<{
+      id: string;
+      title: string;
+      content: string;
+      category: string;
+      created_at: string;
+    }>).map((r) => ({ ...r, pinned: false }));
+    return NextResponse.json({ data: rows });
+  }
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -44,12 +57,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "제목과 내용을 입력해주세요." }, { status: 400 });
   }
 
-  const admin = createAdminClient();
-  if (!admin) {
-    return NextResponse.json({ error: "관리자 클라이언트를 사용할 수 없습니다." }, { status: 500 });
-  }
-
-  const { data, error } = await (admin as any)
+  let { data, error } = await (supabase as any)
     .from("announcements")
     .insert({
       title: body.title.trim(),
@@ -60,6 +68,21 @@ export async function POST(req: Request) {
     })
     .select("id")
     .single();
+
+  if (error?.message?.includes("pinned")) {
+    const fallbackInsert = await (supabase as any)
+      .from("announcements")
+      .insert({
+        title: body.title.trim(),
+        content: body.content.trim(),
+        category: body.category?.trim() || "general",
+        author_id: user.id,
+      })
+      .select("id")
+      .single();
+    data = fallbackInsert.data;
+    error = fallbackInsert.error;
+  }
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
