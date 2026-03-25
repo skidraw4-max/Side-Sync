@@ -181,10 +181,19 @@ export async function PATCH(
     lastErr = { status: result.status, text: result.text };
     // If we hit a missing-column error, try the next candidate (which strips that column).
     const lower = result.text?.toLowerCase?.() ?? "";
-    const isMissingColumn =
+    const isMissingDueDate =
       lower.includes("could not find the 'due_date' column") ||
+      lower.includes("no attribute") && lower.includes("due_date") ||
+      lower.includes("due_date") && (lower.includes("does not exist") || lower.includes("not exist"));
+    const isMissingUpdatedAt =
       lower.includes("could not find the 'updated_at' column") ||
-      lower.includes("schema cache");
+      lower.includes("no attribute") && lower.includes("updated_at") ||
+      lower.includes("updated_at") &&
+        (lower.includes("does not exist") ||
+          lower.includes("not exist") ||
+          lower.includes("schema cache"));
+    const isMissingSchemaCache = lower.includes("schema cache");
+    const isMissingColumn = isMissingDueDate || isMissingUpdatedAt || isMissingSchemaCache;
     if (!isMissingColumn) break;
   }
 
