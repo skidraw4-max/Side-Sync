@@ -223,27 +223,22 @@ export interface Database {
         Row: {
           id: string;
           post_id: string;
-          project_id: string;
           author_id: string;
           content: string;
           parent_id: string | null;
           created_at: string;
-          updated_at: string;
         };
         Insert: {
           id?: string;
           post_id: string;
-          project_id: string;
           author_id: string;
           content: string;
           parent_id?: string | null;
           created_at?: string;
-          updated_at?: string;
         };
         Update: {
           content?: string;
           parent_id?: string | null;
-          updated_at?: string;
         };
       };
       notifications: {

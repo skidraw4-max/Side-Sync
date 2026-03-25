@@ -25,7 +25,6 @@ type ProfileRow = {
 type CommentRow = {
   id: string;
   post_id: string;
-  project_id: string;
   author_id: string;
   content: string;
   parent_id: string | null;
@@ -310,7 +309,7 @@ export default function ProjectBoardClient({
     const supabase = createClient();
     const { data, error } = await (supabase as any)
       .from("post_comments")
-      .select("id, post_id, project_id, author_id, content, parent_id, created_at")
+      .select("id, post_id, author_id, content, parent_id, created_at")
       .eq("post_id", selectedId)
       .order("created_at", { ascending: true });
 
@@ -404,7 +403,6 @@ export default function ProjectBoardClient({
     const supabase = createClient();
     const { error } = await (supabase as any).from("post_comments").insert({
       post_id: selectedId,
-      project_id: projectId,
       author_id: currentUserId,
       content: commentInput.trim(),
       parent_id: replyParentId,
