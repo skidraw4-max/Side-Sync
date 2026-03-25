@@ -113,13 +113,26 @@ export async function PATCH(
     patch.due_date = body.due_date;
   }
 
+  const patchForDb = patch as Record<string, unknown>;
   const { error } = await (supabase as any)
     .from("tasks")
-    .update(patch)
+    .update(patchForDb)
     .eq("id", taskId)
     .eq("project_id", projectId);
 
+  // 일부 운영 환경에서 updated_at 컬럼이 아직 반영되지 않았거나 schema cache와 불일치할 때를 대비
   if (error) {
+    const msg = String(error.message ?? "");
+    if (msg.toLowerCase().includes("updated_at") && msg.toLowerCase().includes("does not exist")) {
+      const { updated_at: _ua, ...rest } = patchForDb as Record<string, unknown>;
+      const { error: retryError } = await (supabase as any)
+        .from("tasks")
+        .update(rest)
+        .eq("id", taskId)
+        .eq("project_id", projectId);
+      if (!retryError) return NextResponse.json({ ok: true });
+    }
+
     console.error("[PATCH task]", error);
     return NextResponse.json(
       { error: error.message || "저장에 실패했습니다." },
