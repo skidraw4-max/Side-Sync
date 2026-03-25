@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import KanbanTasksBoard from "./KanbanTasksBoard";
+import TasksAccessDeniedRedirect from "./redirect-no-access";
 
 interface TasksPageProps {
   params: Promise<{ id: string }>;
@@ -10,10 +11,41 @@ export default async function TasksPage({ params }: TasksPageProps) {
   const supabase = await createClient();
   const { data: { user: currentUser } } = await supabase.auth.getUser();
 
+  if (!currentUser) {
+    return <TasksAccessDeniedRedirect projectId={projectId} />;
+  }
+
+  // Board와 동일하게 "프로젝트 리더 또는 status='accepted' 멤버"만 업무 목록을 조회/수정할 수 있게 UI 레벨 접근 제어
+  const [{ data: projectForAccess }, { data: acceptedApp }] = await Promise.all([
+    supabase
+      .from("projects")
+      .select("id, team_leader_id")
+      .eq("id", projectId)
+      .single(),
+    supabase
+      .from("applications")
+      .select("id")
+      .eq("project_id", projectId)
+      .eq("applicant_id", currentUser.id)
+      .eq("status", "accepted")
+      .maybeSingle(),
+  ]);
+
+  const projectForAccessTyped = projectForAccess as
+    | { id: string; team_leader_id: string | null }
+    | null;
+  const hasAccess =
+    !!projectForAccessTyped &&
+    (projectForAccessTyped.team_leader_id === currentUser.id || !!acceptedApp);
+
+  if (!hasAccess) {
+    return <TasksAccessDeniedRedirect projectId={projectId} />;
+  }
+
   const [
-    { data: project },
-    { data: tasks },
-    { data: acceptedApps },
+    projectResult,
+    tasksResult,
+    acceptedAppsResult,
   ] = await Promise.all([
     supabase
       .from("projects")
@@ -32,8 +64,32 @@ export default async function TasksPage({ params }: TasksPageProps) {
       .eq("status", "accepted"),
   ]);
 
-  const projectTyped = project as { id: string; title: string; team_leader_id: string | null; recruitment_status?: unknown; tech_stack?: unknown } | null;
-  const acceptedAppsTyped = (acceptedApps ?? []) as Array<{ applicant_id: string }>;
+  if (projectResult.error) {
+    return (
+      <div className="p-6 text-sm text-red-600">
+        프로젝트를 불러오지 못했습니다: {projectResult.error.message}
+      </div>
+    );
+  }
+  if (tasksResult.error) {
+    return (
+      <div className="p-6 text-sm text-red-600">
+        업무를 불러오지 못했습니다: {tasksResult.error.message}
+      </div>
+    );
+  }
+  if (acceptedAppsResult.error) {
+    return (
+      <div className="p-6 text-sm text-red-600">
+        워크스페이스 멤버를 불러오지 못했습니다: {acceptedAppsResult.error.message}
+      </div>
+    );
+  }
+
+  const projectTyped = projectResult.data as
+    | { id: string; title: string; team_leader_id: string | null; recruitment_status?: unknown; tech_stack?: unknown }
+    | null;
+  const acceptedAppsTyped = (acceptedAppsResult.data ?? []) as Array<{ applicant_id: string }>;
 
   const teamMemberIds = new Set<string>();
   if (projectTyped?.team_leader_id) teamMemberIds.add(projectTyped.team_leader_id);
@@ -47,7 +103,7 @@ export default async function TasksPage({ params }: TasksPageProps) {
           .in("id", Array.from(teamMemberIds))
       : { data: [] };
 
-  const tasksTyped = (tasks ?? []) as Array<{
+  const tasksTyped = (tasksResult.data ?? []) as Array<{
     id: string;
     title: string;
     category: string | null;
