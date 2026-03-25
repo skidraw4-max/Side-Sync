@@ -42,21 +42,12 @@ export default async function TasksPage({ params }: TasksPageProps) {
     return <TasksAccessDeniedRedirect projectId={projectId} />;
   }
 
-  const [
-    projectResult,
-    tasksResult,
-    acceptedAppsResult,
-  ] = await Promise.all([
+  const [projectResult, acceptedAppsResult] = await Promise.all([
     supabase
       .from("projects")
       .select("id, title, team_leader_id, recruitment_status, tech_stack")
       .eq("id", projectId)
       .single(),
-    supabase
-      .from("tasks")
-      .select("id, title, category, priority, status, assignee_id, due_date")
-      .eq("project_id", projectId)
-      .order("created_at", { ascending: false }),
     supabase
       .from("applications")
       .select("applicant_id")
@@ -68,13 +59,6 @@ export default async function TasksPage({ params }: TasksPageProps) {
     return (
       <div className="p-6 text-sm text-red-600">
         프로젝트를 불러오지 못했습니다: {projectResult.error.message}
-      </div>
-    );
-  }
-  if (tasksResult.error) {
-    return (
-      <div className="p-6 text-sm text-red-600">
-        업무를 불러오지 못했습니다: {tasksResult.error.message}
       </div>
     );
   }
@@ -103,14 +87,49 @@ export default async function TasksPage({ params }: TasksPageProps) {
           .in("id", Array.from(teamMemberIds))
       : { data: [] };
 
-  const tasksTyped = (tasksResult.data ?? []) as Array<{
+  // due_date 컬럼이 실제 DB에 없는 환경을 대비해서,
+  // due_date 포함 SELECT 실패 시 due_date 제외로 재시도합니다.
+  let supportsDueDate = true;
+  let tasksResult:
+    | { data: unknown; error: { message: string } | null }
+    | null = null;
+  tasksResult = await supabase
+    .from("tasks")
+    .select("id, title, category, priority, status, assignee_id, due_date")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false });
+
+  if (tasksResult && tasksResult.error) {
+    const lower = tasksResult.error.message?.toLowerCase?.() ?? "";
+    const isMissingDueDate =
+      lower.includes("column tasks.due_date does not exist") ||
+      (lower.includes("due_date") &&
+        (lower.includes("does not exist") || lower.includes("not exist")));
+
+    if (isMissingDueDate) {
+      supportsDueDate = false;
+      tasksResult = await supabase
+        .from("tasks")
+        .select("id, title, category, priority, status, assignee_id")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false });
+    } else {
+      return (
+        <div className="p-6 text-sm text-red-600">
+          업무를 불러오지 못했습니다: {tasksResult.error.message}
+        </div>
+      );
+    }
+  }
+
+  const tasksTyped = (tasksResult?.data ?? []) as Array<{
     id: string;
     title: string;
     category: string | null;
     priority?: string;
     status: string;
     assignee_id: string | null;
-    due_date: string | null;
+    due_date?: string | null;
   }>;
   const assigneeIds = [...new Set(tasksTyped.map((t) => t.assignee_id).filter(Boolean))] as string[];
   const assigneeProfileIds = new Set(assigneeIds);
@@ -132,7 +151,7 @@ export default async function TasksPage({ params }: TasksPageProps) {
     ...t,
     category: t.category ?? "",
     priority: (t as { priority?: string }).priority ?? "medium",
-    due_date: t.due_date,
+    due_date: supportsDueDate ? (t.due_date ?? null) : null,
     assignee: t.assignee_id ? (profileMap.get(t.assignee_id) ?? null) : null,
   }));
 
@@ -164,6 +183,7 @@ export default async function TasksPage({ params }: TasksPageProps) {
       teamMembers={teamMembers}
       currentUserId={currentUser?.id ?? null}
       recruitmentRoles={recruitmentRoles}
+      supportsDueDate={supportsDueDate}
     />
   );
 }

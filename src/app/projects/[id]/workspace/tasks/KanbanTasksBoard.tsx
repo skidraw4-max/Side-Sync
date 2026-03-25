@@ -18,6 +18,7 @@ interface KanbanTasksBoardProps {
   teamMembers: KanbanTeamMember[];
   currentUserId: string | null;
   recruitmentRoles: string[];
+  supportsDueDate: boolean;
 }
 
 export default function KanbanTasksBoard({
@@ -27,6 +28,7 @@ export default function KanbanTasksBoard({
   teamMembers,
   currentUserId,
   recruitmentRoles = [],
+  supportsDueDate,
 }: KanbanTasksBoardProps) {
   const router = useRouter();
   const { tasks, setTasks, handleStatusChange, handleAssigneeChange, commitTaskUpdate } =
@@ -201,7 +203,7 @@ export default function KanbanTasksBoard({
     setEditTitle(task.title);
     setEditPriority((task.priority as "high" | "medium" | "low") ?? "medium");
     setEditAssigneeId(task.assignee_id ?? "");
-    setEditDueDate(task.due_date ? task.due_date.slice(0, 10) : "");
+    setEditDueDate(supportsDueDate && task.due_date ? task.due_date.slice(0, 10) : "");
     setEditStatus((task.status as "todo" | "doing" | "done") ?? "todo");
   };
 
@@ -218,7 +220,7 @@ export default function KanbanTasksBoard({
         priority: editPriority,
         assignee_id: editAssigneeDbValue,
         status: editStatus,
-        due_date: editDueDate || null,
+        due_date: supportsDueDate ? editDueDate || null : null,
       });
     } catch (e) {
       setIsSubmitting(false);
@@ -446,17 +448,19 @@ export default function KanbanTasksBoard({
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  {WORKSPACE.taskDueDateLabel}
-                </label>
-                <input
-                  type="date"
-                  value={newDueDate}
-                  onChange={(e) => setNewDueDate(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
+              {supportsDueDate ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    {WORKSPACE.taskDueDateLabel}
+                  </label>
+                  <input
+                    type="date"
+                    value={newDueDate}
+                    onChange={(e) => setNewDueDate(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              ) : null}
               <p className="text-xs text-gray-500">
                 {WORKSPACE.taskColumnHintPrefix}:{" "}
                 {KANBAN_STATUS_OPTIONS.find((o) => o.value === newTaskColumn)?.label ??
@@ -553,17 +557,19 @@ export default function KanbanTasksBoard({
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  {WORKSPACE.taskDueDateLabel}
-                </label>
-                <input
-                  type="date"
-                  value={editDueDate}
-                  onChange={(e) => setEditDueDate(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
+              {supportsDueDate ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    {WORKSPACE.taskDueDateLabel}
+                  </label>
+                  <input
+                    type="date"
+                    value={editDueDate}
+                    onChange={(e) => setEditDueDate(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              ) : null}
             </div>
             <div className="mt-6 flex flex-wrap justify-end gap-2">
               <button
