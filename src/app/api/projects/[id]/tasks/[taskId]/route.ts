@@ -69,13 +69,9 @@ export async function PATCH(
     return NextResponse.json({ error: "업무를 찾을 수 없습니다." }, { status: 404 });
   }
 
-  const patch: Record<string, unknown> = {
-    // 클라이언트에서 updated_at을 줄 수도 있지만, 정책대로 없으면 현재 시각을 저장합니다.
-    updated_at:
-      typeof body.updated_at === "string" && body.updated_at.trim()
-        ? body.updated_at
-        : new Date().toISOString(),
-  };
+  // 일부 운영 환경에서는 tasks.updated_at 컬럼이 없을 수 있어, updated_at은 일단 보내지 않습니다.
+  // (컬럼이 존재하는 환경이라면 DB 트리거/기본값이 처리하거나, 추후 스키마 일치 시 별도 추가 가능)
+  const patch: Record<string, unknown> = {};
 
   if (typeof body.status === "string") {
     if (!STATUSES.has(body.status)) {
@@ -205,6 +201,4 @@ export async function PATCH(
     { error: lastErr.text || `저장에 실패했습니다. (HTTP ${lastErr.status})` },
     { status: 500 }
   );
-
-  return NextResponse.json({ ok: true });
 }
