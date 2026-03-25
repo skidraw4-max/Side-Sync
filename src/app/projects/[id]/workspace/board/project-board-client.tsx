@@ -14,7 +14,6 @@ type PostRow = {
   category: string;
   author_id: string;
   created_at: string;
-  updated_at: string;
 };
 
 type ProfileRow = {
@@ -123,7 +122,7 @@ export default function ProjectBoardClient({
     const supabase = createClient();
     let query = (supabase as any)
       .from("project_posts")
-      .select("id, title, content, category, author_id, created_at, updated_at")
+      .select("id, title, content, category, author_id, created_at")
       .eq("project_id", projectId)
       .order("created_at", { ascending: false });
 

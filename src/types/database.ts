@@ -203,7 +203,6 @@ export interface Database {
           category: string;
           author_id: string;
           created_at: string;
-          updated_at: string;
         };
         Insert: {
           id?: string;
@@ -213,13 +212,11 @@ export interface Database {
           category?: string;
           author_id: string;
           created_at?: string;
-          updated_at?: string;
         };
         Update: {
           title?: string;
           content?: string;
           category?: string;
-          updated_at?: string;
         };
       };
       post_comments: {
