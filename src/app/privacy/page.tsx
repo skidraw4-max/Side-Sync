@@ -4,6 +4,7 @@ import LegalSectionCard from "@/components/legal/LegalSectionCard";
 import {
   ClipboardList,
   Clock,
+  Cookie,
   Database,
   Mail,
   Server,
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
   description: "Side-Sync 개인정보 처리방침 (Privacy Policy)",
 };
 
-const LAST_UPDATED = "2026.03.20";
+const LAST_UPDATED = "2026.03.25";
 
 const toc = [
   { id: "doc-intro", label: "개요" },
@@ -24,7 +25,8 @@ const toc = [
   { id: "privacy-2", label: "2. 수집 및 이용 목적" },
   { id: "privacy-3", label: "3. 보유 및 이용 기간" },
   { id: "privacy-4", label: "4. 제3자 제공·위탁" },
-  { id: "privacy-5", label: "5. 보호책임자" },
+  { id: "privacy-adsense", label: "5. Google AdSense 광고·쿠키" },
+  { id: "privacy-5", label: "6. 보호책임자" },
   { id: "privacy-appendix", label: "부록: 가입 시 동의" },
 ];
 
@@ -90,7 +92,53 @@ export default function PrivacyPage() {
         </ul>
       </LegalSectionCard>
 
-      <LegalSectionCard id="privacy-5" title="5. 개인정보 보호책임자" icon={UserCircle}>
+      <LegalSectionCard
+        id="privacy-adsense"
+        title="5. Google AdSense 광고 쿠키 수집 안내"
+        icon={Cookie}
+      >
+        <p>
+          본 서비스는 <strong>Google AdSense</strong>를 통해 광고를 게재할 수 있습니다. Google을 포함한 제3자 광고
+          게재 사업자는 이용자가 본 사이트 및 다른 웹사이트에 방문할 때 <strong>쿠키</strong> 등을 사용하여 광고를
+          게재하거나, 이전 방문 정보를 바탕으로 맞춤형 광고를 제공할 수 있습니다.
+        </p>
+        <p className="mt-4">
+          개인 맞춤 광고에 사용되는 쿠키에 대한 자세한 설명은 Google의 광고 정책 및 개인정보 관련 안내를 참고하시기
+          바랍니다. 이용자는{" "}
+          <a
+            href="https://www.google.com/settings/ads"
+            className="font-medium text-[#2563EB] hover:underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Google 광고 설정
+          </a>
+          에서 맞춤형 광고를 끄거나,{" "}
+          <a
+            href="https://www.aboutads.info/choices/"
+            className="font-medium text-[#2563EB] hover:underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            aboutads.info
+          </a>
+          에서 제3자 광고주의 맞춤형 광고 옵트아웃을 설정할 수 있습니다.
+        </p>
+        <p className="mt-4">
+          Google이 개인정보를 처리하는 방식에 대해서는{" "}
+          <a
+            href="https://policies.google.com/privacy"
+            className="font-medium text-[#2563EB] hover:underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Google 개인정보처리방침
+          </a>
+          을 참고해 주시기 바랍니다.
+        </p>
+      </LegalSectionCard>
+
+      <LegalSectionCard id="privacy-5" title="6. 개인정보 보호책임자" icon={UserCircle}>
         <p>
           성명: <strong>함종두</strong> / 이메일:{" "}
           <a href="mailto:skidraw4@gmail.com">skidraw4@gmail.com</a>
