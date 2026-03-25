@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "@fontsource/pretendard";
 import "./globals.css";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import Providers from "@/components/Providers";
 import { createClient } from "@/lib/supabase/server";
 
@@ -51,6 +52,9 @@ export default async function RootLayout({
       </head>
       <body className="antialiased font-sans">
         <Providers initialSession={session}>{children}</Providers>
+        {process.env.NEXT_PUBLIC_GA_ID ? (
+          <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
+        ) : null}
       </body>
     </html>
   );
