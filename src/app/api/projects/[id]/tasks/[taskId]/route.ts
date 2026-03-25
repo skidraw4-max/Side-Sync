@@ -70,7 +70,8 @@ export async function PATCH(
   }
 
   const patch: Record<string, unknown> = {
-    updated_at: new Date().toISOString(),
+    updated_at:
+      typeof body.updated_at === "string" ? body.updated_at : new Date().toISOString(),
   };
 
   if (typeof body.status === "string") {

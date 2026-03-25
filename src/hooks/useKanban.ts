@@ -172,7 +172,10 @@ export function useKanban({ projectId, initialTasks, teamMembers }: UseKanbanOpt
       });
 
       try {
-        await patchTaskApi(taskId, { status: safe });
+        await patchTaskApi(taskId, {
+          status: safe,
+          updated_at: new Date().toISOString(),
+        });
         router.refresh();
       } catch (e) {
         toast.error(
@@ -215,7 +218,10 @@ export function useKanban({ projectId, initialTasks, teamMembers }: UseKanbanOpt
       });
 
       try {
-        await patchTaskApi(taskId, { assignee_id: dbValue });
+        await patchTaskApi(taskId, {
+          assignee_id: dbValue,
+          updated_at: new Date().toISOString(),
+        });
         toast.success(WORKSPACE.toastAssigneeUpdated);
         router.refresh();
       } catch {
@@ -244,6 +250,7 @@ export function useKanban({ projectId, initialTasks, teamMembers }: UseKanbanOpt
         assignee_id: payload.assignee_id,
         status: payload.status,
         due_date: payload.due_date,
+        updated_at: new Date().toISOString(),
       };
       await patchTaskApi(taskId, body);
 
