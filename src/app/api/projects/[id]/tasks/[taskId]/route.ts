@@ -123,36 +123,59 @@ export async function PATCH(
       .eq("project_id", projectId);
   };
 
-  try {
-    const { error } = await attemptUpdate(patchForDb);
-    if (!error) return NextResponse.json({ ok: true });
+  const stripKeys = (p: Record<string, unknown>, keys: string[]) => {
+    const next: Record<string, unknown> = { ...p };
+    keys.forEach((k) => {
+      if (k in next) delete next[k];
+    });
+    return next;
+  };
 
-    // Some environments may have outdated schema cache / columns.
-    const msg = String(error.message ?? "");
-    if (msg.toLowerCase().includes("updated_at") && msg.toLowerCase().includes("does not exist")) {
-      const { updated_at: _ua, ...rest } = patchForDb;
-      const { error: retryError } = await attemptUpdate(rest);
-      if (!retryError) return NextResponse.json({ ok: true });
+  // 일부 운영 환경에서 컬럼 미반영/스키마 캐시 불일치로 인해 updated_at/due_date 업데이트가 실패할 수 있어
+  // 단계적으로 제외 재시도를 수행합니다.
+  const attempts: Array<Record<string, unknown>> = [
+    patchForDb,
+    stripKeys(patchForDb, ["updated_at"]),
+    stripKeys(patchForDb, ["due_date"]),
+    stripKeys(patchForDb, ["updated_at", "due_date"]),
+  ];
+
+  for (const candidate of attempts) {
+    try {
+      const { error } = await attemptUpdate(candidate);
+      if (!error) return NextResponse.json({ ok: true });
+
+      const msg = String(error.message ?? "").toLowerCase();
+      const retryable =
+        msg.includes("updated_at") ||
+        msg.includes("due_date") ||
+        msg.includes("schema cache");
+      if (!retryable) {
+        console.error("[PATCH task]", error);
+        return NextResponse.json(
+          { error: error.message || "저장에 실패했습니다." },
+          { status: 500 }
+        );
+      }
+    } catch (e) {
+      const msg = String(e instanceof Error ? e.message : e ?? "").toLowerCase();
+      const retryable =
+        msg.includes("updated_at") ||
+        msg.includes("due_date") ||
+        msg.includes("schema cache");
+      if (!retryable) {
+        console.error("[PATCH task][exception]", e);
+        return NextResponse.json(
+          { error: msg || "저장에 실패했습니다." },
+          { status: 500 }
+        );
+      }
     }
-
-    console.error("[PATCH task]", error);
-    return NextResponse.json(
-      { error: error.message || "저장에 실패했습니다." },
-      { status: 500 }
-    );
-  } catch (e) {
-    // Supabase schema cache validation can throw instead of returning { error }.
-    const msg = String(e instanceof Error ? e.message : e ?? "");
-    if (msg.toLowerCase().includes("updated_at") && msg.toLowerCase().includes("schema cache")) {
-      const { updated_at: _ua, ...rest } = patchForDb;
-      const { error: retryError } = await attemptUpdate(rest);
-      if (!retryError) return NextResponse.json({ ok: true });
-    }
-
-    console.error("[PATCH task][exception]", e);
-    return NextResponse.json(
-      { error: msg || "저장에 실패했습니다." },
-      { status: 500 }
-    );
   }
+
+  // 마지막 시도까지 실패한 경우
+  return NextResponse.json(
+    { error: "저장에 실패했습니다. (tasks update 폴백 모두 실패)" },
+    { status: 500 }
+  );
 }
