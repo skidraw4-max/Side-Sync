@@ -7,6 +7,7 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const isChunkLoadError = String(error?.message ?? "").includes("ChunkLoadError");
   return (
     <html lang="ko">
       <body className="antialiased font-sans bg-gray-50 min-h-screen flex items-center justify-center p-6">
@@ -17,14 +18,26 @@ export default function GlobalError({
           </p>
           <div className="text-left bg-gray-50 rounded-lg p-4 text-xs text-gray-500 mb-6">
             <p className="font-medium text-gray-700 mb-2">확인해보세요:</p>
-            <ul className="list-disc list-inside space-y-1">
-              <li>Vercel 대시보드에서 환경 변수 설정 (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY)</li>
-              <li>Supabase anon key는 JWT 형식(eyJ로 시작)이어야 합니다</li>
-              <li>환경 변수 변경 후 재배포가 필요합니다</li>
-            </ul>
+            {isChunkLoadError ? (
+              <ul className="list-disc list-inside space-y-1">
+                <li>이 페이지의 스크립트/청크 로딩이 실패했습니다.</li>
+                <li>브라우저 캐시를 지우고 새로고침해 주세요.</li>
+                <li>불가하면 시크릿 모드로 다시 접속해 보세요.</li>
+              </ul>
+            ) : (
+              <ul className="list-disc list-inside space-y-1">
+                <li>Vercel 대시보드에서 환경 변수 설정 (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY)</li>
+                <li>Supabase anon key는 JWT 형식(eyJ로 시작)이어야 합니다</li>
+                <li>환경 변수 변경 후 재배포가 필요합니다</li>
+              </ul>
+            )}
           </div>
           <button
-            onClick={() => reset()}
+            onClick={() => {
+              reset();
+              // ChunkLoadError 같은 배포/캐시 불일치 케이스에서 manifest/청크를 다시 받아오도록 새로고침
+              if (isChunkLoadError) window.location.reload();
+            }}
             className="w-full py-2.5 px-4 rounded-lg bg-[#2563EB] text-white font-medium hover:bg-[#1d4ed8] transition-colors"
           >
             다시 시도

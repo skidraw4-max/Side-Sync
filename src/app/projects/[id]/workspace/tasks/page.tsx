@@ -22,7 +22,7 @@ export default async function TasksPage({ params }: TasksPageProps) {
       .single(),
     supabase
       .from("tasks")
-      .select("id, title, category, priority, status, assignee_id")
+      .select("id, title, category, priority, status, assignee_id, due_date")
       .eq("project_id", projectId)
       .order("created_at", { ascending: false }),
     supabase
@@ -47,7 +47,15 @@ export default async function TasksPage({ params }: TasksPageProps) {
           .in("id", Array.from(teamMemberIds))
       : { data: [] };
 
-  const tasksTyped = (tasks ?? []) as Array<{ id: string; title: string; category: string | null; priority?: string; status: string; assignee_id: string | null }>;
+  const tasksTyped = (tasks ?? []) as Array<{
+    id: string;
+    title: string;
+    category: string | null;
+    priority?: string;
+    status: string;
+    assignee_id: string | null;
+    due_date: string | null;
+  }>;
   const assigneeIds = [...new Set(tasksTyped.map((t) => t.assignee_id).filter(Boolean))] as string[];
   const assigneeProfileIds = new Set(assigneeIds);
   const allProfileIds = new Set([...teamMemberIds, ...assigneeProfileIds]);
@@ -68,7 +76,7 @@ export default async function TasksPage({ params }: TasksPageProps) {
     ...t,
     category: t.category ?? "",
     priority: (t as { priority?: string }).priority ?? "medium",
-    due_date: null as string | null,
+    due_date: t.due_date,
     assignee: t.assignee_id ? (profileMap.get(t.assignee_id) ?? null) : null,
   }));
 
