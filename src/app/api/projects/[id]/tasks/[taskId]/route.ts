@@ -114,22 +114,24 @@ export async function PATCH(
   }
 
   const patchForDb = patch as Record<string, unknown>;
-  const { error } = await (supabase as any)
-    .from("tasks")
-    .update(patchForDb)
-    .eq("id", taskId)
-    .eq("project_id", projectId);
 
-  // 일부 운영 환경에서 updated_at 컬럼이 아직 반영되지 않았거나 schema cache와 불일치할 때를 대비
-  if (error) {
+  const attemptUpdate = async (updatePatch: Record<string, unknown>) => {
+    return (supabase as any)
+      .from("tasks")
+      .update(updatePatch)
+      .eq("id", taskId)
+      .eq("project_id", projectId);
+  };
+
+  try {
+    const { error } = await attemptUpdate(patchForDb);
+    if (!error) return NextResponse.json({ ok: true });
+
+    // Some environments may have outdated schema cache / columns.
     const msg = String(error.message ?? "");
     if (msg.toLowerCase().includes("updated_at") && msg.toLowerCase().includes("does not exist")) {
-      const { updated_at: _ua, ...rest } = patchForDb as Record<string, unknown>;
-      const { error: retryError } = await (supabase as any)
-        .from("tasks")
-        .update(rest)
-        .eq("id", taskId)
-        .eq("project_id", projectId);
+      const { updated_at: _ua, ...rest } = patchForDb;
+      const { error: retryError } = await attemptUpdate(rest);
       if (!retryError) return NextResponse.json({ ok: true });
     }
 
@@ -138,7 +140,19 @@ export async function PATCH(
       { error: error.message || "저장에 실패했습니다." },
       { status: 500 }
     );
-  }
+  } catch (e) {
+    // Supabase schema cache validation can throw instead of returning { error }.
+    const msg = String(e instanceof Error ? e.message : e ?? "");
+    if (msg.toLowerCase().includes("updated_at") && msg.toLowerCase().includes("schema cache")) {
+      const { updated_at: _ua, ...rest } = patchForDb;
+      const { error: retryError } = await attemptUpdate(rest);
+      if (!retryError) return NextResponse.json({ ok: true });
+    }
 
-  return NextResponse.json({ ok: true });
+    console.error("[PATCH task][exception]", e);
+    return NextResponse.json(
+      { error: msg || "저장에 실패했습니다." },
+      { status: 500 }
+    );
+  }
 }
