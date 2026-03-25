@@ -14,7 +14,9 @@ type TaskRowFromRealtime = {
   priority?: string;
   status: string;
   assignee_id: string | null;
-  due_date: string | null;
+  // Supabase realtime payload가 항상 모든 컬럼을 포함하지 않을 수 있어,
+  // due_date가 없으면 (undefined면) 기존 상태를 유지하도록 처리합니다.
+  due_date?: string | null;
 };
 
 export interface UseKanbanOptions {
@@ -91,7 +93,7 @@ export function useKanban({ projectId, initialTasks, teamMembers }: UseKanbanOpt
                     priority: row.priority ?? "medium",
                     status: row.status,
                     assignee_id: row.assignee_id,
-                    due_date: row.due_date,
+                    due_date: "due_date" in row ? row.due_date ?? null : t.due_date,
                     assignee: assignee
                       ? { fullName: assignee.fullName, avatarUrl: assignee.avatarUrl }
                       : null,
@@ -127,7 +129,7 @@ export function useKanban({ projectId, initialTasks, teamMembers }: UseKanbanOpt
                 priority: row.priority ?? "medium",
                 status: row.status,
                 assignee_id: row.assignee_id,
-                due_date: row.due_date,
+                due_date: "due_date" in row ? row.due_date ?? null : null,
                 assignee: assignee
                   ? { fullName: assignee.fullName, avatarUrl: assignee.avatarUrl }
                   : null,
