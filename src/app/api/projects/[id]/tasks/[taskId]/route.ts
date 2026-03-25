@@ -70,8 +70,11 @@ export async function PATCH(
   }
 
   const patch: Record<string, unknown> = {
+    // 클라이언트에서 updated_at을 줄 수도 있지만, 정책대로 없으면 현재 시각을 저장합니다.
     updated_at:
-      typeof body.updated_at === "string" ? body.updated_at : new Date().toISOString(),
+      typeof body.updated_at === "string" && body.updated_at.trim()
+        ? body.updated_at
+        : new Date().toISOString(),
   };
 
   if (typeof body.status === "string") {
@@ -113,69 +116,44 @@ export async function PATCH(
     patch.due_date = body.due_date;
   }
 
-  const patchForDb = patch as Record<string, unknown>;
-
-  const attemptUpdate = async (updatePatch: Record<string, unknown>) => {
-    return (supabase as any)
-      .from("tasks")
-      .update(updatePatch)
-      .eq("id", taskId)
-      .eq("project_id", projectId);
-  };
-
-  const stripKeys = (p: Record<string, unknown>, keys: string[]) => {
-    const next: Record<string, unknown> = { ...p };
-    keys.forEach((k) => {
-      if (k in next) delete next[k];
-    });
-    return next;
-  };
-
-  // 일부 운영 환경에서 컬럼 미반영/스키마 캐시 불일치로 인해 updated_at/due_date 업데이트가 실패할 수 있어
-  // 단계적으로 제외 재시도를 수행합니다.
-  const attempts: Array<Record<string, unknown>> = [
-    patchForDb,
-    stripKeys(patchForDb, ["updated_at"]),
-    stripKeys(patchForDb, ["due_date"]),
-    stripKeys(patchForDb, ["updated_at", "due_date"]),
-  ];
-
-  for (const candidate of attempts) {
-    try {
-      const { error } = await attemptUpdate(candidate);
-      if (!error) return NextResponse.json({ ok: true });
-
-      const msg = String(error.message ?? "").toLowerCase();
-      const retryable =
-        msg.includes("updated_at") ||
-        msg.includes("due_date") ||
-        msg.includes("schema cache");
-      if (!retryable) {
-        console.error("[PATCH task]", error);
-        return NextResponse.json(
-          { error: error.message || "저장에 실패했습니다." },
-          { status: 500 }
-        );
-      }
-    } catch (e) {
-      const msg = String(e instanceof Error ? e.message : e ?? "").toLowerCase();
-      const retryable =
-        msg.includes("updated_at") ||
-        msg.includes("due_date") ||
-        msg.includes("schema cache");
-      if (!retryable) {
-        console.error("[PATCH task][exception]", e);
-        return NextResponse.json(
-          { error: msg || "저장에 실패했습니다." },
-          { status: 500 }
-        );
-      }
-    }
+  // Supabase JS update는 schema cache 검증 단계에서 updated_at 미존재로 실패할 수 있어,
+  // PostgREST fetch로 직접 PATCH하여 스키마 캐시 문제를 우회합니다.
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !anonKey) {
+    return NextResponse.json({ error: "Supabase 환경 변수가 설정되지 않았습니다." }, { status: 500 });
   }
 
-  // 마지막 시도까지 실패한 경우
-  return NextResponse.json(
-    { error: "저장에 실패했습니다. (tasks update 폴백 모두 실패)" },
-    { status: 500 }
-  );
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session?.access_token) {
+    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+  }
+
+  const patchUrl = new URL(`${supabaseUrl}/rest/v1/tasks`);
+  patchUrl.searchParams.set("id", `eq.${taskId}`);
+  patchUrl.searchParams.set("project_id", `eq.${projectId}`);
+
+  const res = await fetch(patchUrl.toString(), {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: anonKey,
+      Authorization: `Bearer ${session.access_token}`,
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify(patch),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    return NextResponse.json(
+      { error: text || `저장에 실패했습니다. (HTTP ${res.status})` },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({ ok: true });
 }
