@@ -46,6 +46,53 @@ const CATEGORIES = [
 type CategoryValue = (typeof CATEGORIES)[number]["value"];
 type CategoryFilter = "all" | CategoryValue;
 
+/** post_comments에 project_id 등 없는 스키마 대응: PostgREST에 필요한 필드만 직렬화 */
+async function insertPostCommentRest(params: {
+  postId: string;
+  authorId: string;
+  content: string;
+  parentId: string | null;
+  accessToken: string;
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!baseUrl || !anonKey) {
+    return { ok: false, message: "Supabase 환경 변수가 설정되지 않았습니다." };
+  }
+
+  const body: Record<string, string> = {
+    post_id: params.postId,
+    author_id: params.authorId,
+    content: params.content,
+  };
+  if (params.parentId) {
+    body.parent_id = params.parentId;
+  }
+
+  const res = await fetch(`${baseUrl}/rest/v1/post_comments`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: anonKey,
+      Authorization: `Bearer ${params.accessToken}`,
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    let message = await res.text();
+    try {
+      const j = JSON.parse(message) as { message?: string; hint?: string };
+      message = j.message || message;
+    } catch {
+      /* keep text */
+    }
+    return { ok: false, message: message || `HTTP ${res.status}` };
+  }
+  return { ok: true };
+}
+
 const CATEGORY_META: Record<CategoryValue, { label: string; className: string }> = {
   notice: {
     label: "Notice",
@@ -399,17 +446,29 @@ export default function ProjectBoardClient({
 
   const submitComment = async () => {
     if (!selectedId || !commentInput.trim()) return;
+    const savedContent = commentInput.trim();
+    const savedParentId = replyParentId;
     setIsCommentSubmitting(true);
     const supabase = createClient();
-    const { error } = await (supabase as any).from("post_comments").insert({
-      post_id: selectedId,
-      author_id: currentUserId,
-      content: commentInput.trim(),
-      parent_id: replyParentId,
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      toast.error("로그인이 필요합니다.");
+      setIsCommentSubmitting(false);
+      return;
+    }
+
+    const insertResult = await insertPostCommentRest({
+      postId: selectedId,
+      authorId: currentUserId,
+      content: savedContent,
+      parentId: savedParentId,
+      accessToken: session.access_token,
     });
 
-    if (error) {
-      toast.error(error.message);
+    if (!insertResult.ok) {
+      toast.error(insertResult.message);
       setIsCommentSubmitting(false);
       return;
     }
@@ -446,7 +505,7 @@ export default function ProjectBoardClient({
       return foundIds;
     };
 
-    const mentionTargets = extractMentionTargets(commentInput.trim());
+    const mentionTargets = extractMentionTargets(savedContent);
     const postLink = `/projects/${projectId}/workspace/board?post=${selectedId}`;
 
     const notificationsToInsert: Array<{
