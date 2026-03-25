@@ -136,24 +136,66 @@ export async function PATCH(
   patchUrl.searchParams.set("id", `eq.${taskId}`);
   patchUrl.searchParams.set("project_id", `eq.${projectId}`);
 
-  const res = await fetch(patchUrl.toString(), {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: anonKey,
-      Authorization: `Bearer ${session.access_token}`,
-      Prefer: "return=minimal",
-    },
-    body: JSON.stringify(patch),
-  });
+  const patchAttempts: Array<Record<string, unknown>> = [
+    patch,
+    // Some environments may not have due_date / updated_at columns at runtime.
+    (() => {
+      const next = { ...patch };
+      delete next.due_date;
+      return next;
+    })(),
+    (() => {
+      const next = { ...patch };
+      delete next.updated_at;
+      return next;
+    })(),
+    (() => {
+      const next = { ...patch };
+      delete next.due_date;
+      delete next.updated_at;
+      return next;
+    })(),
+  ];
 
-  if (!res.ok) {
+  const tryPatch = async (candidate: Record<string, unknown>) => {
+    const res = await fetch(patchUrl.toString(), {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: anonKey,
+        Authorization: `Bearer ${session.access_token}`,
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify(candidate),
+    });
+
+    if (res.ok) return { ok: true as const };
     const text = await res.text().catch(() => "");
-    return NextResponse.json(
-      { error: text || `저장에 실패했습니다. (HTTP ${res.status})` },
-      { status: 500 }
-    );
+    return { ok: false as const, status: res.status, text };
+  };
+
+  let lastErr: { status: number; text: string } | null = null;
+  for (const candidate of patchAttempts) {
+    const result = await tryPatch(candidate);
+    if (result.ok) return NextResponse.json({ ok: true });
+    lastErr = { status: result.status, text: result.text };
+    // If we hit a missing-column error, try the next candidate (which strips that column).
+    const lower = result.text?.toLowerCase?.() ?? "";
+    const isMissingColumn =
+      lower.includes("could not find the 'due_date' column") ||
+      lower.includes("could not find the 'updated_at' column") ||
+      lower.includes("schema cache");
+    if (!isMissingColumn) break;
   }
+
+  if (!lastErr) {
+    return NextResponse.json({ error: "저장에 실패했습니다." }, { status: 500 });
+  }
+
+  return NextResponse.json(
+    { error: lastErr.text || `저장에 실패했습니다. (HTTP ${lastErr.status})` },
+    { status: 500 }
+  );
 
   return NextResponse.json({ ok: true });
 }
