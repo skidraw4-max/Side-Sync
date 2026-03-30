@@ -49,7 +49,7 @@ export default function LoginForm({ redirectTo }: { redirectTo?: string }) {
     <form onSubmit={handleSubmit} className="w-full max-w-md space-y-5">
       <div>
         <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-          Email Address
+          이메일
         </label>
         <div className="mt-1.5 flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5">
           <svg
@@ -68,7 +68,7 @@ export default function LoginForm({ redirectTo }: { redirectTo?: string }) {
           <input
             id="email"
             type="email"
-            placeholder="name@company.com"
+            placeholder="email@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -79,7 +79,7 @@ export default function LoginForm({ redirectTo }: { redirectTo?: string }) {
       </div>
       <div>
         <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-          Password
+          비밀번호
         </label>
         <div className="mt-1.5 flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5">
           <svg
@@ -98,7 +98,7 @@ export default function LoginForm({ redirectTo }: { redirectTo?: string }) {
           <input
             id="password"
             type="password"
-            placeholder="********"
+            placeholder="비밀번호를 입력하세요"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -120,34 +120,22 @@ export default function LoginForm({ redirectTo }: { redirectTo?: string }) {
             onChange={(e) => setRememberMe(e.target.checked)}
             className="rounded border-gray-300 text-[#2563EB] focus:ring-[#2563EB]"
           />
-          <span className="text-sm text-gray-700">Remember me</span>
+          <span className="text-sm text-gray-700">로그인 상태 유지</span>
         </label>
         <Link
           href="#"
           className="text-sm font-medium text-[#2563EB] hover:underline"
         >
-          Forgot password?
+          비밀번호를 잊으셨나요?
         </Link>
       </div>
 
       <button
         type="submit"
         disabled={isLoading}
-        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#2563EB] py-3.5 text-base font-medium text-white transition-colors hover:bg-[#1d4ed8] disabled:opacity-70"
+        className="mt-6 w-full rounded-xl bg-[#2563EB] py-3.5 text-base font-medium text-white transition-colors hover:bg-[#1d4ed8] disabled:opacity-70"
       >
-        {isLoading ? "로그인 중..." : "Login to Dashboard"}
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <path d="M5 12h14" />
-          <path d="m12 5 7 7-7 7" />
-        </svg>
+        {isLoading ? "로그인 중..." : "로그인"}
       </button>
     </form>
   );

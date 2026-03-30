@@ -22,7 +22,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      <main className="flex flex-col items-center px-6 pt-20 pb-16">
+      <main className="flex flex-col items-center px-6 pt-24 pb-16">
         <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
           <div className="mb-8">
             <div className="flex items-center gap-2">
@@ -36,9 +36,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               />
               <span className="text-xl font-semibold text-[#2563EB]">Side-Sync</span>
             </div>
-            <h1 className="mt-6 text-2xl font-bold text-gray-900">Welcome Back</h1>
+            <h1 className="mt-6 text-2xl font-bold text-gray-900">로그인</h1>
             <p className="mt-2 text-sm text-gray-500">
-              Login to your Side-Sync account
+              Side-Sync 계정으로 로그인하고 사이드 프로젝트를 이어가세요.
             </p>
           </div>
 
@@ -51,16 +51,18 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
           <div className="mt-8 flex items-center gap-4">
             <div className="h-px flex-1 bg-gray-200" />
-            <span className="text-sm text-gray-500">Or continue with</span>
+            <span className="text-xs font-medium tracking-wide text-gray-500">
+              또는 다음으로 로그인
+            </span>
             <div className="h-px flex-1 bg-gray-200" />
           </div>
 
           <SocialLoginButtons />
 
           <p className="mt-8 text-center text-sm text-gray-600">
-            Don&apos;t have an account?{" "}
+            아직 계정이 없으신가요?{" "}
             <Link href="/signup" className="font-medium text-[#2563EB] hover:underline">
-              Create an account
+              회원 가입
             </Link>
           </p>
         </div>
