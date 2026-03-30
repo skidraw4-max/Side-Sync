@@ -7,7 +7,10 @@ import { useServerHydratedSession } from "@/contexts/AuthSessionContext";
 import { APPLICATION_STATUS } from "@/lib/application-status";
 import { fetchProjectsByIds } from "@/lib/supabase-project-queries";
 import type { Database, RecruitmentStatusRow } from "@/types/database";
-import { inferProjectRecruitmentState } from "@/lib/project-recruitment-state";
+import {
+  getRecruitmentProgress,
+  inferProjectRecruitmentState,
+} from "@/lib/project-recruitment-state";
 import EmptyState from "@/components/EmptyState";
 import { ProjectCardSkeleton } from "@/components/Skeleton";
 import ProjectCard from "@/components/ProjectCard";
@@ -65,6 +68,9 @@ function toCardProps(row: ProjectRow) {
     gradient: (row as { gradient?: string | null }).gradient ?? DEFAULT_GRADIENT,
     recruitmentState: inferProjectRecruitmentState(
       row.status,
+      row.recruitment_status as RecruitmentStatusRow[] | null
+    ),
+    recruitmentProgress: getRecruitmentProgress(
       row.recruitment_status as RecruitmentStatusRow[] | null
     ),
   };
@@ -168,7 +174,7 @@ export default function PendingApplicationsSection() {
         </div>
 
         {query.isLoading && (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-6 xl:gap-7">
             {[1, 2, 3].map((i) => (
               <ProjectCardSkeleton key={i} />
             ))}
@@ -200,7 +206,7 @@ export default function PendingApplicationsSection() {
         )}
 
         {!query.isLoading && items.length > 0 && (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-6 xl:gap-7">
             {items.map((row) => (
               <div key={row.applicationId} className="flex flex-col gap-2">
                 <ProjectCard {...toCardProps(row.project)} />

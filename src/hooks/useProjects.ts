@@ -9,7 +9,10 @@ import { projectMatchesSearchTokens, tokenizeSearchQuery } from "@/lib/project-s
 import type { Database, RecruitmentStatusRow } from "@/types/database";
 import type { ProjectCardProps } from "@/components/ProjectCard";
 import { APPLICATION_STATUS } from "@/lib/application-status";
-import { inferProjectRecruitmentState } from "@/lib/project-recruitment-state";
+import {
+  getRecruitmentProgress,
+  inferProjectRecruitmentState,
+} from "@/lib/project-recruitment-state";
 
 const PROJECTS_QUERY_KEY = ["projects"] as const;
 
@@ -21,10 +24,17 @@ export interface ProjectWithId extends ProjectCardProps {
 
 const FALLBACK_RECRUITMENT = ["recruiting", "urgent", "recruiting"] as const;
 
+const DEMO_RECRUITMENT_PROGRESS = [
+  { filled: 3, total: 5 },
+  { filled: 2, total: 5 },
+  { filled: 1, total: 4 },
+] as const;
+
 /** DB 미연결·오류 시 트렌딩 카드용 (상세는 demo-projects와 동일 ID로 렌더) */
 const FALLBACK_PROJECTS: ProjectWithId[] = DEMO_PROJECTS.map((p, i) => ({
   ...p,
   recruitmentState: FALLBACK_RECRUITMENT[i % FALLBACK_RECRUITMENT.length],
+  recruitmentProgress: DEMO_RECRUITMENT_PROGRESS[i % DEMO_RECRUITMENT_PROGRESS.length],
 }));
 
 type RowMinimal = Pick<
@@ -47,6 +57,9 @@ function mapRowToCard(row: RowMinimal, opts?: { showWorkspaceLink?: boolean }): 
     gradient: r.gradient?.trim() ? r.gradient : DEFAULT_GRADIENT,
     recruitmentState: inferProjectRecruitmentState(
       row.status,
+      row.recruitment_status as RecruitmentStatusRow[] | null
+    ),
+    recruitmentProgress: getRecruitmentProgress(
       row.recruitment_status as RecruitmentStatusRow[] | null
     ),
     showWorkspaceLink: opts?.showWorkspaceLink ?? false,
