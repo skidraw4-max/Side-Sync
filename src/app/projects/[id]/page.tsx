@@ -55,6 +55,7 @@ export default async function ProjectDetailPage({ params, searchParams }: Projec
           projectDescription={demo.description}
           techStack={demo.techStack}
           mannerTempTarget={demo.mannerTemperature}
+          teamLeaderId={null}
           teamLeader={{
             name: "Side-Sync",
             role: "Demo · 샘플 리드",
@@ -131,16 +132,33 @@ export default async function ProjectDetailPage({ params, searchParams }: Projec
   }
 
   // 프로필 맵 (applicant_id / team_leader_id -> profile)
-  const profilesMap: Record<string, { full_name: string | null; avatar_url: string | null; manner_temp_target: string | null }> = {};
+  const profilesMap: Record<
+    string,
+    {
+      full_name: string | null;
+      avatar_url: string | null;
+      manner_temp: number | null;
+      manner_temp_target: string | null;
+    }
+  > = {};
   if (applicantIds.length > 0) {
     const { data: profiles } = await profilesForPublicDisplay
       .from("profiles")
-      .select("id, full_name, avatar_url, manner_temp_target")
+      .select("id, full_name, avatar_url, manner_temp, manner_temp_target")
       .in("id", applicantIds);
-    ((profiles ?? []) as Array<{ id: string; full_name: string | null; avatar_url: string | null; manner_temp_target: string | null }>).forEach((p) => {
+    (
+      (profiles ?? []) as Array<{
+        id: string;
+        full_name: string | null;
+        avatar_url: string | null;
+        manner_temp: number | null;
+        manner_temp_target: string | null;
+      }>
+    ).forEach((p) => {
       profilesMap[p.id] = {
         full_name: p.full_name,
         avatar_url: p.avatar_url,
+        manner_temp: p.manner_temp,
         manner_temp_target: p.manner_temp_target,
       };
     });
@@ -226,6 +244,7 @@ export default async function ProjectDetailPage({ params, searchParams }: Projec
         projectDescription={project.description}
         techStack={normalizeTechStackFromDb(project.tech_stack)}
         mannerTempTarget={project.manner_temp_target ?? "36.5°C"}
+        teamLeaderId={project.team_leader_id}
         teamLeader={teamLeader}
         recruitmentStatus={rawStatus}
         acceptedApplicants={acceptedApplicants}

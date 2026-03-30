@@ -228,6 +228,7 @@ export function useProjects(searchQuery: string = "") {
       .subscribe();
 
     let appsChannel: ReturnType<typeof supabase.channel> | null = null;
+    let profileChannel: ReturnType<typeof supabase.channel> | null = null;
     let cancelled = false;
     void supabase.auth.getUser().then(({ data: { user } }) => {
       if (cancelled || !user) return;
@@ -246,12 +247,29 @@ export function useProjects(searchQuery: string = "") {
           }
         )
         .subscribe();
+
+      profileChannel = supabase
+        .channel(`projects-realtime-profile-${user.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "profiles",
+            filter: `id=eq.${user.id}`,
+          },
+          () => {
+            void queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY });
+          }
+        )
+        .subscribe();
     });
 
     return () => {
       cancelled = true;
       supabase.removeChannel(main);
       if (appsChannel) supabase.removeChannel(appsChannel);
+      if (profileChannel) supabase.removeChannel(profileChannel);
     };
   }, [queryClient]);
 

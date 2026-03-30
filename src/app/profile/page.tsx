@@ -61,6 +61,18 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  /** 탭 복귀·다른 페이지에서 평가 후 돌아올 때 프로필·온도 재조회 */
+  const [visibilityTick, setVisibilityTick] = useState(0);
+
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        setVisibilityTick((t) => t + 1);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -234,7 +246,7 @@ export default function ProfilePage() {
       cancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [router]);
+  }, [router, visibilityTick]);
 
   if (isLoading) {
     return (

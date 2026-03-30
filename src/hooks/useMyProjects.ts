@@ -195,6 +195,7 @@ export function useMyProjects(userId: string) {
       .subscribe();
 
     let appsCh: ReturnType<typeof supabase.channel> | null = null;
+    let profileCh: ReturnType<typeof supabase.channel> | null = null;
     if (userId) {
       appsCh = supabase
         .channel(`my-projects-apps-${userId}`)
@@ -212,11 +213,28 @@ export function useMyProjects(userId: string) {
           }
         )
         .subscribe();
+
+      profileCh = supabase
+        .channel(`my-projects-profile-${userId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "profiles",
+            filter: `id=eq.${userId}`,
+          },
+          () => {
+            void queryClient.invalidateQueries({ queryKey: ["projects", "mine"] });
+          }
+        )
+        .subscribe();
     }
 
     return () => {
       supabase.removeChannel(channel);
       if (appsCh) supabase.removeChannel(appsCh);
+      if (profileCh) supabase.removeChannel(profileCh);
     };
   }, [queryClient, userId]);
 

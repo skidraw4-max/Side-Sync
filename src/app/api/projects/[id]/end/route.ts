@@ -99,19 +99,25 @@ export async function POST(
   const apps = (acceptedApps ?? []) as Array<{ applicant_id: string }>;
   apps.forEach((a) => teamMemberIds.add(a.applicant_id));
 
-  if (admin && teamMemberIds.size > 0) {
-    for (const memberId of teamMemberIds) {
-      // @ts-expect-error Supabase admin client infers never for insert
-      await admin.from("notifications").insert({
-        user_id: memberId,
-        title: "상호 평가를 완료해주세요",
-        message: `${project.title} 프로젝트가 종료되었습니다. 팀원들에게 평가를 남겨주세요.`,
-        link: `/projects/${projectId}/evaluate`,
-      });
-    }
+  if (teamMemberIds.size > 0) {
+    if (admin) {
+      for (const memberId of teamMemberIds) {
+        // @ts-expect-error Supabase admin client infers never for insert
+        await admin.from("notifications").insert({
+          user_id: memberId,
+          title: "상호 평가를 완료해주세요",
+          message: `${project.title} 프로젝트가 종료되었습니다. 팀원들에게 평가를 남겨주세요.`,
+          link: `/projects/${projectId}/evaluate`,
+        });
+      }
 
-    for (const memberId of teamMemberIds) {
-      await grantMannerTempBonus(admin, memberId, projectId, "completed_bonus");
+      for (const memberId of teamMemberIds) {
+        await grantMannerTempBonus(admin, memberId, projectId, "completed_bonus");
+      }
+    } else {
+      console.warn(
+        "[projects/end] SUPABASE_SERVICE_ROLE_KEY 없음 — 완료 알림·완료 보너스 매너 온도가 적용되지 않았습니다."
+      );
     }
   }
 

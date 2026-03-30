@@ -134,53 +134,53 @@ export async function POST(
   const clampedTemp = Math.max(30, Math.min(45, newMannerTemp));
 
   const admin = createAdminClient();
-  if (admin) {
-    const { data: profileData } = await (admin as any)
-      .from("profiles")
-      .select("badges")
-      .eq("id", evaluateeId)
-      .single();
-    const currentProfile = profileData as { badges?: string[] } | null;
+  /** 피평가자 프로필은 RLS로 타인이 수정 불가할 수 있어 서비스 롤 우선 */
+  const profileClient = admin ?? (await createClient());
 
-    let badges: string[] = Array.isArray(currentProfile?.badges) ? currentProfile.badges : [];
-    if (clampedTemp > 40 && !badges.includes("열정적인 협업자")) {
-      badges = [...badges, "열정적인 협업자"];
+  const { data: profileData, error: badgeFetchError } = await (profileClient as any)
+    .from("profiles")
+    .select("badges")
+    .eq("id", evaluateeId)
+    .single();
+
+  if (badgeFetchError && process.env.NODE_ENV === "development") {
+    console.warn("[evaluations] badges fetch:", badgeFetchError.message);
+  }
+
+  const currentProfile = profileData as { badges?: string[] } | null;
+  let badges: string[] = Array.isArray(currentProfile?.badges) ? currentProfile.badges : [];
+  if (clampedTemp > 40 && !badges.includes("열정적인 협업자")) {
+    badges = [...badges, "열정적인 협업자"];
+  }
+
+  const { error: profileUpdateError } = await (profileClient as any)
+    .from("profiles")
+    .update({
+      manner_temp: clampedTemp,
+      manner_temp_target: `${clampedTemp}°C`,
+      badges,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", evaluateeId);
+
+  if (profileUpdateError) {
+    console.error("[evaluations] profiles manner update failed:", profileUpdateError);
+    if (admin) {
+      await (admin as any)
+        .from("peer_evaluations")
+        .delete()
+        .eq("project_id", projectId)
+        .eq("evaluator_id", user.id)
+        .eq("evaluatee_id", evaluateeId);
     }
-
-    await (admin as any)
-      .from("profiles")
-      .update({
-        manner_temp: clampedTemp,
-        manner_temp_target: `${clampedTemp}°C`,
-        badges,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", evaluateeId);
-  } else {
-    const supabaseClient = await createClient();
-    const { data: profileData } = await (supabaseClient as any)
-      .from("profiles")
-      .select("badges")
-      .eq("id", evaluateeId)
-      .single();
-    const currentProfile = profileData as { badges?: string[] } | null;
-
-    let badges: string[] = Array.isArray(currentProfile?.badges) ? currentProfile.badges : [];
-    if (clampedTemp > 40 && !badges.includes("열정적인 협업자")) {
-      badges = [...badges, "열정적인 협업자"];
-    }
-
-    // @ts-ignore - Supabase client infers never for profiles.update in some environments
-    await (supabaseClient as any)
-      .from("profiles")
-      // @ts-ignore
-      .update({
-        manner_temp: clampedTemp,
-        manner_temp_target: `${clampedTemp}°C`,
-        badges,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", evaluateeId);
+    return NextResponse.json(
+      {
+        error: admin
+          ? "매너 온도를 프로필에 반영하지 못했습니다."
+          : "매너 온도 반영에 실패했습니다. 서버에 SUPABASE_SERVICE_ROLE_KEY를 설정해 주세요.",
+      },
+      { status: admin ? 500 : 503 }
+    );
   }
 
   return NextResponse.json({ ok: true, manner_temp: clampedTemp });

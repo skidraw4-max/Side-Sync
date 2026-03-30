@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import AdBanner from "@/components/AdBanner";
 import { ADSENSE_CLIENT_ID, ADSENSE_SLOTS } from "@/lib/ads-config";
 
@@ -38,6 +39,7 @@ export default function WorkspaceSidebarNav({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [endingProject, setEndingProject] = useState(false);
   const currentChannelSlug = searchParams?.get("channel") ?? "general";
   const isChatPage = pathname?.includes("/workspace/chat");
@@ -59,6 +61,7 @@ export default function WorkspaceSidebarNav({
       const res = await fetch(`/api/projects/${projectId}/end`, { method: "POST" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? "종료에 실패했습니다.");
+      void queryClient.invalidateQueries({ queryKey: ["projects"] });
       router.push(`/projects/${projectId}/evaluate`);
       router.refresh();
     } catch (e) {

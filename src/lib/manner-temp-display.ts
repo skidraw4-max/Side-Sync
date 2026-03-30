@@ -63,6 +63,24 @@ export function formatMannerTemperatureForCard(
   return fallback;
 }
 
+/**
+ * 프로필 한 건(상세 팀원·팀장) — manner_temp 숫자 우선, 없으면 manner_temp_target, 없으면 프로젝트 폴백.
+ * 목록 카드의 formatMannerTemperatureForCard와 동일한 우선순위 개념.
+ */
+export function formatProfileMannerDisplay(
+  profile: { manner_temp?: number | null; manner_temp_target?: string | number | null } | null | undefined,
+  projectFallback: string | number | null | undefined
+): string {
+  if (profile && typeof profile.manner_temp === "number" && Number.isFinite(profile.manner_temp)) {
+    return `${profile.manner_temp.toFixed(1)}°C`;
+  }
+  const fromProfile = coerceDisplayString(profile?.manner_temp_target ?? null);
+  if (fromProfile) {
+    return fromProfile.includes("°") ? fromProfile : `${fromProfile}°C`;
+  }
+  return formatMannerTemperatureForCard(null, new Map(), projectFallback);
+}
+
 /** 숫자 온도(°C)로 매너 칭호 */
 export function getMannerHonorFromTemp(temp: number): {
   name: string;

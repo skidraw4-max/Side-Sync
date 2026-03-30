@@ -8,6 +8,8 @@ import ApplyModal from "./ApplyModal";
 import type { RecruitmentStatusRow } from "@/types/database";
 import { PROJECT } from "@/lib/constants/contents";
 import { getEffectiveRecruitmentSlots } from "@/lib/project-application-positions";
+import { formatProfileMannerDisplay } from "@/lib/manner-temp-display";
+import { shouldEnableSupabaseRealtimeSubscriptions } from "@/lib/supabase/realtime-flags";
 
 /** role 컬럼이 없을 때 모집 정원(total) 순으로 accepted 명수를 배분 (표시용) */
 function distributeFilledGreedy(
@@ -45,12 +47,22 @@ interface ProjectDetailStitchProps {
   projectDescription: string | null;
   techStack: string[];
   mannerTempTarget: string;
+  /** 팀장 프로필 매핑·실시간 갱신용 (없으면 오너 온도는 프로젝트 폴백만 사용) */
+  teamLeaderId: string | null;
   teamLeader: { name: string; role: string; avatarUrl: string | null } | null;
   recruitmentStatus: RecruitmentStatusRow[] | null;
   acceptedApplicants: { applicant_id: string; role: string | null }[];
   /** 포지션명 → 승인 대기(pending) 인원 수 */
   pendingCountsByPosition: Record<string, number>;
-  profilesMap: Record<string, { full_name: string | null; avatar_url: string | null; manner_temp_target: string | null }>;
+  profilesMap: Record<
+    string,
+    {
+      full_name: string | null;
+      avatar_url: string | null;
+      manner_temp: number | null;
+      manner_temp_target: string | null;
+    }
+  >;
   isLeader: boolean;
   /** 비로그인 guest — 참여 신청은 로그인 후 가능 */
   viewerApplicationStatus: "guest" | "none" | "pending" | "accepted" | "rejected";
@@ -70,6 +82,7 @@ export default function ProjectDetailStitch({
   projectDescription,
   techStack,
   mannerTempTarget,
+  teamLeaderId,
   teamLeader,
   recruitmentStatus,
   acceptedApplicants,
@@ -95,6 +108,7 @@ export default function ProjectDetailStitch({
   /** 서버 RSC가 refresh 직후에도 지원 상태를 못 따라올 때 즉시 「승인 대기」UI 표시 */
   const [optimisticPendingAfterApply, setOptimisticPendingAfterApply] = useState(false);
   const applyIntentHandled = useRef(false);
+  const profileRefreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** 매 렌더마다 새 인스턴스면 realtime useEffect가 무한에 가깝게 재실행됨 */
   const supabase = useMemo(() => createClient(), []);
 
@@ -144,12 +158,13 @@ export default function ProjectDetailStitch({
   useEffect(() => {
     const members: TeamMember[] = [];
     if (teamLeader) {
+      const leaderProfile = teamLeaderId ? profilesMap[teamLeaderId] : undefined;
       members.push({
         id: "leader",
         name: teamLeader.name,
         role: teamLeader.role,
         avatarUrl: teamLeader.avatarUrl,
-        mannerTemp: mannerTempTarget,
+        mannerTemp: formatProfileMannerDisplay(leaderProfile ?? null, mannerTempTarget),
       });
     }
     acceptedApplicants.forEach((a) => {
@@ -160,11 +175,11 @@ export default function ProjectDetailStitch({
         name: p.full_name ?? PROJECT.unknownUser,
         role: a.role ?? PROJECT.member,
         avatarUrl: p.avatar_url ?? null,
-        mannerTemp: p.manner_temp_target ?? mannerTempTarget,
+        mannerTemp: formatProfileMannerDisplay(p, mannerTempTarget),
       });
     });
     setTeamMembers(members);
-  }, [teamLeader, acceptedApplicants, profilesMap, mannerTempTarget]);
+  }, [teamLeader, teamLeaderId, acceptedApplicants, profilesMap, mannerTempTarget]);
 
   /** 프로젝트 메타 변경 시 전체 새로고침 */
   useEffect(() => {
@@ -180,6 +195,46 @@ export default function ProjectDetailStitch({
       supabase.removeChannel(sub);
     };
   }, [projectId, supabase]);
+
+  /** 팀장·팀원 profiles 매너 온도 변경 시 RSC 재조회 (Realtime 켜진 환경) */
+  useEffect(() => {
+    if (!shouldEnableSupabaseRealtimeSubscriptions()) return;
+
+    const ids = [
+      ...new Set(
+        [teamLeaderId, ...acceptedApplicants.map((a) => a.applicant_id)].filter(
+          (x): x is string => typeof x === "string" && x.length > 0
+        )
+      ),
+    ];
+    if (ids.length === 0) return;
+
+    const scheduleRefresh = () => {
+      if (profileRefreshDebounceRef.current) clearTimeout(profileRefreshDebounceRef.current);
+      profileRefreshDebounceRef.current = setTimeout(() => {
+        profileRefreshDebounceRef.current = null;
+        startTransition(() => router.refresh());
+      }, 400);
+    };
+
+    const channels = ids.map((uid) =>
+      supabase
+        .channel(`project-detail-prof-${projectId}-${uid}`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "profiles", filter: `id=eq.${uid}` },
+          scheduleRefresh
+        )
+        .subscribe()
+    );
+
+    return () => {
+      if (profileRefreshDebounceRef.current) clearTimeout(profileRefreshDebounceRef.current);
+      channels.forEach((ch) => {
+        void supabase.removeChannel(ch);
+      });
+    };
+  }, [projectId, teamLeaderId, acceptedApplicants, supabase, router, startTransition]);
 
   /** 본인 지원서 상태(수락/거절 등) 변경 시 서버 컴포넌트 데이터 갱신 */
   useEffect(() => {

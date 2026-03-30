@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import Footer from "@/components/Footer";
 import EmptyState from "@/components/EmptyState";
 import { EvaluatePageSkeleton } from "@/components/Skeleton";
@@ -31,6 +32,7 @@ interface EvaluationState {
 
 export default function EvaluatePage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const params = useParams();
   const projectId = params.id as string;
 
@@ -149,6 +151,9 @@ export default function EvaluatePage() {
       setSubmittingId(null);
       return;
     }
+
+    void queryClient.invalidateQueries({ queryKey: ["projects"] });
+    router.refresh();
 
     setEvaluatedIds((prev) => new Set([...prev, evaluateeId]));
     setEvaluationState((prev) => {
