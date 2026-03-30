@@ -1,17 +1,58 @@
 "use client";
 
 import Link from "next/link";
+import { Cormorant_Garamond } from "next/font/google";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import QRCode from "react-qr-code";
 import { BrandLogoMark } from "@/components/BrandLogo";
 import { Printer, FileDown, Loader2, CircleHelp } from "lucide-react";
 import { normalizePublicCertificateCodeForLinkedIn } from "@/lib/certificate-linkedin-cert-id";
 
-/** 미니멀 B&W: 흰 배경·검정 테두리, 호버 시 반전 */
+const NAVY = "#1e293b";
+const certSerif = Cormorant_Garamond({
+  subsets: ["latin"],
+  weight: ["600", "700"],
+  display: "swap",
+});
+
+/** 역할 라벨에 따라 참여·마일스톤 요약 불릿 생성 */
+function getParticipationMilestones(roleLabel: string | null): string[] {
+  const label = roleLabel?.trim() ?? "";
+  const items: string[] = [];
+
+  if (/기획|plan|pm|기획자|product|제품/i.test(label)) {
+    items.push("프로젝트 기획·요구사항 정리 및 범위·일정 조율에 참여하였습니다.");
+  }
+  if (/디자인|design|ui|ux|figma|그래픽/i.test(label)) {
+    items.push("UI/UX 및 시각 디자인 산출·검토를 통한 사용자 경험 기여를 수행하였습니다.");
+  }
+  if (/개발|dev|engineer|엔지니어|프론트|백엔드|full\s*stack|풀스택|react|node/i.test(label)) {
+    items.push("소프트웨어 설계·구현·테스트 및 배포에 따른 기술 산출을 수행하였습니다.");
+  }
+  if (/리더|leader|팀장|프로젝트\s*리더/i.test(label)) {
+    items.push("팀 리더로서 모집·역할 배정 및 워크스페이스 운영을 주도하였습니다.");
+  }
+
+  const core: [string, string] = [
+    "Side-Sync 워크스페이스(칸반·채팅·공지)를 통한 협업·산출물 관리 프로세스를 이행하였습니다.",
+    "플랫폼 기준에 따라 프로젝트 완료(Completed) 처리 및 본 증명서 발급 요건을 충족하였습니다.",
+  ];
+
+  if (items.length === 0) {
+    return [
+      "등록된 프로젝트 내에서 담당 역할에 따른 산출물·협업 활동을 수행하였습니다.",
+      ...core,
+    ];
+  }
+
+  return [...items, ...core];
+}
+
 const btnOutline =
-  "inline-flex items-center justify-center gap-2 rounded-md border border-black bg-white px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-black hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-black";
+  "inline-flex items-center justify-center gap-2 rounded-md border border-[#1e293b] bg-white px-4 py-2 text-sm font-medium text-[#1e293b] transition-colors hover:bg-[#1e293b] hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-[#1e293b]";
 
 const btnOutlineIcon =
-  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black bg-white text-black transition-colors hover:bg-black hover:text-white";
+  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#1e293b] bg-white text-[#1e293b] transition-colors hover:bg-[#1e293b] hover:text-white";
 
 export interface CertificateClientProps {
   projectTitle: string;
@@ -24,6 +65,28 @@ export interface CertificateClientProps {
   certificatePublicCode: string | null;
   verifySiteOrigin: string;
   linkedInAddCertificationHref: string | null;
+}
+
+function OfficialSeal() {
+  return (
+    <div
+      className="flex h-[5.75rem] w-[5.75rem] shrink-0 flex-col items-center justify-center rounded-full border-[3px] border-[#1e40af] bg-white shadow-[0_2px_12px_rgba(30,64,175,0.22)] ring-2 ring-[#93c5fd]/90 ring-offset-2 ring-offset-white"
+      aria-hidden
+    >
+      <span
+        className="text-[0.45rem] font-bold uppercase tracking-[0.22em] text-[#1e293b]"
+        style={{ fontFamily: "ui-sans-serif, system-ui, sans-serif" }}
+      >
+        Official
+      </span>
+      <span className="mt-1 text-center text-[0.72rem] font-bold leading-none text-[#1d4ed8]">
+        Side-Sync
+      </span>
+      <span className="mt-1 text-[0.48rem] font-semibold tracking-[0.08em] text-slate-500">
+        Platform
+      </span>
+    </div>
+  );
 }
 
 export default function CertificateClient({
@@ -47,6 +110,14 @@ export default function CertificateClient({
     () => normalizePublicCertificateCodeForLinkedIn(certificatePublicCode),
     [certificatePublicCode]
   );
+
+  const verifyPageUrl = useMemo(() => {
+    if (!linkedInCertId) return null;
+    const origin = verifySiteOrigin.replace(/\/$/, "");
+    return `${origin}/verify/${linkedInCertId}`;
+  }, [linkedInCertId, verifySiteOrigin]);
+
+  const milestones = useMemo(() => getParticipationMilestones(roleLabel), [roleLabel]);
 
   const handlePrint = useCallback(() => {
     window.print();
@@ -125,7 +196,7 @@ export default function CertificateClient({
       <div className="no-print mb-6 flex flex-wrap items-center justify-between gap-3">
         <Link
           href="/projects"
-          className="text-sm font-medium text-[#111] underline-offset-4 hover:underline"
+          className="text-sm font-medium text-[#1e293b] underline-offset-4 hover:underline"
         >
           ← 내 프로젝트
         </Link>
@@ -184,7 +255,7 @@ export default function CertificateClient({
               <div
                 id="linkedin-cert-help-panel"
                 role="tooltip"
-                className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-[min(20rem,calc(100vw-2rem))] border border-[#ddd] bg-white p-3 text-left text-[#111]"
+                className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-[min(20rem,calc(100vw-2rem))] border border-slate-200 bg-white p-3 text-left text-[#111] shadow-sm"
               >
                 <p className="text-xs font-semibold">링크드인에 등록하면 무엇이 좋은가요?</p>
                 <ul className="mt-2 list-disc space-y-1.5 pl-4 text-[11px] leading-relaxed text-[#111]">
@@ -199,101 +270,181 @@ export default function CertificateClient({
       </div>
 
       {shareUrl ? (
-        <div className="no-print mb-4 border border-[#ddd] bg-white px-4 py-3 text-xs text-[#111]">
-          <p className="font-semibold">본인 확인용 조회 링크</p>
-          <p className="mt-1 text-[11px] leading-relaxed text-[#111]">
+        <div className="no-print mb-4 border border-slate-200 bg-white px-4 py-3 text-xs text-[#111] shadow-sm">
+          <p className="font-semibold text-[#1e293b]">본인 확인용 조회 링크</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-slate-600">
             아래 링크를 저장해 두면 로그인 없이도 동일 증명서를 다시 열 수 있습니다. 링크가 있으면 누구나
             열람할 수 있으니 타인과 공유하지 마세요.
           </p>
           <p className="mt-2 break-all font-mono text-[11px] text-[#111]">{shareUrl}</p>
           {linkedInCertId ? (
-            <p className="mt-3 border-t border-[#ddd] pt-3 text-[11px] text-[#111]">
-              <span className="font-semibold">공개 검증 코드</span> (링크드인 식별번호·누구나 검증 가능):{" "}
-              <span className="font-mono">{linkedInCertId}</span>
+            <p className="mt-3 border-t border-slate-100 pt-3 text-[11px] text-slate-700">
+              <span className="font-semibold text-[#1e293b]">공개 검증 코드</span> (링크드인 식별번호·누구나
+              검증 가능): <span className="font-mono">{linkedInCertId}</span>
             </p>
           ) : null}
         </div>
       ) : null}
 
       {!shareUrl && linkedInCertId ? (
-        <div className="no-print mb-4 border border-[#ddd] bg-white px-4 py-3 text-xs text-[#111]">
-          <p className="font-semibold">공개 검증</p>
+        <div className="no-print mb-4 border border-slate-200 bg-white px-4 py-3 text-xs text-[#111] shadow-sm">
+          <p className="font-semibold text-[#1e293b]">공개 검증</p>
           <p className="mt-1 font-mono text-[11px]">{linkedInCertId}</p>
-          <p className="mt-1 break-all text-[11px]">
+          <p className="mt-1 break-all text-[11px] text-slate-600">
             {verifySiteOrigin.replace(/\/$/, "")}/verify/{linkedInCertId}
           </p>
         </div>
       ) : null}
 
-      <div
-        ref={sheetRef}
-        className="certificate-sheet border border-[#ddd] bg-white px-8 py-10 md:px-12 md:py-14 print:border-0 print:shadow-none"
-      >
-        <div className="flex flex-col items-center border-b border-black pb-6">
-          <BrandLogoMark
-            size={56}
-            priority
-            className="rounded-xl grayscale contrast-[1.05]"
-          />
-          <h1 className="mt-4 text-center text-2xl font-bold tracking-[0.2em] text-black md:text-3xl">
-            활 동 확 인 서
-          </h1>
-          <p className="mt-2 text-center text-sm font-medium text-[#111]">
-            Certificate of Participation
-          </p>
-          <p className="mt-1 text-center text-xs text-[#111]">Side-Sync · 사이드 프로젝트 협업 플랫폼</p>
-        </div>
+      {/* 이중 테두리 공식 문서 시트 */}
+      <div className="certificate-outer border border-[#1e293b] bg-white p-[3px] shadow-sm print:shadow-none">
+        <div
+          ref={sheetRef}
+          className="certificate-sheet relative overflow-hidden border border-[#1e293b] bg-white px-7 py-10 md:px-11 md:py-12 print:border-[#1e293b]"
+        >
+          {/* 워터마크 */}
+          <div
+            className="pointer-events-none absolute inset-0 flex items-center justify-center"
+            aria-hidden
+          >
+            <BrandLogoMark
+              size={280}
+              priority
+              className="rounded-[2rem] opacity-[0.035] grayscale contrast-[1.02]"
+            />
+          </div>
 
-        <div className="mt-10 space-y-6 text-[15px] leading-relaxed text-[#111]">
-          <p className="text-center text-base md:text-lg">
-            본 문서는 아래 인원이 Side-Sync에 등록된 프로젝트에 참여했음을 확인합니다.
-          </p>
+          <div className="relative z-10">
+            <header className="flex flex-col items-center border-b border-[#1e293b]/20 pb-6">
+              <BrandLogoMark size={44} priority className="rounded-xl opacity-95" />
+              <p
+                className={`${certSerif.className} mt-5 text-center text-[1.2rem] font-semibold uppercase leading-tight tracking-[0.12em] text-[#1e293b] sm:text-[1.35rem] md:text-3xl md:tracking-[0.14em]`}
+              >
+                Project Completion Certificate
+              </p>
+              <p className="mt-3 text-sm font-semibold tracking-[0.35em] text-slate-800">활 동 확 인 서</p>
+              <p className="mt-1.5 text-center text-xs font-medium text-slate-500">
+                Side-Sync · 사이드 프로젝트 협업 플랫폼
+              </p>
+            </header>
 
-          <table className="mx-auto w-full max-w-lg border-collapse text-left">
-            <tbody>
-              <tr className="border-b border-[#ddd]">
-                <th className="w-[140px] py-3 pr-4 align-top text-sm font-semibold text-black">성명</th>
-                <td className="py-3 text-lg font-semibold text-black">{participantName}</td>
-              </tr>
-              <tr className="border-b border-[#ddd]">
-                <th className="py-3 pr-4 align-top text-sm font-semibold text-black">프로젝트명</th>
-                <td className="py-3 font-medium text-black">{projectTitle}</td>
-              </tr>
-              {roleLabel ? (
-                <tr className="border-b border-[#ddd]">
-                  <th className="py-3 pr-4 align-top text-sm font-semibold text-black">역할·포지션</th>
-                  <td className="py-3 text-[#111]">{roleLabel}</td>
-                </tr>
-              ) : null}
-              <tr className="border-b border-[#ddd]">
-                <th className="py-3 pr-4 align-top text-sm font-semibold text-black">참여 기간</th>
-                <td className="py-3 text-[#111]">{periodLabel}</td>
-              </tr>
-              <tr className="border-b border-[#ddd]">
-                <th className="py-3 pr-4 align-top text-sm font-semibold text-black">발급 번호</th>
-                <td className="py-3 font-mono text-sm font-semibold tracking-wide text-black">
-                  {issuanceNumber}
-                </td>
-              </tr>
-              <tr>
-                <th className="py-3 pr-4 align-top text-sm font-semibold text-black">발급 일자</th>
-                <td className="py-3 text-[#111]">{issuedAtLabel}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+            <div className="mt-8 space-y-7 text-[15px] leading-relaxed text-slate-800">
+              <p className="text-center text-[15px] text-slate-700 md:text-base">
+                본 문서는 아래 인원이 Side-Sync에 등록된 프로젝트에 참여했음을 확인합니다.
+              </p>
 
-        <div className="mt-14 flex justify-center">
-          <div className="text-center">
-            <div className="mx-auto h-px w-48 bg-black" />
-            <p className="mt-3 text-sm font-semibold text-black">발급 기관</p>
-            <p className="text-lg font-bold text-black">Side-Sync</p>
+              <table className="mx-auto w-full max-w-lg border-collapse text-left">
+                <tbody>
+                  <tr className="border-b border-[#1e293b]/15">
+                    <th className="w-[132px] py-2.5 pr-3 align-top text-xs font-bold uppercase tracking-wide text-[#1e293b]">
+                      성명
+                    </th>
+                    <td className="py-2.5 text-lg font-semibold text-slate-900">{participantName}</td>
+                  </tr>
+                  <tr className="border-b border-[#1e293b]/15">
+                    <th className="py-2.5 pr-3 align-top text-xs font-bold uppercase tracking-wide text-[#1e293b]">
+                      프로젝트명
+                    </th>
+                    <td className="py-2.5 font-medium text-slate-900">{projectTitle}</td>
+                  </tr>
+                  {roleLabel ? (
+                    <tr className="border-b border-[#1e293b]/15">
+                      <th className="py-2.5 pr-3 align-top text-xs font-bold uppercase tracking-wide text-[#1e293b]">
+                        역할·포지션
+                      </th>
+                      <td className="py-2.5 text-slate-800">{roleLabel}</td>
+                    </tr>
+                  ) : null}
+                  <tr className="border-b border-[#1e293b]/15">
+                    <th className="py-2.5 pr-3 align-top text-xs font-bold uppercase tracking-wide text-[#1e293b]">
+                      참여 기간
+                    </th>
+                    <td className="py-2.5 text-slate-800">{periodLabel}</td>
+                  </tr>
+                  <tr className="border-b border-[#1e293b]/15">
+                    <th className="py-2.5 pr-3 align-top text-xs font-bold uppercase tracking-wide text-[#1e293b]">
+                      발급 번호
+                    </th>
+                    <td className="py-2.5 font-mono text-sm font-semibold tracking-wide text-slate-900">
+                      {issuanceNumber}
+                    </td>
+                  </tr>
+                  <tr>
+                    <th className="py-2.5 pr-3 align-top text-xs font-bold uppercase tracking-wide text-[#1e293b]">
+                      발급 일자
+                    </th>
+                    <td className="py-2.5 text-slate-800">{issuedAtLabel}</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <section aria-labelledby="cert-participation-heading">
+                <h2
+                  id="cert-participation-heading"
+                  className="text-xs font-bold uppercase tracking-[0.2em] text-[#1e293b]"
+                >
+                  참여 내용
+                </h2>
+                <ul className="mt-3 list-none space-y-2.5 pl-0 text-[14px] leading-relaxed text-slate-800">
+                  {milestones.map((line) => (
+                    <li key={line} className="flex gap-2.5">
+                      <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-[#1e293b]" aria-hidden />
+                      <span>{line}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            </div>
+
+            <div className="relative z-10 mt-10 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+              <div className="flex flex-col items-start gap-2">
+                {verifyPageUrl ? (
+                  <>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-[#1e293b]">
+                      진위 확인
+                    </p>
+                    <div className="rounded-lg border border-[#1e293b]/15 bg-white p-2 shadow-sm">
+                      <QRCode
+                        value={verifyPageUrl}
+                        size={96}
+                        level="M"
+                        fgColor={NAVY}
+                        bgColor="#ffffff"
+                        className="h-auto max-w-full"
+                      />
+                    </div>
+                    <p className="max-w-[14rem] break-all font-mono text-[9px] leading-snug text-slate-500">
+                      {verifyPageUrl}
+                    </p>
+                  </>
+                ) : (
+                  <p className="max-w-xs text-[10px] leading-relaxed text-slate-500">
+                    공개 검증 코드가 연결되면 QR과 URL이 표시되어 누구나 진위를 확인할 수 있습니다.
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-col items-center gap-2 sm:items-end">
+                <OfficialSeal />
+                <p className="text-center text-[11px] font-semibold text-[#1e293b] sm:text-right">
+                  발급 기관
+                  <br />
+                  <span className="text-sm">Side-Sync Platform</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="relative z-10 mt-10 space-y-3 border-t border-[#1e293b]/15 pt-6 text-center">
+              <p className="text-[10px] leading-relaxed text-slate-500">
+                {verifyPageUrl
+                  ? "이 증명서는 데이터 위변조 방지 기술로 보호되며, 상기 QR/URL을 통해 진위 확인이 가능합니다."
+                  : "이 증명서는 플랫폼 활동 기록 및 발급 번호 체계로 무결성을 유지하며, 공개 검증 코드가 연결된 경우 URL을 통해 진위 확인이 가능합니다."}
+              </p>
+              <p className="text-xs leading-relaxed text-slate-600">
+                본 증명서는 Side-Sync 내 활동 기록을 바탕으로 발급되었으며, 법적 효력은 없습니다.
+              </p>
+            </div>
           </div>
         </div>
-
-        <p className="mt-12 border-t border-[#ddd] pt-6 text-center text-xs leading-relaxed text-[#111]">
-          본 증명서는 Side-Sync 내 활동 기록을 바탕으로 발급되었으며, 법적 효력은 없습니다.
-        </p>
       </div>
 
       <style jsx global>{`
