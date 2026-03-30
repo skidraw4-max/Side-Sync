@@ -1,12 +1,12 @@
 import { BrandLogoMark } from "@/components/BrandLogo";
 
-const CONTACT_EMAIL = "contact@sidesync.io";
-const CONTACT_MAILTO = `mailto:${CONTACT_EMAIL}`;
+const SUPPORT_LABEL = "고객지원";
+const SUPPORT_MAILTO = "mailto:skidraw4@gmail.com";
 
 const footerLinks = [
   { label: "이용약관", href: "/terms" },
   { label: "개인정보처리방침", href: "/privacy" },
-  { label: CONTACT_EMAIL, href: CONTACT_MAILTO },
+  { label: SUPPORT_LABEL, href: SUPPORT_MAILTO },
 ];
 const stitchFooterLinks = [...footerLinks];
 
