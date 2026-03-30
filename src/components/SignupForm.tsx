@@ -127,7 +127,7 @@ export default function SignupForm() {
           <input
             id="signup-email"
             type="email"
-            placeholder="이메일@example.com"
+            placeholder="email@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
