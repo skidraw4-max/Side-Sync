@@ -123,7 +123,7 @@ export default function LoginForm({ redirectTo }: { redirectTo?: string }) {
           <span className="text-sm text-gray-700">로그인 상태 유지</span>
         </label>
         <Link
-          href="#"
+          href="/forgot-password"
           className="text-sm font-medium text-[#2563EB] hover:underline"
         >
           비밀번호를 잊으셨나요?
