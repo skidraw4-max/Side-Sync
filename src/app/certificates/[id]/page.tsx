@@ -9,6 +9,7 @@ import {
   signCertificateToken,
   verifyCertificateToken,
 } from "@/lib/certificate-token";
+import { encodeCertificateVerifyCode } from "@/lib/certificate-verify-code";
 import CertificateClient from "./certificate-client";
 
 interface PageProps {
@@ -133,6 +134,9 @@ export default async function CertificatePage({ params, searchParams }: PageProp
   const issuanceNumber = certificateIssuanceNumber(projectId, viewerUserId);
   const roleLabel = app?.role?.trim() || (isLeader ? "프로젝트 리더" : null);
 
+  const effectiveToken = rawToken || signCertificateToken(projectId, viewerUserId);
+  const verificationCode = encodeCertificateVerifyCode(effectiveToken);
+
   let shareUrl: string | null = null;
   if (user && user.id === viewerUserId && !rawToken) {
     const h = await headers();
@@ -152,6 +156,7 @@ export default async function CertificatePage({ params, searchParams }: PageProp
         issuanceNumber={issuanceNumber}
         issuedAtLabel={issuedAtLabel}
         shareUrl={shareUrl}
+        verificationCode={verificationCode}
       />
     </div>
   );

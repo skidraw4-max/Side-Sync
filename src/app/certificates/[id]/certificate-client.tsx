@@ -13,6 +13,8 @@ export interface CertificateClientProps {
   issuanceNumber: string;
   issuedAtLabel: string;
   shareUrl: string | null;
+  /** LinkedIn certUrl / certId 및 /verify/[code] 경로에 사용 */
+  verificationCode: string;
 }
 
 export default function CertificateClient({
@@ -23,6 +25,7 @@ export default function CertificateClient({
   issuanceNumber,
   issuedAtLabel,
   shareUrl,
+  verificationCode,
 }: CertificateClientProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -67,6 +70,30 @@ export default function CertificateClient({
     }
   }, [projectTitle]);
 
+  const handleLinkedInAdd = useCallback(() => {
+    const d = new Date();
+    const issueYear = String(d.getFullYear());
+    const issueMonth = String(d.getMonth() + 1);
+    const certUrl = `https://sidesync.io/verify/${verificationCode}`;
+    const name = `[Side-Sync] ${projectTitle} 참여 확인서`;
+    const url =
+      "https://www.linkedin.com/profile/add?startTask=" +
+      encodeURIComponent("CERTIFICATION_NAME") +
+      "&name=" +
+      encodeURIComponent(name) +
+      "&organizationName=" +
+      encodeURIComponent("Side-Sync") +
+      "&issueYear=" +
+      encodeURIComponent(issueYear) +
+      "&issueMonth=" +
+      encodeURIComponent(issueMonth) +
+      "&certUrl=" +
+      encodeURIComponent(certUrl) +
+      "&certId=" +
+      encodeURIComponent(verificationCode);
+    window.open(url, "_blank", "noopener,noreferrer");
+  }, [projectTitle, verificationCode]);
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 print:max-w-none print:px-0 print:py-0">
       <div className="no-print mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -76,7 +103,7 @@ export default function CertificateClient({
         >
           ← 내 프로젝트
         </Link>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <button
             type="button"
             onClick={handlePrint}
@@ -97,6 +124,22 @@ export default function CertificateClient({
               <FileDown className="h-4 w-4" aria-hidden />
             )}
             PDF로 저장
+          </button>
+          <button
+            type="button"
+            onClick={handleLinkedInAdd}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#0A66C2] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#004182]"
+            aria-label="링크드인 프로필에 자격 증명 추가"
+          >
+            <svg
+              className="h-[18px] w-[18px] shrink-0 text-white"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden
+            >
+              <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+            </svg>
+            링크드인 프로필에 추가하기
           </button>
         </div>
       </div>
