@@ -38,8 +38,9 @@ export function ProjectCardSkeleton() {
         <Skeleton className="h-6 w-4/5" rounded="md" />
         <Skeleton className="h-3.5 w-full" rounded="md" />
         <Skeleton className="h-3.5 w-2/3" rounded="md" />
+        <Skeleton className="mt-3 h-2.5 w-full rounded-full" rounded="full" />
       </div>
-      <div className="mt-auto border-t border-gray-100 bg-white px-4 py-3 sm:px-5">
+      <div className="mt-auto border-t border-gray-100 bg-gray-50/60 px-4 py-3 sm:px-5">
         <Skeleton className="mb-2 h-2 w-10" rounded="md" />
         <div className="flex flex-wrap gap-1.5">
           <Skeleton className="h-6 w-14" rounded="md" />

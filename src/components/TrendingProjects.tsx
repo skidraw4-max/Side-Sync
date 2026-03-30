@@ -8,31 +8,20 @@ import { useProjects } from "@/hooks/useProjects";
 export interface TrendingProjectsProps {
   searchQuery: string;
   onSearchQueryChange: (value: string) => void;
-  /** 섹션 제목 (홈 레퍼런스: Live Ecosystem Projects) */
-  sectionTitle?: string;
-  sectionDescription?: string;
-  viewAllLabel?: string;
-  viewAllHref?: string;
 }
 
-export default function TrendingProjects({
-  searchQuery,
-  onSearchQueryChange,
-  sectionTitle = "Trending Projects",
-  sectionDescription = "Discover what the community is building right now.",
-  viewAllLabel = "View all projects",
-  viewAllHref = "/projects",
-}: TrendingProjectsProps) {
+export default function TrendingProjects({ searchQuery, onSearchQueryChange }: TrendingProjectsProps) {
   const { data: projects, isLoading, isError, error } = useProjects(searchQuery);
   const hasActiveSearch = searchQuery.trim().length > 0;
 
   return (
-    <section className="border-t border-gray-100 bg-white px-6 py-16 md:px-10 md:py-20 lg:px-16 lg:py-24 xl:px-24">
-      <div className="mx-auto max-w-7xl">
+    <section className="px-6 md:px-12 lg:px-24">
       <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0 flex-1">
-          <h2 className="text-2xl font-bold tracking-tight text-gray-900 md:text-3xl">{sectionTitle}</h2>
-          <p className="mt-1 text-sm text-gray-500 md:text-base">{sectionDescription}</p>
+          <h2 className="text-2xl font-bold text-gray-900">Trending Projects</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            Discover what the community is building right now.
+          </p>
         </div>
         <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center lg:w-auto lg:min-w-[320px]">
           <label className="sr-only" htmlFor="trending-project-search">
@@ -64,10 +53,10 @@ export default function TrendingProjects({
             </div>
           </div>
           <a
-            href={viewAllHref}
-            className="flex shrink-0 items-center gap-1 text-sm font-semibold text-[#2563EB] hover:underline md:text-base"
+            href="/projects"
+            className="flex shrink-0 items-center gap-1 text-[#2563EB] font-medium hover:underline"
           >
-            {viewAllLabel}
+            View all projects
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="16"
@@ -116,6 +105,7 @@ export default function TrendingProjects({
               description={project.description}
               gradient={project.gradient}
               recruitmentState={project.recruitmentState}
+              recruitmentProgress={project.recruitmentProgress}
               showWorkspaceLink={project.showWorkspaceLink}
             />
           ))}
@@ -154,7 +144,6 @@ export default function TrendingProjects({
           ]}
         />
       )}
-      </div>
     </section>
   );
 }

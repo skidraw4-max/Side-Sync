@@ -7,7 +7,7 @@ import { BadgeCheck, Compass, UsersRound } from "lucide-react";
 export default function HomeSeoOverview() {
   return (
     <section
-      className="border-t border-gray-100 bg-gray-50/70 px-6 py-14 md:px-10 md:py-16 lg:px-16 lg:py-20 xl:px-24"
+      className="border-t border-slate-200 bg-slate-50/80 px-6 py-14 md:px-12 md:py-16 lg:px-24"
       aria-labelledby="home-seo-overview-heading"
     >
       <div className="mx-auto max-w-6xl">

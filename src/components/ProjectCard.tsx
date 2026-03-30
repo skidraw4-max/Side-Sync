@@ -21,6 +21,8 @@ export interface ProjectCardProps {
   showWorkspaceLink?: boolean;
   /** 모집 상태 배지 (미지정 시 모집 중 스타일) */
   recruitmentState?: ProjectRecruitmentState;
+  /** 모집 인원 진행 (filled/total) — 없으면 숫자 없이 문구만 */
+  recruitmentProgress?: { filled: number; total: number } | null;
 }
 
 const RECRUITMENT_BADGE: Record<
@@ -57,6 +59,75 @@ function cardShellClasses(recruitmentState: ProjectRecruitmentState) {
   );
 }
 
+function progressBarClass(recruitmentState: ProjectRecruitmentState) {
+  if (recruitmentState === "urgent") return "bg-gradient-to-r from-orange-500 to-amber-500";
+  if (recruitmentState === "full" || recruitmentState === "closed") {
+    return "bg-gradient-to-r from-emerald-500 to-teal-600";
+  }
+  return "bg-gradient-to-r from-blue-500 to-indigo-600";
+}
+
+function RecruitmentGauge({
+  recruitmentState,
+  recruitmentProgress,
+}: {
+  recruitmentState: ProjectRecruitmentState;
+  recruitmentProgress?: { filled: number; total: number } | null;
+}) {
+  const pct = (() => {
+    if (recruitmentProgress) {
+      const { filled, total } = recruitmentProgress;
+      if (total <= 0) return 0;
+      return Math.min(100, Math.round((filled / total) * 100));
+    }
+    if (recruitmentState === "full" || recruitmentState === "closed") return 100;
+    return 28;
+  })();
+
+  const label = (() => {
+    if (recruitmentProgress) {
+      const { filled, total } = recruitmentProgress;
+      return `${filled}/${total}명 모집 중`;
+    }
+    if (recruitmentState === "closed") return "프로젝트 완료";
+    if (recruitmentState === "full") return "모집 마감";
+    if (recruitmentState === "urgent") return "마감 임박 · 모집 중";
+    return "모집 중";
+  })();
+
+  const barClass = progressBarClass(recruitmentState);
+  const indeterminate =
+    !recruitmentProgress && recruitmentState !== "full" && recruitmentState !== "closed";
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2 text-[11px] font-semibold text-slate-700 sm:text-xs">
+        <span>{label}</span>
+        {recruitmentProgress ? (
+          <span className="shrink-0 tabular-nums text-slate-500">{pct}%</span>
+        ) : null}
+      </div>
+      <div
+        className="h-2.5 overflow-hidden rounded-full bg-slate-200/90"
+        role="progressbar"
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={label}
+      >
+        <div
+          className={cn(
+            "h-full rounded-full transition-[width] duration-500 ease-out",
+            barClass,
+            indeterminate && "animate-pulse"
+          )}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function ProjectCard({
   title,
   techStack,
@@ -66,6 +137,7 @@ export default function ProjectCard({
   gradient = "from-blue-200 via-indigo-200 to-purple-200",
   showWorkspaceLink = false,
   recruitmentState = "recruiting",
+  recruitmentProgress = null,
 }: ProjectCardProps) {
   const badge = RECRUITMENT_BADGE[recruitmentState] ?? RECRUITMENT_BADGE.recruiting;
   const isUrgent = recruitmentState === "urgent";
@@ -118,11 +190,14 @@ export default function ProjectCard({
       {description ? (
         <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-slate-600">{description}</p>
       ) : null}
+      <div className="mt-4">
+        <RecruitmentGauge recruitmentState={recruitmentState} recruitmentProgress={recruitmentProgress} />
+      </div>
     </div>
   );
 
   const techFooter = (
-    <div className="mt-auto border-t border-slate-100 bg-white px-4 py-3 sm:px-5">
+    <div className="mt-auto border-t border-slate-100 bg-slate-50/50 px-4 py-3 sm:px-5">
       <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">스택</p>
       {techStack.length > 0 ? (
         <div className="flex flex-wrap gap-1.5">
@@ -144,8 +219,8 @@ export default function ProjectCard({
   const shell = cardShellClasses(recruitmentState);
 
   const ctaSingle = (
-    <div className="border-t border-slate-100 bg-white px-4 py-3 sm:px-5">
-      <span className="flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white py-2.5 text-center text-xs font-semibold text-slate-800 transition-colors group-hover:border-blue-200 group-hover:bg-blue-50/60 sm:text-sm">
+    <div className="border-t border-slate-100 px-4 py-3 sm:px-5">
+      <span className="flex w-full items-center justify-center rounded-xl border border-slate-200 bg-slate-50/80 py-2.5 text-center text-xs font-semibold text-slate-800 transition-colors group-hover:border-blue-200 group-hover:bg-blue-50/50 sm:text-sm">
         상세 보기
       </span>
     </div>

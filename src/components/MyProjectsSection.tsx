@@ -27,10 +27,9 @@ export default function MyProjectsSection() {
   if (!userId) return null;
 
   return (
-    <section className="border-t border-gray-100 bg-white px-6 py-14 md:px-10 md:py-16 lg:px-16 xl:px-24">
-      <div className="mx-auto max-w-7xl">
+    <section className="px-6 md:px-12 lg:px-24">
       <div className="mb-8">
-        <h2 className="text-2xl font-bold tracking-tight text-gray-900 md:text-3xl">참여 중인 프로젝트</h2>
+        <h2 className="text-2xl font-bold text-gray-900">참여 중인 프로젝트</h2>
         <p className="mt-1 text-sm text-gray-500">
           내가 리드하거나 참여 중인 프로젝트입니다.
         </p>
@@ -64,7 +63,7 @@ export default function MyProjectsSection() {
       )}
 
       {!isLoading && projects && projects.length > 0 && (
-        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-6 xl:gap-7">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-6 xl:gap-7">
           {projects.slice(0, 6).map((project) => (
             <ProjectCard
               key={project.id}
@@ -75,6 +74,7 @@ export default function MyProjectsSection() {
               description={project.description}
               gradient={project.gradient}
               recruitmentState={project.recruitmentState}
+              recruitmentProgress={project.recruitmentProgress}
               showWorkspaceLink
             />
           ))}
@@ -83,7 +83,7 @@ export default function MyProjectsSection() {
       {!isLoading && projects && projects.length > 0 && (
         <Link
           href="/projects"
-          className="mt-6 inline-flex items-center gap-1 text-sm font-semibold text-[#2563EB] hover:underline"
+          className="mt-6 inline-flex items-center gap-1 text-[#2563EB] font-medium hover:underline"
         >
           전체 보기
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -92,7 +92,6 @@ export default function MyProjectsSection() {
           </svg>
         </Link>
       )}
-      </div>
     </section>
   );
 }

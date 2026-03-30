@@ -7,7 +7,10 @@ import { useServerHydratedSession } from "@/contexts/AuthSessionContext";
 import { APPLICATION_STATUS } from "@/lib/application-status";
 import { fetchProjectsByIds } from "@/lib/supabase-project-queries";
 import type { Database, RecruitmentStatusRow } from "@/types/database";
-import { inferProjectRecruitmentState } from "@/lib/project-recruitment-state";
+import {
+  getRecruitmentProgress,
+  inferProjectRecruitmentState,
+} from "@/lib/project-recruitment-state";
 import EmptyState from "@/components/EmptyState";
 import { ProjectCardSkeleton } from "@/components/Skeleton";
 import ProjectCard from "@/components/ProjectCard";
@@ -65,6 +68,9 @@ function toCardProps(row: ProjectRow) {
     gradient: (row as { gradient?: string | null }).gradient ?? DEFAULT_GRADIENT,
     recruitmentState: inferProjectRecruitmentState(
       row.status,
+      row.recruitment_status as RecruitmentStatusRow[] | null
+    ),
+    recruitmentProgress: getRecruitmentProgress(
       row.recruitment_status as RecruitmentStatusRow[] | null
     ),
   };
