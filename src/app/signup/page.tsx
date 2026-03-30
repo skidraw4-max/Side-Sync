@@ -17,17 +17,17 @@ export default function SignupPage() {
       <Header />
       <main className="flex flex-col items-center px-6 pt-24 pb-16">
         <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
-          <h1 className="text-2xl font-bold text-gray-900">Create Account</h1>
+          <h1 className="text-2xl font-bold text-gray-900">회원 가입</h1>
           <p className="mt-2 text-sm text-gray-500">
-            Join Side-Sync today to start syncing your workflow
+            Side-Sync에 가입하고 사이드 프로젝트 팀 빌딩과 협업을 시작해 보세요.
           </p>
 
           <SignupForm />
 
           <div className="mt-8 flex items-center gap-4">
             <div className="h-px flex-1 bg-gray-200" />
-            <span className="text-xs font-medium uppercase tracking-wider text-gray-500">
-              Or sign up with
+            <span className="text-xs font-medium tracking-wide text-gray-500">
+              또는 다음으로 가입
             </span>
             <div className="h-px flex-1 bg-gray-200" />
           </div>
@@ -35,9 +35,9 @@ export default function SignupPage() {
           <SocialLoginButtons />
 
           <p className="mt-8 text-center text-sm text-gray-600">
-            Already have an account?{" "}
+            이미 계정이 있으신가요?{" "}
             <Link href="/login" className="font-medium text-[#2563EB] hover:underline">
-              Log in
+              로그인
             </Link>
           </p>
         </div>

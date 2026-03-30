@@ -78,7 +78,7 @@ export default function SignupForm() {
     <form onSubmit={handleSubmit} className="mt-8 space-y-5">
       <div>
         <label htmlFor="signup-name" className="block text-sm font-medium text-gray-700">
-          Full Name
+          이름
         </label>
         <div className="mt-1.5 flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5">
           <svg
@@ -97,7 +97,7 @@ export default function SignupForm() {
           <input
             id="signup-name"
             type="text"
-            placeholder="John Doe"
+            placeholder="홍길동"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             required
@@ -108,7 +108,7 @@ export default function SignupForm() {
       </div>
       <div>
         <label htmlFor="signup-email" className="block text-sm font-medium text-gray-700">
-          Email Address
+          이메일
         </label>
         <div className="mt-1.5 flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5">
           <svg
@@ -127,7 +127,7 @@ export default function SignupForm() {
           <input
             id="signup-email"
             type="email"
-            placeholder="email@example.com"
+            placeholder="이메일@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -138,7 +138,7 @@ export default function SignupForm() {
       </div>
       <div>
         <label htmlFor="signup-password" className="block text-sm font-medium text-gray-700">
-          Password
+          비밀번호
         </label>
         <div className="mt-1.5 flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5">
           <svg
@@ -157,7 +157,7 @@ export default function SignupForm() {
           <input
             id="signup-password"
             type="password"
-            placeholder="Min. 8 characters"
+            placeholder="8자 이상 입력"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -169,7 +169,7 @@ export default function SignupForm() {
       </div>
       <div>
         <label htmlFor="signup-confirm" className="block text-sm font-medium text-gray-700">
-          Confirm Password
+          비밀번호 확인
         </label>
         <div className="mt-1.5 flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5">
           <svg
@@ -188,7 +188,7 @@ export default function SignupForm() {
           <input
             id="signup-confirm"
             type="password"
-            placeholder="Repeat your password"
+            placeholder="비밀번호를 다시 입력하세요"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
@@ -209,15 +209,14 @@ export default function SignupForm() {
           className="mt-1 rounded border-gray-300 text-[#2563EB] focus:ring-[#2563EB]"
         />
         <span className="text-sm text-gray-700">
-          I agree to the{" "}
           <Link href="/terms" className="font-medium text-[#2563EB] hover:underline">
-            Terms of Service
-          </Link>{" "}
-          and{" "}
-          <Link href="/privacy" className="font-medium text-[#2563EB] hover:underline">
-            Privacy Policy
+            이용약관
           </Link>
-          .
+          및{" "}
+          <Link href="/privacy" className="font-medium text-[#2563EB] hover:underline">
+            개인정보처리방침
+          </Link>
+          에 동의합니다.
         </span>
       </label>
 
@@ -226,7 +225,7 @@ export default function SignupForm() {
         disabled={isLoading}
         className="mt-6 w-full rounded-xl bg-[#2563EB] py-3.5 text-base font-medium text-white transition-colors hover:bg-[#1d4ed8] disabled:opacity-70"
       >
-        {isLoading ? "Creating account..." : "Create Account"}
+        {isLoading ? "가입 처리 중..." : "회원 가입"}
       </button>
     </form>
   );
