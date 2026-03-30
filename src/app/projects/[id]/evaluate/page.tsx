@@ -3,8 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { fetchAcceptedApplicationsForProject } from "@/lib/supabase-project-queries";
 import Footer from "@/components/Footer";
 import EmptyState from "@/components/EmptyState";
 import { EvaluatePageSkeleton } from "@/components/Skeleton";
@@ -43,85 +41,70 @@ export default function EvaluatePage() {
   const [loading, setLoading] = useState(true);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [emptyReason, setEmptyReason] = useState<"no_peers" | null>(null);
 
   const fetchData = useCallback(async () => {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    setLoading(true);
+    setLoadError(null);
+    setError(null);
+    setEmptyReason(null);
+
+    let res: Response;
+    try {
+      res = await fetch(`/api/projects/${projectId}/evaluate/data`, {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+    } catch {
+      setLoadError("네트워크 오류로 데이터를 불러오지 못했습니다.");
+      setLoading(false);
+      return;
+    }
+
+    const data = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      project?: { title: string; status: string };
+      teamMembers?: TeamMember[];
+      evaluatedIds?: string[];
+      emptyReason?: "no_peers";
+    };
+
+    if (res.status === 401) {
       router.push("/login");
       return;
     }
 
-    const { data } = await supabase
-      .from("projects")
-      .select("id, title, team_leader_id, status")
-      .eq("id", projectId)
-      .single();
-    const projectData = data as { id: string; title: string; team_leader_id: string | null; status: string } | null;
-
-    if (!projectData) {
-      setError("프로젝트를 찾을 수 없습니다.");
+    if (res.status === 403) {
+      setError(data.error ?? "이 프로젝트의 팀원만 평가할 수 있습니다.");
       setLoading(false);
       return;
     }
 
-    if (projectData.status !== "completed") {
-      setError("종료된 프로젝트만 평가할 수 있습니다.");
+    if (res.status === 404) {
+      setError(data.error ?? "프로젝트를 찾을 수 없습니다.");
       setLoading(false);
       return;
     }
 
-    setProject({ title: projectData.title, status: projectData.status });
-
-    const memberIds = new Set<string>();
-    if (projectData.team_leader_id) memberIds.add(projectData.team_leader_id);
-    const acceptedAppsTyped = await fetchAcceptedApplicationsForProject(supabase, projectId);
-    acceptedAppsTyped.forEach((a) => memberIds.add(a.applicant_id));
-
-    memberIds.delete(user.id);
-
-    if (memberIds.size === 0) {
-      setTeamMembers([]);
+    if (res.status === 400) {
+      setError(data.error ?? "평가할 수 없는 상태입니다.");
       setLoading(false);
       return;
     }
 
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id, full_name, avatar_url, manner_temp, manner_temp_target")
-      .in("id", Array.from(memberIds));
-    const profilesTyped = (profiles ?? []) as Array<{
-      id: string;
-      full_name: string | null;
-      avatar_url: string | null;
-      manner_temp?: number;
-      manner_temp_target?: string;
-    }>;
-
-    const roleMap = new Map<string, string>();
-    if (projectData.team_leader_id) {
-      roleMap.set(projectData.team_leader_id, "LEAD");
+    if (!res.ok) {
+      setLoadError(data.error ?? "데이터를 불러오는 중 오류가 발생했습니다.");
+      setLoading(false);
+      return;
     }
-    acceptedAppsTyped.forEach((a) => {
-      roleMap.set(a.applicant_id, a.role ?? "MEMBER");
-    });
 
-    const members: TeamMember[] = profilesTyped.map((p) => ({
-      id: p.id,
-      full_name: p.full_name,
-      avatar_url: p.avatar_url,
-      role: roleMap.get(p.id) ?? "MEMBER",
-      manner_temp: (p as { manner_temp?: number }).manner_temp ?? (p as { manner_temp_target?: string }).manner_temp_target ?? "36.5",
-    }));
-    setTeamMembers(members);
-
-    const { data: existingEvals } = await supabase
-      .from("peer_evaluations")
-      .select("evaluatee_id")
-      .eq("project_id", projectId)
-      .eq("evaluator_id", user.id);
-    const existingEvalsTyped = (existingEvals ?? []) as Array<{ evaluatee_id: string }>;
-    setEvaluatedIds(new Set(existingEvalsTyped.map((e) => e.evaluatee_id)));
+    if (data.project) {
+      setProject({ title: data.project.title, status: data.project.status });
+    }
+    setTeamMembers(Array.isArray(data.teamMembers) ? data.teamMembers : []);
+    setEvaluatedIds(new Set(Array.isArray(data.evaluatedIds) ? data.evaluatedIds : []));
+    setEmptyReason(data.emptyReason === "no_peers" ? "no_peers" : null);
     setLoading(false);
   }, [projectId, router]);
 
@@ -180,11 +163,58 @@ export default function EvaluatePage() {
     return (
       <div className="min-h-screen bg-[#F8FAFC]">
         <main className="px-6 py-12 md:px-12 lg:px-24">
+          <p className="mb-4 text-center text-sm text-gray-500">데이터를 불러오는 중입니다…</p>
           <EvaluatePageSkeleton />
         </main>
       </div>
     );
   }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC]">
+        <main className="px-6 py-12 md:px-12 lg:px-24">
+          <div className="mx-auto max-w-lg text-center">
+            <h1 className="text-2xl font-bold text-gray-900">Team Evaluation</h1>
+            <p className="mt-4 text-sm text-gray-600">{loadError}</p>
+            <button
+              type="button"
+              onClick={() => void fetchData()}
+              className="mt-6 rounded-lg bg-[#2563EB] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8]"
+            >
+              다시 시도
+            </button>
+          </div>
+        </main>
+        <Footer variant="stitch" />
+      </div>
+    );
+  }
+
+  if (error && !project) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC]">
+        <main className="px-6 py-12 md:px-12 lg:px-24">
+          <div className="mx-auto max-w-lg">
+            <h1 className="text-2xl font-bold text-gray-900">Team Evaluation</h1>
+            <div className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+            <div className="mt-8 flex justify-center gap-3">
+              <Link
+                href="/projects"
+                className="rounded-lg bg-[#2563EB] px-6 py-3 text-sm font-semibold text-white hover:bg-[#1d4ed8]"
+              >
+                프로젝트 목록
+              </Link>
+            </div>
+          </div>
+        </main>
+        <Footer variant="stitch" />
+      </div>
+    );
+  }
+
+  const allPeersEvaluated =
+    teamMembers.length > 0 && teamMembers.every((m) => evaluatedIds.has(m.id));
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -195,7 +225,7 @@ export default function EvaluatePage() {
           </p>
           <h1 className="mt-2 text-2xl font-bold text-gray-900">Team Evaluation</h1>
           <p className="mt-1 text-gray-600">
-            {project?.title} • 상호 평가
+            {(project?.title ?? "프로젝트")} • 상호 평가
           </p>
           <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -224,15 +254,38 @@ export default function EvaluatePage() {
                     <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                   </svg>
                 }
-                title="평가할 팀원이 없습니다"
-                description="종료된 프로젝트에서 함께한 팀원이 없어 평가할 수 없어요."
+                title={emptyReason === "no_peers" ? "평가할 다른 팀원이 없습니다" : "팀원 목록을 표시할 수 없습니다"}
+                description={
+                  emptyReason === "no_peers"
+                    ? "이 프로젝트에는 나를 제외하고 수락된 팀원이 없습니다. 혼자 진행한 프로젝트이거나 아직 팀원이 합류하지 않은 경우일 수 있어요."
+                    : "목록을 불러왔지만 표시할 팀원이 없습니다. 잠시 후 새로고침하거나, 문제가 계속되면 관리자에게 문의해 주세요."
+                }
                 actions={[
                   { label: "프로젝트 목록", href: "/projects", primary: true },
+                  {
+                    label: "증명서 발급",
+                    href: `/certificates/${projectId}`,
+                    primary: false,
+                  },
                 ]}
               />
             </div>
           ) : (
             <div className="mt-8 space-y-6">
+              {allPeersEvaluated && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-900">
+                  <p className="font-semibold">이미 모든 팀원을 평가했습니다.</p>
+                  <p className="mt-1 text-emerald-800/90">증명서를 발급하거나 워크스페이스로 돌아갈 수 있어요.</p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Link
+                      href={`/certificates/${projectId}`}
+                      className="inline-flex rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800"
+                    >
+                      증명서 발급으로 이동
+                    </Link>
+                  </div>
+                </div>
+              )}
               {teamMembers.map((member) => {
                 const isEvaluated = evaluatedIds.has(member.id);
                 const state = evaluationState[member.id] ?? { quick_feedback: [], additional_feedback: "" };

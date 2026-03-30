@@ -26,21 +26,21 @@ function isTransientAuthLockError(e: unknown): boolean {
 
 /** 오래된 DB(컬럼 누락)에서 먼저 성공하도록 최소 컬럼을 앞에 둠 → 400 로그 감소 */
 const LED_SELECT_VARIANTS = [
-  "id, title, description, team_leader_id, created_at",
-  "id, title, description, team_leader_id",
-  "id, title, description, tech_stack, team_leader_id, created_at",
-  "id, title, description, tech_stack, manner_temp_target, team_leader_id, created_at",
-  "id, title, description, gradient, tech_stack, manner_temp_target, team_leader_id, created_at",
-  "id, title, description, tech_stack, manner_temp_target, team_leader_id, created_at",
+  "id, title, description, team_leader_id, status, created_at",
+  "id, title, description, team_leader_id, status",
+  "id, title, description, tech_stack, team_leader_id, status, created_at",
+  "id, title, description, tech_stack, manner_temp_target, team_leader_id, status, created_at",
+  "id, title, description, gradient, tech_stack, manner_temp_target, team_leader_id, status, created_at",
+  "id, title, description, tech_stack, manner_temp_target, team_leader_id, status, created_at",
 ] as const;
 
 const BY_IDS_SELECT_VARIANTS = [
-  "id, title, description, team_leader_id, created_at",
-  "id, title, description, team_leader_id",
-  "id, title, description, tech_stack, team_leader_id, created_at",
-  "id, title, description, tech_stack, manner_temp_target, team_leader_id, created_at",
-  "id, title, description, gradient, tech_stack, manner_temp_target, team_leader_id, created_at",
-  "id, title, description, tech_stack, manner_temp_target, team_leader_id, created_at",
+  "id, title, description, team_leader_id, status, created_at",
+  "id, title, description, team_leader_id, status",
+  "id, title, description, tech_stack, team_leader_id, status, created_at",
+  "id, title, description, tech_stack, manner_temp_target, team_leader_id, status, created_at",
+  "id, title, description, gradient, tech_stack, manner_temp_target, team_leader_id, status, created_at",
+  "id, title, description, tech_stack, manner_temp_target, team_leader_id, status, created_at",
 ] as const;
 
 /** 내가 팀 리더인 프로젝트 — `projects.team_leader_id === userId` (세션 uid = auth.uid()) */

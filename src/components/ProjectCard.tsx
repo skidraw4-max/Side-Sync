@@ -40,8 +40,8 @@ const RECRUITMENT_BADGE: Record<
     className: "bg-gray-100 text-gray-700 ring-1 ring-gray-200/90",
   },
   closed: {
-    label: "종료",
-    className: "bg-slate-100 text-slate-600 ring-1 ring-slate-200/90",
+    label: "프로젝트 완료",
+    className: "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/80",
   },
 };
 
@@ -57,9 +57,13 @@ function cardShellClasses(recruitmentState: ProjectRecruitmentState) {
       "ring-2 ring-orange-200/70",
       "hover:border-orange-600 hover:shadow-orange-100/60",
     ],
-    (recruitmentState === "full" || recruitmentState === "closed") && [
+    recruitmentState === "full" && [
       "border-gray-200 bg-white opacity-60 grayscale",
       "hover:opacity-70",
+    ],
+    recruitmentState === "closed" && [
+      "border-emerald-200/90 bg-white",
+      "hover:border-emerald-300 hover:shadow-emerald-100/40",
     ]
   );
 }
@@ -76,7 +80,7 @@ export default function ProjectCard({
 }: ProjectCardProps) {
   const badge = RECRUITMENT_BADGE[recruitmentState] ?? RECRUITMENT_BADGE.recruiting;
   const isUrgent = recruitmentState === "urgent";
-  const isDimmed = recruitmentState === "full" || recruitmentState === "closed";
+  const isDimmed = recruitmentState === "full";
 
   const gradientBlock = (
     <div className={cn("relative h-[4.9rem] bg-gradient-to-br px-3 pt-2 sm:h-20", gradient)}>
@@ -126,8 +130,8 @@ export default function ProjectCard({
         "border-t px-3.5 py-2",
         recruitmentState === "recruiting" && "border-blue-100/80 bg-blue-50/40",
         recruitmentState === "urgent" && "border-orange-100 bg-orange-50/30",
-        (recruitmentState === "full" || recruitmentState === "closed") &&
-          "border-gray-100 bg-gray-50/50"
+        recruitmentState === "full" && "border-gray-100 bg-gray-50/50",
+        recruitmentState === "closed" && "border-emerald-100/70 bg-emerald-50/30"
       )}
     >
       <div className="mb-1.5 flex items-center gap-1 text-[10px] font-medium text-gray-500 sm:text-[11px]">
@@ -173,7 +177,9 @@ export default function ProjectCard({
           className={cn(
             "p-3.5",
             recruitmentState === "recruiting" && "bg-blue-50/30",
-            recruitmentState === "urgent" && "bg-white"
+            recruitmentState === "urgent" && "bg-white",
+            recruitmentState === "full" && "bg-gray-50/40",
+            recruitmentState === "closed" && "bg-emerald-50/25"
           )}
         >
           {titleBlock}
@@ -183,7 +189,9 @@ export default function ProjectCard({
           className={cn(
             "border-t px-3.5 pb-3.5 pt-3",
             recruitmentState === "recruiting" && "border-blue-100/80 bg-blue-50/20",
-            recruitmentState === "urgent" && "border-orange-100 bg-white"
+            recruitmentState === "urgent" && "border-orange-100 bg-white",
+            recruitmentState === "full" && "border-gray-100 bg-gray-50/30",
+            recruitmentState === "closed" && "border-emerald-100/80 bg-emerald-50/20"
           )}
         >
           <Link
@@ -210,7 +218,9 @@ export default function ProjectCard({
         className={cn(
           "p-3.5 pb-3",
           recruitmentState === "recruiting" && "bg-blue-50/30",
-          recruitmentState === "urgent" && "bg-white"
+          recruitmentState === "urgent" && "bg-white",
+          recruitmentState === "full" && "bg-gray-50/40",
+          recruitmentState === "closed" && "bg-emerald-50/25"
         )}
       >
         {titleBlock}
@@ -220,7 +230,9 @@ export default function ProjectCard({
         className={cn(
           "border-t px-3.5 py-3",
           recruitmentState === "recruiting" && "border-blue-100/80 bg-blue-50/20",
-          recruitmentState === "urgent" && "border-orange-100 bg-white"
+          recruitmentState === "urgent" && "border-orange-100 bg-white",
+          recruitmentState === "full" && "border-gray-100 bg-gray-50/30",
+          recruitmentState === "closed" && "border-emerald-100/80 bg-emerald-50/20"
         )}
       >
         <span className="block w-full rounded-md border border-gray-200 py-2 text-center text-[11px] font-medium text-gray-700 transition-colors group-hover:bg-gray-50 sm:text-xs">

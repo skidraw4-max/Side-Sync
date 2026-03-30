@@ -9,7 +9,9 @@ export function inferProjectRecruitmentState(
   projectStatus: string | null | undefined,
   recruitmentRows: RecruitmentStatusRow[] | null | undefined
 ): ProjectRecruitmentState {
-  if (projectStatus === "completed") return "closed";
+  const statusNorm =
+    typeof projectStatus === "string" ? projectStatus.trim().toLowerCase() : "";
+  if (statusNorm === "completed") return "closed";
 
   const rows = Array.isArray(recruitmentRows) ? recruitmentRows : [];
   if (rows.some((r) => r.status === "urgent")) return "urgent";
