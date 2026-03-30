@@ -104,6 +104,7 @@ export default function TrendingProjects({ searchQuery, onSearchQueryChange }: T
               mannerTemperature={project.mannerTemperature}
               description={project.description}
               gradient={project.gradient}
+              recruitmentState={project.recruitmentState}
               showWorkspaceLink={project.showWorkspaceLink}
             />
           ))}

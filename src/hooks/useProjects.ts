@@ -205,6 +205,7 @@ export function useProjects(searchQuery: string = "") {
     queryKey: [...PROJECTS_QUERY_KEY, searchQuery],
     queryFn: () => fetchProjects(searchQuery),
     retry: false,
+    staleTime: 0,
     refetchOnWindowFocus: true,
   });
 
