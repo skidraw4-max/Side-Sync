@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BrandLogoMark } from "@/components/BrandLogo";
-import { Printer, FileDown, Loader2 } from "lucide-react";
+import { Printer, FileDown, Loader2, CircleHelp } from "lucide-react";
 
 export interface CertificateClientProps {
   projectTitle: string;
@@ -28,7 +28,9 @@ export default function CertificateClient({
   verificationCode,
 }: CertificateClientProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
+  const linkedInHelpRef = useRef<HTMLDivElement>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [linkedInHelpOpen, setLinkedInHelpOpen] = useState(false);
 
   const handlePrint = useCallback(() => {
     window.print();
@@ -94,6 +96,18 @@ export default function CertificateClient({
     window.open(url, "_blank", "noopener,noreferrer");
   }, [projectTitle, verificationCode]);
 
+  useEffect(() => {
+    if (!linkedInHelpOpen) return;
+    const onDocPointerDown = (e: PointerEvent) => {
+      const el = linkedInHelpRef.current;
+      if (el && !el.contains(e.target as Node)) {
+        setLinkedInHelpOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", onDocPointerDown);
+    return () => document.removeEventListener("pointerdown", onDocPointerDown);
+  }, [linkedInHelpOpen]);
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 print:max-w-none print:px-0 print:py-0">
       <div className="no-print mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -125,22 +139,52 @@ export default function CertificateClient({
             )}
             PDF로 저장
           </button>
-          <button
-            type="button"
-            onClick={handleLinkedInAdd}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#0A66C2] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#004182]"
-            aria-label="링크드인 프로필에 자격 증명 추가"
-          >
-            <svg
-              className="h-[18px] w-[18px] shrink-0 text-white"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-hidden
+          <div ref={linkedInHelpRef} className="relative inline-flex items-center gap-1">
+            <button
+              type="button"
+              onClick={handleLinkedInAdd}
+              className="inline-flex items-center gap-2 rounded-lg bg-[#0A66C2] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#004182]"
+              aria-label="링크드인 프로필에 자격 증명 추가"
             >
-              <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-            </svg>
-            링크드인 프로필에 추가하기
-          </button>
+              <svg
+                className="h-[18px] w-[18px] shrink-0 text-white"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden
+              >
+                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+              </svg>
+              링크드인 프로필에 추가하기
+            </button>
+            <button
+              type="button"
+              id="linkedin-cert-help-trigger"
+              aria-expanded={linkedInHelpOpen}
+              aria-controls="linkedin-cert-help-panel"
+              onClick={() => setLinkedInHelpOpen((o) => !o)}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#0A66C2]/40 bg-white text-[#0A66C2] shadow-sm hover:bg-[#0A66C2]/5"
+              title="링크드인 등록이 왜 도움이 되나요?"
+            >
+              <CircleHelp className="h-4 w-4 shrink-0" aria-hidden />
+              <span className="sr-only">링크드인에 등록하면 무엇이 좋은가요? 도움말 열기</span>
+            </button>
+            {linkedInHelpOpen ? (
+              <div
+                id="linkedin-cert-help-panel"
+                role="tooltip"
+                className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-slate-200 bg-white p-3 text-left shadow-lg ring-1 ring-black/5"
+              >
+                <p className="text-xs font-semibold text-slate-900">
+                  링크드인에 등록하면 무엇이 좋은가요?
+                </p>
+                <ul className="mt-2 list-disc space-y-1.5 pl-4 text-[11px] leading-relaxed text-slate-600">
+                  <li>내 프로필의 &apos;라이선스 및 자격증&apos; 섹션에 공식적으로 기록됩니다.</li>
+                  <li>채용 담당자에게 실무 협업 경험을 데이터로 증명할 수 있습니다.</li>
+                  <li>Side-Sync가 보증하는 고유 발급 번호가 포함됩니다.</li>
+                </ul>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
 
