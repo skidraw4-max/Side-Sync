@@ -10,8 +10,9 @@ import type { Database, RecruitmentStatusRow } from "@/types/database";
 import { inferProjectRecruitmentState } from "@/lib/project-recruitment-state";
 import EmptyState from "@/components/EmptyState";
 import { ProjectCardSkeleton } from "@/components/Skeleton";
-import ProjectCard from "@/components/ProjectCard";
+import ProjectCard, { type ProjectCardProps } from "@/components/ProjectCard";
 import { shouldEnableSupabaseRealtimeSubscriptions } from "@/lib/supabase/realtime-flags";
+import { fetchLeaderMannerMap, formatMannerTemperatureForCard } from "@/lib/manner-temp-display";
 
 type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
 
@@ -21,6 +22,7 @@ type PendingRow = {
   applicationId: string;
   projectId: string;
   project: ProjectRow;
+  card: ProjectCardProps & { id: string };
 };
 
 async function fetchPendingApplicationsWithProjects(userId: string): Promise<PendingRow[]> {
@@ -44,30 +46,39 @@ async function fetchPendingApplicationsWithProjects(userId: string): Promise<Pen
   const ids = [...new Set(apps.map((a) => (a as { project_id: string }).project_id))];
   const projects = await fetchProjectsByIds(supabase, ids);
   const map = new Map(projects.map((p) => [p.id, p]));
+  const leaderMap = await fetchLeaderMannerMap(
+    supabase,
+    projects.map((p) => p.team_leader_id)
+  );
 
-  return (apps as { id: string; project_id: string }[])
-    .map((a) => ({
+  const rows: PendingRow[] = [];
+  for (const a of apps as { id: string; project_id: string }[]) {
+    const project = map.get(a.project_id);
+    if (!project) continue;
+    const mannerTemperature = formatMannerTemperatureForCard(
+      project.team_leader_id,
+      leaderMap,
+      (project as { manner_temp_target?: string | null }).manner_temp_target ?? null
+    );
+    rows.push({
       applicationId: a.id,
       projectId: a.project_id,
-      project: map.get(a.project_id),
-    }))
-    .filter((x): x is PendingRow => x.project != null);
-}
-
-function toCardProps(row: ProjectRow) {
-  return {
-    id: row.id,
-    title: row.title,
-    description: row.description ?? undefined,
-    techStack: Array.isArray(row.tech_stack) ? row.tech_stack : [],
-    mannerTemperature:
-      (row as { manner_temp_target?: string | null }).manner_temp_target ?? "36.5°C",
-    gradient: (row as { gradient?: string | null }).gradient ?? DEFAULT_GRADIENT,
-    recruitmentState: inferProjectRecruitmentState(
-      row.status,
-      row.recruitment_status as RecruitmentStatusRow[] | null
-    ),
-  };
+      project,
+      card: {
+        id: project.id,
+        title: project.title,
+        description: project.description ?? undefined,
+        techStack: Array.isArray(project.tech_stack) ? project.tech_stack : [],
+        mannerTemperature,
+        gradient: (project as { gradient?: string | null }).gradient ?? DEFAULT_GRADIENT,
+        recruitmentState: inferProjectRecruitmentState(
+          project.status,
+          project.recruitment_status as RecruitmentStatusRow[] | null
+        ),
+      },
+    });
+  }
+  return rows;
 }
 
 export default function PendingApplicationsSection() {
@@ -203,7 +214,7 @@ export default function PendingApplicationsSection() {
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-6 xl:gap-7">
             {items.map((row) => (
               <div key={row.applicationId} className="flex flex-col gap-2">
-                <ProjectCard {...toCardProps(row.project)} />
+                <ProjectCard {...row.card} />
                 <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-100 bg-amber-50/80 px-3 py-2">
                   <span className="text-xs font-medium text-amber-900">지원 대기 중</span>
                   <button

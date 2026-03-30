@@ -7,6 +7,7 @@ import {
   fetchApplicationCountsByPosition,
   getEffectiveRecruitmentSlots,
 } from "@/lib/project-application-positions";
+import { grantMannerTempBonus } from "@/lib/manner-temp-grant";
 
 type ProjectRow = Pick<
   Database["public"]["Tables"]["projects"]["Row"],
@@ -218,6 +219,8 @@ export async function PATCH(
         author_id: user.id,
         content: systemContent,
       });
+
+      await grantMannerTempBonus(admin, application.applicant_id, projectId, "accept_bonus");
     }
   }
 

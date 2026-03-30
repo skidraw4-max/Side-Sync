@@ -337,6 +337,25 @@ export interface Database {
           updated_at?: string;
         };
       };
+      manner_temp_logs: {
+        Row: {
+          id: string;
+          user_id: string;
+          project_id: string;
+          reason: "accept_bonus" | "completed_bonus";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          project_id: string;
+          reason: "accept_bonus" | "completed_bonus";
+          created_at?: string;
+        };
+        Update: {
+          reason?: "accept_bonus" | "completed_bonus";
+        };
+      };
       chat_channels: {
         Row: {
           id: string;

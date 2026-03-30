@@ -10,6 +10,7 @@ import { inferProjectRecruitmentState } from "@/lib/project-recruitment-state";
 import { APPLICATION_STATUS } from "@/lib/application-status";
 import { isMyProjectsDebugEnabled } from "@/lib/debug-my-projects";
 import { fetchLedProjectsForUser, fetchProjectsByIds } from "@/lib/supabase-project-queries";
+import { fetchLeaderMannerMap, formatMannerTemperatureForCard } from "@/lib/manner-temp-display";
 
 const DEFAULT_GRADIENT = "from-blue-200 via-indigo-200 to-purple-200";
 
@@ -91,12 +92,21 @@ async function fetchMyProjects(userId: string): Promise<ProjectWithId[]> {
       console.log("🔍 [useMyProjects] Step F — 최종 합쳐진 프로젝트 개수 (카드 수):", combined.length);
     }
 
+    const leaderMap = await fetchLeaderMannerMap(
+      supabase,
+      combined.map((row) => row.team_leader_id)
+    );
+
     return combined.map((row) => ({
       id: row.id,
       title: row.title,
       description: row.description ?? undefined,
       techStack: Array.isArray(row.tech_stack) ? row.tech_stack : [],
-      mannerTemperature: (row as { manner_temp_target?: string | null }).manner_temp_target ?? "36.5°C",
+      mannerTemperature: formatMannerTemperatureForCard(
+        row.team_leader_id,
+        leaderMap,
+        (row as { manner_temp_target?: string | null }).manner_temp_target ?? null
+      ),
       gradient: (row as { gradient?: string | null }).gradient ?? DEFAULT_GRADIENT,
       recruitmentState: inferProjectRecruitmentState(
         row.status,

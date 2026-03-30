@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { Thermometer } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useProjects } from "@/hooks/useProjects";
 import { ProjectCardSkeleton } from "@/components/Skeleton";
@@ -34,18 +33,12 @@ function EcosystemCard({
           className="pointer-events-none absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_1.5px_1.5px,rgb(255_255_255/0.4)_1px,transparent_0)] [background-size:12px_12px]"
           aria-hidden
         />
-        <div className="absolute right-3 top-3 z-10 flex flex-col items-end rounded-xl bg-white px-3 py-2.5 shadow-lg ring-2 ring-[#2563EB]/20">
-          <div className="flex items-center gap-1.5">
-            <Thermometer
-              className="h-4 w-4 shrink-0 text-orange-500"
-              strokeWidth={2.25}
-              aria-hidden
-            />
-            <span className="text-base font-bold tabular-nums text-gray-900">{mannerTemperature}</span>
-          </div>
-          <span className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-            신뢰 지수
+        <div className="absolute right-3 top-3 z-10 flex flex-col items-end gap-1">
+          <span className="inline-flex items-center gap-0.5 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-600 shadow-sm ring-1 ring-blue-100">
+            <span aria-hidden>🌡️</span>
+            <span className="tabular-nums">{mannerTemperature}</span>
           </span>
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">매너 온도</span>
         </div>
       </div>
       <div className="p-4">

@@ -10,6 +10,11 @@ import type { Database, RecruitmentStatusRow } from "@/types/database";
 import type { ProjectCardProps } from "@/components/ProjectCard";
 import { APPLICATION_STATUS } from "@/lib/application-status";
 import { inferProjectRecruitmentState } from "@/lib/project-recruitment-state";
+import {
+  fetchLeaderMannerMap,
+  formatMannerTemperatureForCard,
+  type LeaderMannerRow,
+} from "@/lib/manner-temp-display";
 
 const PROJECTS_QUERY_KEY = ["projects"] as const;
 
@@ -32,18 +37,27 @@ type RowMinimal = Pick<
   "id" | "title" | "description" | "goal" | "tech_stack" | "status" | "recruitment_status"
 > & {
   manner_temp_target?: string | null;
+  team_leader_id?: string | null;
   summary?: string | null;
   content?: string | null;
 };
 
-function mapRowToCard(row: RowMinimal, opts?: { showWorkspaceLink?: boolean }): ProjectWithId {
+function mapRowToCard(
+  row: RowMinimal,
+  leaderMap: Map<string, LeaderMannerRow>,
+  opts?: { showWorkspaceLink?: boolean }
+): ProjectWithId {
   const r = row as RowMinimal & { gradient?: string | null };
   return {
     id: row.id,
     title: row.title,
     description: row.description ?? undefined,
     techStack: Array.isArray(row.tech_stack) ? row.tech_stack : [],
-    mannerTemperature: row.manner_temp_target ?? "36.5°C",
+    mannerTemperature: formatMannerTemperatureForCard(
+      r.team_leader_id ?? null,
+      leaderMap,
+      row.manner_temp_target ?? null
+    ),
     gradient: r.gradient?.trim() ? r.gradient : DEFAULT_GRADIENT,
     recruitmentState: inferProjectRecruitmentState(
       row.status,
@@ -124,8 +138,12 @@ async function fetchProjects(searchQuery?: string): Promise<ProjectWithId[]> {
       if (rows.length === 0) {
         return FALLBACK_PROJECTS;
       }
+      const leaderMap = await fetchLeaderMannerMap(
+        supabase,
+        rows.map((row) => (row as RowMinimal).team_leader_id)
+      );
       return rows.map((row) =>
-        mapRowToCard(row, { showWorkspaceLink: acceptedIds.has(row.id) })
+        mapRowToCard(row, leaderMap, { showWorkspaceLink: acceptedIds.has(row.id) })
       );
     }
 
@@ -137,15 +155,23 @@ async function fetchProjects(searchQuery?: string): Promise<ProjectWithId[]> {
 
     if (!rpcError && rpcData !== null && Array.isArray(rpcData)) {
       const rows = rpcData as unknown as RowMinimal[];
+      const leaderMap = await fetchLeaderMannerMap(
+        supabase,
+        rows.map((row) => row.team_leader_id)
+      );
       return rows.map((row) =>
-        mapRowToCard(row, { showWorkspaceLink: acceptedIds.has(row.id) })
+        mapRowToCard(row, leaderMap, { showWorkspaceLink: acceptedIds.has(row.id) })
       );
     }
 
     const rows = await fetchAllProjectsRows(supabase);
     const filtered = rows.filter((r) => projectMatchesSearchTokens(r, tokens));
+    const leaderMap = await fetchLeaderMannerMap(
+      supabase,
+      filtered.map((row) => (row as RowMinimal).team_leader_id)
+    );
     return filtered.map((row) =>
-      mapRowToCard(row, { showWorkspaceLink: acceptedIds.has(row.id) })
+      mapRowToCard(row, leaderMap, { showWorkspaceLink: acceptedIds.has(row.id) })
     );
   } catch {
     if (tokens.length === 0) return FALLBACK_PROJECTS;

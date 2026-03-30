@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { grantMannerTempBonus } from "@/lib/manner-temp-grant";
 
 type ProjectRow = Pick<
   Database["public"]["Tables"]["projects"]["Row"],
@@ -107,6 +108,10 @@ export async function POST(
         message: `${project.title} 프로젝트가 종료되었습니다. 팀원들에게 평가를 남겨주세요.`,
         link: `/projects/${projectId}/evaluate`,
       });
+    }
+
+    for (const memberId of teamMemberIds) {
+      await grantMannerTempBonus(admin, memberId, projectId, "completed_bonus");
     }
   }
 

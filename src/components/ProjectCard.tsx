@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Thermometer } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { ProjectRecruitmentState } from "@/lib/project-recruitment-state";
 
@@ -102,19 +101,19 @@ export default function ProjectCard({
                 마감임박
               </span>
             ) : null}
-            <div
+            <span
               className={cn(
-                "flex max-w-[10rem] items-center gap-1 rounded-lg bg-white/95 px-2 py-1 text-[10px] font-semibold text-slate-800 shadow-md backdrop-blur-sm sm:text-[11px]",
+                "inline-flex max-w-[10rem] items-center gap-0.5 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-600 shadow-sm ring-1 ring-blue-100/80 sm:text-[11px]",
                 isDimmed && "opacity-90"
               )}
-              title="팀장 협업 온도"
+              title="팀장 매너 온도"
             >
-              <Thermometer className="h-3 w-3 shrink-0 text-slate-600 sm:h-3.5 sm:w-3.5" strokeWidth={2} aria-hidden />
-              <span className="min-w-0 truncate">
-                <span className="sr-only">협업 온도 </span>
+              <span aria-hidden>🌡️</span>
+              <span className="min-w-0 truncate tabular-nums">
+                <span className="sr-only">매너 온도 </span>
                 {mannerTemperature}
               </span>
-            </div>
+            </span>
           </div>
         </div>
       </div>

@@ -7,6 +7,7 @@ import ProfileHeader from "@/components/ProfileHeader";
 import Footer from "@/components/Footer";
 import EmptyState from "@/components/EmptyState";
 import MannerTemperatureGauge from "@/components/MannerTemperatureGauge";
+import { getMannerHonorFromTemp, getMannerPercentileHint } from "@/lib/manner-temp-display";
 import { ProfilePageSkeleton } from "@/components/Skeleton";
 import { createClient } from "@/lib/supabase/client";
 import { getMergedAvatarUrl, getMergedDisplayName } from "@/lib/auth-user-display";
@@ -18,6 +19,8 @@ interface ProfileData {
   avatarUrl: string | null;
   role: string | null;
   mannerTemp: string;
+  /** 칭호·퍼센트 게이지용 숫자 온도 */
+  mannerTempValue: number;
   successRate: string | null;
   badges: string[];
   location?: string | null;
@@ -110,11 +113,22 @@ export default function ProfilePage() {
           badges: string[];
         } | null;
 
+        const mannerNum =
+          profile?.manner_temp != null && Number.isFinite(profile.manner_temp)
+            ? profile.manner_temp
+            : parseFloat(
+                String(profile?.manner_temp_target ?? "36.5")
+                  .replace(/[°C\s]/g, "")
+                  .split(/[^\d.-]/)[0] ?? "36.5"
+              );
+        const mannerTempValue = Number.isFinite(mannerNum) ? mannerNum : 36.5;
+
         setProfile({
           fullName: getMergedDisplayName(user, profile?.full_name),
           avatarUrl: getMergedAvatarUrl(user, profile?.avatar_url),
           role: profile?.role ?? null,
           mannerTemp: profile?.manner_temp != null ? `${profile.manner_temp}` : (profile?.manner_temp_target ?? "36.5"),
+          mannerTempValue,
           successRate: profile?.success_rate ?? "98%",
           badges: Array.isArray(profile?.badges) ? profile.badges : [],
           location: "San Francisco, CA",
@@ -235,6 +249,12 @@ export default function ProfilePage() {
     profile?.mannerTemp ?? null
   );
   const positiveRate = profile?.successRate ?? "98%";
+  const mannerHonor = profile
+    ? getMannerHonorFromTemp(profile.mannerTempValue)
+    : getMannerHonorFromTemp(36.5);
+  const mannerPercentileHint = profile
+    ? getMannerPercentileHint(profile.mannerTempValue)
+    : null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -323,10 +343,23 @@ export default function ProfilePage() {
             </div>
 
             <div className="rounded-2xl bg-white p-8 shadow-lg">
+              <div className="mb-6 border-b border-slate-100 pb-6 text-center">
+                <p className="text-lg font-bold text-[#2563EB]">{mannerHonor.name}</p>
+                <p className="mt-1 text-xs font-medium text-slate-500">{mannerHonor.tagline}</p>
+                {mannerPercentileHint ? (
+                  <p className="mt-2 text-xs font-semibold text-blue-700/90">{mannerPercentileHint}</p>
+                ) : null}
+                <p className="mt-4 flex items-baseline justify-center gap-1">
+                  <span className="text-5xl font-bold tabular-nums text-[#2563EB]">{mannerDisplay}</span>
+                  <span className="text-2xl font-semibold text-blue-600">°C</span>
+                </p>
+                <p className="mt-3 text-sm leading-relaxed text-slate-600">{mannerHonor.encouragement}</p>
+              </div>
               <MannerTemperatureGauge
                 value={mannerDisplay}
                 percent={mannerPercent}
                 positiveRate={positiveRate}
+                showArcOnly
               />
             </div>
           </div>
