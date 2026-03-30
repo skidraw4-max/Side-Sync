@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BrandLogoMark } from "@/components/BrandLogo";
 import { Printer, FileDown, Loader2, CircleHelp } from "lucide-react";
+import { normalizePublicCertificateCodeForLinkedIn } from "@/lib/certificate-linkedin-cert-id";
 
 export interface CertificateClientProps {
   projectTitle: string;
@@ -13,8 +14,12 @@ export interface CertificateClientProps {
   issuanceNumber: string;
   issuedAtLabel: string;
   shareUrl: string | null;
-  /** LinkedIn certUrl / certId 및 /verify/[code] 경로에 사용 */
-  verificationCode: string;
+  /** LinkedIn certId(짧은 식별번호)·certUrl — DB project_certificate_codes.code (예: ss-xxxxxxxxxxxx) */
+  certificatePublicCode: string | null;
+  /** 공개 검증 링크 베이스 (예: https://sidesync.io) */
+  verifySiteOrigin: string;
+  /** 서버에서 조립한 링크드인 URL(짧은 certId·certUrl 보장). 있으면 이 링크만 사용 */
+  linkedInAddCertificationHref: string | null;
 }
 
 export default function CertificateClient({
@@ -25,12 +30,20 @@ export default function CertificateClient({
   issuanceNumber,
   issuedAtLabel,
   shareUrl,
-  verificationCode,
+  certificatePublicCode,
+  verifySiteOrigin,
+  linkedInAddCertificationHref,
 }: CertificateClientProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const linkedInHelpRef = useRef<HTMLDivElement>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [linkedInHelpOpen, setLinkedInHelpOpen] = useState(false);
+
+  /** 링크드인 certId·certUrl 전용: 짧은 코드만 사용 (토큰·잘못된 props 무시) */
+  const linkedInCertId = useMemo(
+    () => normalizePublicCertificateCodeForLinkedIn(certificatePublicCode),
+    [certificatePublicCode]
+  );
 
   const handlePrint = useCallback(() => {
     window.print();
@@ -72,29 +85,11 @@ export default function CertificateClient({
     }
   }, [projectTitle]);
 
-  const handleLinkedInAdd = useCallback(() => {
-    const d = new Date();
-    const issueYear = String(d.getFullYear());
-    const issueMonth = String(d.getMonth() + 1);
-    const certUrl = `https://sidesync.io/verify/${verificationCode}`;
-    const name = `[Side-Sync] ${projectTitle} 참여 확인서`;
-    const url =
-      "https://www.linkedin.com/profile/add?startTask=" +
-      encodeURIComponent("CERTIFICATION_NAME") +
-      "&name=" +
-      encodeURIComponent(name) +
-      "&organizationName=" +
-      encodeURIComponent("Side-Sync") +
-      "&issueYear=" +
-      encodeURIComponent(issueYear) +
-      "&issueMonth=" +
-      encodeURIComponent(issueMonth) +
-      "&certUrl=" +
-      encodeURIComponent(certUrl) +
-      "&certId=" +
-      encodeURIComponent(verificationCode);
-    window.open(url, "_blank", "noopener,noreferrer");
-  }, [projectTitle, verificationCode]);
+  const handleLinkedInUnavailable = useCallback(() => {
+    window.alert(
+      "링크드인용 짧은 인증 코드(ss-로 시작하는 15자)를 사용할 수 없습니다. 증명서를 새로고침하거나 DB의 project_certificate_codes 행을 확인해 주세요."
+    );
+  }, []);
 
   useEffect(() => {
     if (!linkedInHelpOpen) return;
@@ -140,22 +135,42 @@ export default function CertificateClient({
             PDF로 저장
           </button>
           <div ref={linkedInHelpRef} className="relative inline-flex items-center gap-1">
-            <button
-              type="button"
-              onClick={handleLinkedInAdd}
-              className="inline-flex items-center gap-2 rounded-lg bg-[#0A66C2] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#004182]"
-              aria-label="링크드인 프로필에 자격 증명 추가"
-            >
-              <svg
-                className="h-[18px] w-[18px] shrink-0 text-white"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                aria-hidden
+            {linkedInAddCertificationHref ? (
+              <a
+                href={linkedInAddCertificationHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-lg bg-[#0A66C2] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#004182]"
+                aria-label="링크드인 프로필에 자격 증명 추가"
               >
-                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-              </svg>
-              링크드인 프로필에 추가하기
-            </button>
+                <svg
+                  className="h-[18px] w-[18px] shrink-0 text-white"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden
+                >
+                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                </svg>
+                링크드인 프로필에 추가하기
+              </a>
+            ) : (
+              <button
+                type="button"
+                onClick={handleLinkedInUnavailable}
+                className="inline-flex items-center gap-2 rounded-lg bg-[#0A66C2] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#004182] disabled:opacity-60"
+                aria-label="링크드인 프로필에 자격 증명 추가 (준비되지 않음)"
+              >
+                <svg
+                  className="h-[18px] w-[18px] shrink-0 text-white"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden
+                >
+                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                </svg>
+                링크드인 프로필에 추가하기
+              </button>
+            )}
             <button
               type="button"
               id="linkedin-cert-help-trigger"
@@ -195,6 +210,22 @@ export default function CertificateClient({
             아래 링크를 저장해 두면 로그인 없이도 동일 증명서를 다시 열 수 있습니다. 링크가 있으면 누구나 열람할 수 있으니 타인과 공유하지 마세요.
           </p>
           <p className="mt-2 break-all font-mono text-[11px] text-amber-950">{shareUrl}</p>
+          {linkedInCertId ? (
+            <p className="mt-3 border-t border-amber-200/80 pt-3 text-amber-900/90">
+              <span className="font-semibold">공개 검증 코드</span> (링크드인 식별번호·누구나 검증 가능):{" "}
+              <span className="font-mono text-[11px] text-amber-950">{linkedInCertId}</span>
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {!shareUrl && linkedInCertId ? (
+        <div className="no-print mb-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-700">
+          <p className="font-semibold text-slate-900">공개 검증</p>
+          <p className="mt-1 font-mono text-[11px] text-slate-800">{linkedInCertId}</p>
+          <p className="mt-1 break-all text-[11px] text-slate-600">
+            {verifySiteOrigin.replace(/\/$/, "")}/verify/{linkedInCertId}
+          </p>
         </div>
       ) : null}
 

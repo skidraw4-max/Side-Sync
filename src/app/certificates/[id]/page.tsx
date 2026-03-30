@@ -9,7 +9,11 @@ import {
   signCertificateToken,
   verifyCertificateToken,
 } from "@/lib/certificate-token";
-import { encodeCertificateVerifyCode } from "@/lib/certificate-verify-code";
+import { ensureCertificatePublicCode } from "@/lib/certificate-public-code";
+import {
+  buildLinkedInAddCertificationUrl,
+  normalizePublicCertificateCodeForLinkedIn,
+} from "@/lib/certificate-linkedin-cert-id";
 import CertificateClient from "./certificate-client";
 
 interface PageProps {
@@ -134,17 +138,31 @@ export default async function CertificatePage({ params, searchParams }: PageProp
   const issuanceNumber = certificateIssuanceNumber(projectId, viewerUserId);
   const roleLabel = app?.role?.trim() || (isLeader ? "프로젝트 리더" : null);
 
-  const effectiveToken = rawToken || signCertificateToken(projectId, viewerUserId);
-  const verificationCode = encodeCertificateVerifyCode(effectiveToken);
+  const rawPublicCode = await ensureCertificatePublicCode(db, projectId, viewerUserId);
+  const certificatePublicCode = normalizePublicCertificateCodeForLinkedIn(rawPublicCode);
+  if (rawPublicCode && !certificatePublicCode) {
+    console.warn(
+      "[certificates] project_certificate_codes.code 가 짧은 코드 형식이 아닙니다. LinkedIn certId에는 사용하지 않습니다.",
+      String(rawPublicCode).slice(0, 24) + "…"
+    );
+  }
+
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "sidesync.io";
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  const verifySiteOrigin = `${proto}://${host}`;
 
   let shareUrl: string | null = null;
   if (user && user.id === viewerUserId && !rawToken) {
-    const h = await headers();
-    const host = h.get("x-forwarded-host") ?? h.get("host") ?? "sidesync.io";
-    const proto = h.get("x-forwarded-proto") ?? "https";
     const token = signCertificateToken(projectId, viewerUserId);
-    shareUrl = `${proto}://${host}/certificates/${projectId}?t=${encodeURIComponent(token)}`;
+    shareUrl = `${verifySiteOrigin}/certificates/${projectId}?t=${encodeURIComponent(token)}`;
   }
+
+  const linkedInAddCertificationHref = buildLinkedInAddCertificationUrl({
+    verifySiteOrigin,
+    projectTitle: project.title,
+    certificatePublicCode,
+  });
 
   return (
     <div className="min-h-screen bg-slate-200/80 print:bg-white">
@@ -156,7 +174,9 @@ export default async function CertificatePage({ params, searchParams }: PageProp
         issuanceNumber={issuanceNumber}
         issuedAtLabel={issuedAtLabel}
         shareUrl={shareUrl}
-        verificationCode={verificationCode}
+        certificatePublicCode={certificatePublicCode}
+        verifySiteOrigin={verifySiteOrigin}
+        linkedInAddCertificationHref={linkedInAddCertificationHref}
       />
     </div>
   );

@@ -99,6 +99,26 @@ export interface Database {
           additional_feedback?: string | null;
         };
       };
+      project_certificate_codes: {
+        Row: {
+          id: string;
+          project_id: string;
+          user_id: string;
+          code: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          user_id: string;
+          code: string;
+          created_at?: string;
+        };
+        Update: {
+          code?: string;
+          created_at?: string;
+        };
+      };
       tasks: {
         Row: {
           id: string;

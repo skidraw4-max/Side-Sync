@@ -5,6 +5,7 @@ import { ko } from "date-fns/locale";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { certificateIssuanceNumber, verifyCertificateToken } from "@/lib/certificate-token";
 import { decodeCertificateVerifyCode } from "@/lib/certificate-verify-code";
+import { isCertificatePublicCodeFormat, resolveCertificateByPublicCode } from "@/lib/certificate-public-code";
 
 interface PageProps {
   params: Promise<{ code: string }>;
@@ -13,18 +14,9 @@ interface PageProps {
 export const dynamic = "force-dynamic";
 
 export default async function CertificateVerifyPage({ params }: PageProps) {
-  const { code } = await params;
-  const token = decodeCertificateVerifyCode(code);
-  if (!token) {
-    notFound();
-  }
+  const { code: codeParam } = await params;
+  const code = codeParam?.trim() ?? "";
 
-  const payload = verifyCertificateToken(token);
-  if (!payload) {
-    notFound();
-  }
-
-  const { projectId, userId } = payload;
   const admin = createAdminClient();
   if (!admin) {
     return (
@@ -33,6 +25,26 @@ export default async function CertificateVerifyPage({ params }: PageProps) {
         <p className="mt-2">서버 설정(SUPABASE_SERVICE_ROLE_KEY)이 필요합니다.</p>
       </div>
     );
+  }
+
+  let projectId: string;
+  let userId: string;
+
+  const token = decodeCertificateVerifyCode(code);
+  const fromToken = token ? verifyCertificateToken(token) : null;
+  if (fromToken) {
+    projectId = fromToken.projectId;
+    userId = fromToken.userId;
+  } else {
+    if (!isCertificatePublicCodeFormat(code)) {
+      notFound();
+    }
+    const resolved = await resolveCertificateByPublicCode(admin, code);
+    if (!resolved) {
+      notFound();
+    }
+    projectId = resolved.projectId;
+    userId = resolved.userId;
   }
 
   const { data: projectRaw } = await admin
