@@ -1,6 +1,7 @@
+import Image from "next/image";
 import Link from "next/link";
 
-/** About 히어로 — 좌 타이포 + 우 다크 테크 비주얼 */
+/** About 히어로 — 좌 타이포 + 우 테크 비주얼 이미지 */
 export default function AboutHeroSplit() {
   return (
     <section
@@ -37,34 +38,16 @@ export default function AboutHeroSplit() {
           </div>
         </div>
 
-        <div className="relative min-h-[240px] w-full sm:min-h-[280px] lg:min-h-[340px]">
-          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-gray-200 bg-gradient-to-br from-slate-950 via-slate-900 to-[#0c1929] shadow-xl lg:aspect-auto lg:h-full lg:min-h-[320px]">
-            <div
-              className="pointer-events-none absolute inset-0 opacity-[0.12] bg-[linear-gradient(to_right,#fff_1px,transparent_1px),linear-gradient(to_bottom,#fff_1px,transparent_1px)] bg-[size:28px_28px]"
-              aria-hidden
+        <div className="relative min-h-[240px] w-full sm:min-h-[280px] lg:min-h-[340px] lg:h-full">
+          <div className="relative aspect-[4/3] h-full min-h-[240px] w-full overflow-hidden rounded-2xl border border-gray-200 bg-slate-950 shadow-xl sm:min-h-[280px] lg:aspect-auto lg:min-h-[320px]">
+            <Image
+              src="/about/hero-workstation.png"
+              alt="데이터 시각화와 협업 워크스테이션을 담은 테크 일러스트"
+              fill
+              className="object-cover object-center"
+              sizes="(max-width: 1024px) 100vw, 50vw"
+              priority
             />
-            <div
-              className="pointer-events-none absolute -right-8 top-1/2 h-[120%] w-[70%] -translate-y-1/2 rounded-full bg-[#2563EB]/25 blur-[80px]"
-              aria-hidden
-            />
-            <div
-              className="pointer-events-none absolute bottom-0 left-1/2 h-1/2 w-[90%] -translate-x-1/2 rounded-t-full bg-gradient-to-t from-[#2563EB]/20 to-transparent"
-              aria-hidden
-            />
-            <div className="absolute inset-6 flex flex-col gap-3 sm:inset-8">
-              <div className="h-3 w-2/5 rounded bg-white/10" />
-              <div className="flex flex-1 gap-3">
-                <div className="w-[42%] rounded-lg border border-white/10 bg-white/[0.06] backdrop-blur-sm" />
-                <div className="flex flex-1 flex-col gap-3">
-                  <div className="h-1/3 rounded-lg border border-white/10 bg-white/[0.05]" />
-                  <div className="flex flex-1 gap-2">
-                    <div className="flex-1 rounded-lg border border-white/10 bg-[#2563EB]/15" />
-                    <div className="w-1/3 rounded-lg border border-white/10 bg-white/[0.04]" />
-                  </div>
-                </div>
-              </div>
-              <div className="h-2 w-3/4 rounded bg-white/10" />
-            </div>
           </div>
         </div>
       </div>
