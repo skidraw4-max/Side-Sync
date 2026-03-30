@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "공지사항",
@@ -7,5 +9,11 @@ export const metadata: Metadata = {
 };
 
 export default function AnnouncementsLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return (
+    <div className="min-h-screen bg-white">
+      <Header />
+      <div className="pt-16">{children}</div>
+      <Footer />
+    </div>
+  );
 }
