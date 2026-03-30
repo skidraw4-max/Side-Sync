@@ -6,10 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { shouldEnableSupabaseRealtimeSubscriptions } from "@/lib/supabase/realtime-flags";
 import type { Database, RecruitmentStatusRow } from "@/types/database";
 import type { ProjectCardProps } from "@/components/ProjectCard";
-import {
-  getRecruitmentProgress,
-  inferProjectRecruitmentState,
-} from "@/lib/project-recruitment-state";
+import { inferProjectRecruitmentState } from "@/lib/project-recruitment-state";
 import { APPLICATION_STATUS } from "@/lib/application-status";
 import { isMyProjectsDebugEnabled } from "@/lib/debug-my-projects";
 import { fetchLedProjectsForUser, fetchProjectsByIds } from "@/lib/supabase-project-queries";
@@ -103,9 +100,6 @@ async function fetchMyProjects(userId: string): Promise<ProjectWithId[]> {
       gradient: (row as { gradient?: string | null }).gradient ?? DEFAULT_GRADIENT,
       recruitmentState: inferProjectRecruitmentState(
         row.status,
-        row.recruitment_status as RecruitmentStatusRow[] | null
-      ),
-      recruitmentProgress: getRecruitmentProgress(
         row.recruitment_status as RecruitmentStatusRow[] | null
       ),
     }));
