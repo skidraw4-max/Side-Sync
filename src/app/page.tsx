@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Header from "@/components/Header";
-import Hero from "@/components/Hero";
-import FeatureCards from "@/components/FeatureCards";
+import HomeHeroSplit from "@/components/HomeHeroSplit";
+import HomeFeatureStrip from "@/components/HomeFeatureStrip";
+import HomeOriginStory from "@/components/HomeOriginStory";
 import HomeSeoOverview from "@/components/HomeSeoOverview";
 import HomeProjectsAndTrending from "@/components/HomeProjectsAndTrending";
 import Footer from "@/components/Footer";
@@ -33,10 +34,11 @@ export default function Home() {
     <div className="min-h-screen bg-white">
       <Header />
       <main className="pt-16">
-        <Hero />
-        <FeatureCards />
-        <HomeSeoOverview />
+        <HomeHeroSplit />
+        <HomeFeatureStrip />
+        <HomeOriginStory />
         <HomeProjectsAndTrending />
+        <HomeSeoOverview />
       </main>
       <div className="mx-auto max-w-4xl px-4 pb-6">
         <AdBanner
