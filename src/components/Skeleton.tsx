@@ -32,23 +32,23 @@ export function Skeleton({ className = "", rounded = "md" }: SkeletonProps) {
 /** 프로젝트 카드 형태 스켈레톤 (메인/프로필) */
 export function ProjectCardSkeleton() {
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
-      <Skeleton className="h-[4.9rem] w-full sm:h-20" rounded="none" />
-      <div className="space-y-2 p-3.5">
-        <Skeleton className="h-4 w-3/4" rounded="md" />
-        <Skeleton className="h-3 w-full" rounded="md" />
-        <Skeleton className="h-3 w-2/3" rounded="md" />
+    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+      <Skeleton className="h-28 w-full sm:h-32 md:h-36" rounded="none" />
+      <div className="space-y-2 px-4 pb-2 pt-3.5 sm:px-5 sm:pt-4">
+        <Skeleton className="h-6 w-4/5" rounded="md" />
+        <Skeleton className="h-3.5 w-full" rounded="md" />
+        <Skeleton className="h-3.5 w-2/3" rounded="md" />
       </div>
-      <div className="border-t border-gray-100 bg-gray-50/60 px-3.5 py-2">
-        <Skeleton className="mb-1.5 h-2.5 w-16" rounded="md" />
-        <div className="flex gap-1.5">
-          <Skeleton className="h-5 w-14" rounded="md" />
-          <Skeleton className="h-5 w-12" rounded="md" />
-          <Skeleton className="h-5 w-16" rounded="md" />
+      <div className="mt-auto border-t border-gray-100 bg-white px-4 py-3 sm:px-5">
+        <Skeleton className="mb-2 h-2 w-10" rounded="md" />
+        <div className="flex flex-wrap gap-1.5">
+          <Skeleton className="h-6 w-14" rounded="md" />
+          <Skeleton className="h-6 w-12" rounded="md" />
+          <Skeleton className="h-6 w-16" rounded="md" />
         </div>
       </div>
-      <div className="border-t border-gray-100 px-3.5 py-3">
-        <Skeleton className="h-8 w-full" rounded="md" />
+      <div className="border-t border-gray-100 px-4 py-3 sm:px-5">
+        <Skeleton className="h-10 w-full" rounded="lg" />
       </div>
     </div>
   );
