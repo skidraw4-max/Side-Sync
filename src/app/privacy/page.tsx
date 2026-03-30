@@ -13,8 +13,9 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "개인정보 처리방침 | Side-Sync",
-  description: "Side-Sync 개인정보 처리방침 (Privacy Policy)",
+  title: "개인정보 처리방침",
+  description:
+    "Side-Sync 개인정보 처리방침: 수집 항목, 이용 목적, 보유 기간, Google AdSense·쿠키, 제3자 제공 및 문의처를 안내합니다.",
 };
 
 const LAST_UPDATED = "2026.03.25";

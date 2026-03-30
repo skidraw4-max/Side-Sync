@@ -15,6 +15,76 @@ type AnnouncementRow = {
   created_at: string;
 };
 
+function AnnouncementArticle({
+  item,
+  canManage,
+  onEdit,
+  onDelete,
+  variant,
+}: {
+  item: AnnouncementRow;
+  canManage: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+  variant: "guide" | "default";
+}) {
+  const isGuide = variant === "guide";
+  const cat = (item.category || "general").trim();
+  return (
+    <article
+      className={`rounded-2xl bg-white p-6 shadow-sm ${
+        isGuide
+          ? "border border-emerald-200 ring-1 ring-emerald-100/70"
+          : "border border-slate-200"
+      }`}
+    >
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        {item.pinned ? (
+          <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+            고정
+          </span>
+        ) : null}
+        <span
+          className={`rounded-full px-2 py-0.5 text-xs font-medium uppercase tracking-wide ${
+            isGuide
+              ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
+              : "border border-slate-200 bg-slate-50 text-slate-600"
+          }`}
+        >
+          {cat || "general"}
+        </span>
+        <span className="ml-auto text-xs text-slate-500">{formatRelativeTime(item.created_at)}</span>
+      </div>
+      <h3 className="text-xl font-bold tracking-tight text-slate-900">{item.title}</h3>
+      <div
+        className={`prose prose-slate mt-4 max-w-none text-slate-700 prose-p:leading-relaxed prose-p:text-[15px] prose-headings:font-semibold prose-a:text-blue-600 ${
+          isGuide ? "prose-headings:text-slate-900" : ""
+        }`}
+      >
+        <p className="whitespace-pre-wrap">{item.content}</p>
+      </div>
+      {canManage ? (
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+          <button
+            type="button"
+            onClick={onEdit}
+            className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+          >
+            수정
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+          >
+            삭제
+          </button>
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
 export default function AnnouncementsPage() {
   const ADMIN_EMAIL = "skidraw4@gmail.com";
   const [rows, setRows] = useState<AnnouncementRow[]>([]);
@@ -109,13 +179,30 @@ export default function AnnouncementsPage() {
     await refresh();
   };
 
+  const sortedRows = [...rows].sort((a, b) => {
+    const pin = Number(!!b.pinned) - Number(!!a.pinned);
+    if (pin !== 0) return pin;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+
+  const guideRows = sortedRows.filter(
+    (r) => (r.category || "").toLowerCase().trim() === "guide"
+  );
+  const otherRows = sortedRows.filter(
+    (r) => (r.category || "").toLowerCase().trim() !== "guide"
+  );
+
   return (
-    <main className="mx-auto min-h-[calc(100vh-160px)] w-full max-w-4xl px-4 py-10 md:px-8">
-      <header className="mb-8">
+    <main className="mx-auto min-h-[calc(100vh-160px)] w-full max-w-3xl px-4 py-10 md:max-w-4xl md:px-10">
+      <header className="mb-10 border-b border-slate-200 pb-8">
         <p className="text-sm font-medium text-blue-600">Side-Sync 공지</p>
-        <h1 className="mt-2 text-3xl font-bold text-slate-900">전체 공지사항</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          서비스 전반에 대한 업데이트와 안내를 확인할 수 있습니다.
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
+          공지사항 · 가이드
+        </h1>
+        <p className="mt-3 max-w-2xl text-base leading-relaxed text-slate-600">
+          서비스 업데이트와 정책 안내, 처음 오신 분을 위한 <strong className="font-semibold text-slate-800">이용 가이드</strong>를
+          모았습니다. 관리자는 카테고리에 <code className="rounded bg-slate-100 px-1.5 py-0.5 text-sm">guide</code>를
+          넣으면 아래 &quot;가이드&quot; 묶음에 먼저 노출됩니다.
         </p>
         {canManage ? (
           <div className="mt-4 flex gap-2">
@@ -131,7 +218,7 @@ export default function AnnouncementsPage() {
       </header>
 
       {canManage ? (
-        <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-4">
+        <section className="mb-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="mb-3 text-sm font-semibold text-slate-800">
             {editing ? "공지 수정" : "공지 작성"}
           </h2>
@@ -191,60 +278,82 @@ export default function AnnouncementsPage() {
           공지사항을 불러오지 못했습니다: {error}
         </div>
       ) : rows.length === 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
-          등록된 공지사항이 없습니다.
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/80 p-10 text-center">
+          <p className="text-sm font-medium text-slate-700">등록된 공지사항이 없습니다.</p>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-slate-500">
+            샘플 가이드를 올릴 때는 제목에 &quot;시작하기&quot; 등을 쓰고, 카테고리를{" "}
+            <code className="rounded bg-white px-1 py-0.5 text-xs ring-1 ring-slate-200">guide</code>로
+            지정하면 방문자에게 먼저 보이기 좋습니다.
+          </p>
         </div>
       ) : (
-        <section className="space-y-4">
-          {rows.map((item) => (
-            <article
-              key={item.id}
-              className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-            >
-              <div className="mb-2 flex items-center gap-2">
-                {item.pinned ? (
-                  <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
-                    고정
-                  </span>
-                ) : null}
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
-                  {(item.category || "general").toUpperCase()}
+        <div className="space-y-10">
+          {guideRows.length > 0 ? (
+            <section aria-labelledby="announcements-guide-heading">
+              <h2
+                id="announcements-guide-heading"
+                className="mb-4 flex items-center gap-2 text-lg font-bold text-slate-900"
+              >
+                <span
+                  className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800 ring-1 ring-emerald-200/80"
+                  aria-hidden
+                >
+                  Guide
                 </span>
-                <span className="ml-auto text-xs text-slate-500">
-                  {formatRelativeTime(item.created_at)}
-                </span>
-              </div>
-              <h2 className="text-lg font-semibold text-slate-900">{item.title}</h2>
-              <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">
-                {item.content}
-              </p>
-              {canManage ? (
-                <div className="mt-3 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditing(item);
-                      setTitle(item.title);
-                      setContent(item.content);
-                      setCategory(item.category || "general");
-                      setPinned(!!item.pinned);
-                    }}
-                    className="rounded-md border border-slate-200 px-2.5 py-1 text-xs text-slate-700"
-                  >
-                    수정
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void onDelete(item.id)}
-                    className="rounded-md border border-red-200 px-2.5 py-1 text-xs text-red-600"
-                  >
-                    삭제
-                  </button>
-                </div>
-              ) : null}
-            </article>
-          ))}
-        </section>
+                이용 가이드
+              </h2>
+              <ul className="space-y-5 list-none p-0">
+                {guideRows.map((item) => (
+                  <li key={item.id}>
+                    <AnnouncementArticle
+                      item={item}
+                      canManage={canManage}
+                      onEdit={() => {
+                        setEditing(item);
+                        setTitle(item.title);
+                        setContent(item.content);
+                        setCategory(item.category || "general");
+                        setPinned(!!item.pinned);
+                      }}
+                      onDelete={() => void onDelete(item.id)}
+                      variant="guide"
+                    />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
+          {otherRows.length > 0 ? (
+            <section aria-labelledby="announcements-rest-heading">
+              <h2
+                id="announcements-rest-heading"
+                className="mb-4 text-lg font-bold text-slate-900"
+              >
+                전체 공지
+              </h2>
+              <ul className="space-y-5 list-none p-0">
+                {otherRows.map((item) => (
+                  <li key={item.id}>
+                    <AnnouncementArticle
+                      item={item}
+                      canManage={canManage}
+                      onEdit={() => {
+                        setEditing(item);
+                        setTitle(item.title);
+                        setContent(item.content);
+                        setCategory(item.category || "general");
+                        setPinned(!!item.pinned);
+                      }}
+                      onDelete={() => void onDelete(item.id)}
+                      variant="default"
+                    />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+        </div>
       )}
 
       <div className="mt-10">

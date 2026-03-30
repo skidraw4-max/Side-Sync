@@ -11,8 +11,9 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "이용약관 | Side-Sync",
-  description: "Side-Sync 서비스 이용약관 (Terms of Service)",
+  title: "이용약관",
+  description:
+    "Side-Sync 이용약관: 서비스 내용, 회원 의무, 게시물·저작권, 면책, 팀 빌딩·워크스페이스 이용에 관한 기본 규정을 정합니다.",
 };
 
 const LAST_UPDATED = "2026.03.20";

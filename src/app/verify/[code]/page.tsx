@@ -1,17 +1,52 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { certificateIssuanceNumber, verifyCertificateToken } from "@/lib/certificate-token";
-import { decodeCertificateVerifyCode } from "@/lib/certificate-verify-code";
-import { isCertificatePublicCodeFormat, resolveCertificateByPublicCode } from "@/lib/certificate-public-code";
+import { loadCertificateVerifyPayload } from "@/lib/certificate-verify-load";
 
 interface PageProps {
   params: Promise<{ code: string }>;
 }
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { code: codeParam } = await params;
+  const code = codeParam?.trim() ?? "";
+  const data = await loadCertificateVerifyPayload(code);
+
+  const title = data
+    ? `${data.participantName}님 참여 확인`
+    : "프로젝트 참여 확인";
+  const description = data
+    ? `${data.participantName}님의 Side-Sync 사이드 프로젝트 완주·참여를 확인합니다.`
+    : "Side-Sync에서 발급한 공개 검증 코드로 프로젝트 참여 사실을 확인하는 페이지입니다.";
+
+  const verifyPath = `/verify/${encodeURIComponent(code)}`;
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: verifyPath,
+    },
+    openGraph: {
+      title,
+      description,
+      url: verifyPath,
+      siteName: "Side-Sync",
+      type: "website",
+      locale: "ko_KR",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+  };
+}
 
 export default async function CertificateVerifyPage({ params }: PageProps) {
   const { code: codeParam } = await params;
@@ -27,68 +62,12 @@ export default async function CertificateVerifyPage({ params }: PageProps) {
     );
   }
 
-  let projectId: string;
-  let userId: string;
-
-  const token = decodeCertificateVerifyCode(code);
-  const fromToken = token ? verifyCertificateToken(token) : null;
-  if (fromToken) {
-    projectId = fromToken.projectId;
-    userId = fromToken.userId;
-  } else {
-    if (!isCertificatePublicCodeFormat(code)) {
-      notFound();
-    }
-    const resolved = await resolveCertificateByPublicCode(admin, code);
-    if (!resolved) {
-      notFound();
-    }
-    projectId = resolved.projectId;
-    userId = resolved.userId;
-  }
-
-  const { data: projectRaw } = await admin
-    .from("projects")
-    .select("id, title, status, team_leader_id, created_at, updated_at")
-    .eq("id", projectId)
-    .maybeSingle();
-
-  const project = projectRaw as {
-    id: string;
-    title: string;
-    status: string | null;
-    team_leader_id: string | null;
-    created_at: string;
-    updated_at: string;
-  } | null;
-
-  if (!project || project.status !== "completed") {
+  const payload = await loadCertificateVerifyPayload(code, admin);
+  if (!payload) {
     notFound();
   }
 
-  const { data: appRaw } = await admin
-    .from("applications")
-    .select("status")
-    .eq("project_id", projectId)
-    .eq("applicant_id", userId)
-    .maybeSingle();
-
-  const app = appRaw as { status: string } | null;
-  const isLeader = project.team_leader_id === userId;
-  const isAccepted = app?.status === "accepted";
-  if (!isLeader && !isAccepted) {
-    notFound();
-  }
-
-  const { data: profileRaw } = await admin
-    .from("profiles")
-    .select("full_name")
-    .eq("id", userId)
-    .maybeSingle();
-
-  const profile = profileRaw as { full_name: string | null } | null;
-  const name = profile?.full_name?.trim() || "참여자";
-  const issuanceNumber = certificateIssuanceNumber(projectId, userId);
+  const { projectTitle, participantName, issuanceNumber } = payload;
 
   return (
     <div className="min-h-screen bg-slate-100 px-4 py-12">
@@ -103,11 +82,11 @@ export default async function CertificateVerifyPage({ params }: PageProps) {
         <dl className="mt-8 space-y-4 text-sm">
           <div className="flex flex-col gap-1 border-b border-slate-100 pb-4">
             <dt className="text-slate-500">프로젝트</dt>
-            <dd className="font-semibold text-slate-900">{project.title}</dd>
+            <dd className="font-semibold text-slate-900">{projectTitle}</dd>
           </div>
           <div className="flex flex-col gap-1 border-b border-slate-100 pb-4">
             <dt className="text-slate-500">성명</dt>
-            <dd className="font-semibold text-slate-900">{name}</dd>
+            <dd className="font-semibold text-slate-900">{participantName}</dd>
           </div>
           <div className="flex flex-col gap-1 border-b border-slate-100 pb-4">
             <dt className="text-slate-500">발급 번호</dt>

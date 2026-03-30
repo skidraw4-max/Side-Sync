@@ -1,5 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import WorkspaceSidebar from "@/components/WorkspaceSidebar";
+
+export const metadata: Metadata = {
+  title: "파일",
+  description:
+    "워크스페이스 파일 목록 UI 예시입니다. 실제 파일 저장은 프로젝트 워크스페이스 기능을 이용하세요.",
+  robots: { index: false, follow: true },
+};
 
 const FILES = [
   {

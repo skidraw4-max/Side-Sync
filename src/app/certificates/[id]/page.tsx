@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { format } from "date-fns";
@@ -22,6 +23,15 @@ interface PageProps {
 }
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: { absolute: "활동 확인서 | Side-Sync" },
+    description:
+      "완주한 사이드 프로젝트 참여를 확인하는 Side-Sync 공식 활동 확인서입니다. 링크드인 자격 증명 연동 및 공개 검증 코드를 지원합니다.",
+    robots: { index: false, follow: false },
+  };
+}
 
 export default async function CertificatePage({ params, searchParams }: PageProps) {
   const { id: projectId } = await params;
@@ -101,14 +111,17 @@ export default async function CertificatePage({ params, searchParams }: PageProp
 
   if (tokenPayload && !admin) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-16 text-center text-sm text-slate-700">
-        <p className="font-semibold text-slate-900">링크로만 조회할 수 없습니다</p>
+      <div className="mx-auto min-h-screen max-w-lg bg-[#f9f9f9] px-4 py-16 text-center text-sm text-[#111]">
+        <p className="font-semibold text-black">링크로만 조회할 수 없습니다</p>
         <p className="mt-2">
           서버에 서비스 롤 키가 설정되어 있지 않아, 확인 링크 없이는 로그인 후 본인 계정으로만 열람할 수
           있습니다.
         </p>
         <p className="mt-4">
-          <a href={`/login?next=${encodeURIComponent(`/certificates/${projectId}?t=${encodeURIComponent(rawToken)}`)}`} className="text-blue-600 underline">
+          <a
+            href={`/login?next=${encodeURIComponent(`/certificates/${projectId}?t=${encodeURIComponent(rawToken)}`)}`}
+            className="inline-flex rounded-md border border-black bg-white px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-black hover:text-white"
+          >
             로그인하기
           </a>
         </p>
@@ -165,7 +178,7 @@ export default async function CertificatePage({ params, searchParams }: PageProp
   });
 
   return (
-    <div className="min-h-screen bg-slate-200/80 print:bg-white">
+    <div className="min-h-screen bg-[#f9f9f9] font-sans text-[#111] print:bg-white">
       <CertificateClient
         projectTitle={project.title}
         participantName={participantName}

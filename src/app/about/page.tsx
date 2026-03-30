@@ -9,9 +9,9 @@ import Footer from "@/components/Footer";
 const ABOUT_HERO_IMAGE = "/about-mission-hero.png";
 
 export const metadata: Metadata = {
-  title: "About Us | Side-Sync",
+  title: "소개",
   description:
-    "Side-Sync는 개발자·디자이너·기획자를 연결하고, 사이드 프로젝트 팀 빌딩과 협업을 돕는 플랫폼입니다.",
+    "Side-Sync는 개발자·디자이너·기획자를 연결하고, 사이드 프로젝트 탐색·팀 빌딩·워크스페이스 협업·활동 확인서까지 한 흐름으로 돕는 플랫폼입니다.",
 };
 
 const valueCards = [

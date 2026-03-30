@@ -1,7 +1,15 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Header from "@/components/Header";
 import SignupForm from "@/components/SignupForm";
 import SocialLoginButtons from "@/components/SocialLoginButtons";
+
+export const metadata: Metadata = {
+  title: "회원가입",
+  description:
+    "Side-Sync에 가입하고 사이드 프로젝트 팀 빌딩, 전용 워크스페이스, 링크드인 연동 활동 확인서 기능을 시작하세요.",
+  robots: { index: true, follow: true },
+};
 
 export default function SignupPage() {
   return (

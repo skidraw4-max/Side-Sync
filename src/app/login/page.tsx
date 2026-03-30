@@ -1,8 +1,16 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import Header from "@/components/Header";
 import LoginForm from "@/components/LoginForm";
 import SocialLoginButtons from "@/components/SocialLoginButtons";
+
+export const metadata: Metadata = {
+  title: "로그인",
+  description:
+    "Side-Sync에 로그인하여 사이드 프로젝트 탐색, 팀 지원, 워크스페이스 협업 및 활동 확인서를 이용하세요.",
+  robots: { index: false, follow: true },
+};
 
 type LoginPageProps = {
   searchParams: Promise<{ message?: string; next?: string; redirectTo?: string }>;

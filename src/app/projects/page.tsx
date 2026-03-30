@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { cookies } from "next/headers";
@@ -6,6 +7,13 @@ import ProjectList from "@/components/ProjectList";
 import Footer from "@/components/Footer";
 import CreateProjectFloatingButton from "@/components/CreateProjectFloatingButton";
 import { createClient } from "@/lib/supabase/server";
+
+export const metadata: Metadata = {
+  title: "내 프로젝트",
+  description:
+    "내가 모집·참여 중인 사이드 프로젝트 목록을 확인하고 새 프로젝트를 만들거나 워크스페이스로 이동하세요.",
+  robots: { index: false, follow: true },
+};
 
 // Server Component 캐시 방지: cookies() 참조로 동적 렌더링, revalidate = 0
 export const revalidate = 0;

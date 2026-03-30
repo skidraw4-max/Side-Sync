@@ -7,26 +7,35 @@ import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://sidesync.io"),
-  title:
-    "Side-Sync | 아이디어를 현실로 만드는 AI 협업 파트너 매칭",
+  title: {
+    default: "Side-Sync | 사이드 프로젝트 탐색·팀 빌딩·링크드인 활동 확인서",
+    template: "%s | Side-Sync",
+  },
   description:
-    "나만의 아이디어를 구체화할 최적의 파트너를 AI가 찾아드립니다. 전용 협업 툴과 상호 평가 시스템으로 성공적인 사이드 프로젝트를 시작하세요.",
+    "사이드 프로젝트 모집 탐색, 지원·수락 기반 팀 빌딩, 워크스페이스 협업, 완주 후 링크드인 연동 활동 확인서까지. Side-Sync에서 아이디어를 팀과 함께 완성하세요.",
   keywords: [
     "사이드 프로젝트",
     "팀 빌딩",
+    "프로젝트 탐색",
     "개발자 매칭",
     "디자이너 찾기",
     "AI 팀 빌딩",
     "협업 툴",
     "프로젝트 관리",
+    "링크드인 증명서",
+    "활동 확인서",
   ],
   /** apex 도메인을 대표 URL로 고정 (www·미러 URL과의 혼선 방지) */
   alternates: {
     canonical: "https://sidesync.io",
   },
   openGraph: {
+    title: "Side-Sync | 사이드 프로젝트 탐색·팀 빌딩·링크드인 활동 확인서",
+    description:
+      "프로젝트 탐색, 팀 빌딩, 워크스페이스 협업, 링크드인 연동 활동 확인서까지 한곳에서.",
     url: "https://sidesync.io",
     siteName: "Side-Sync",
+    locale: "ko_KR",
     images: [{ url: "/images/og-image.png" }],
   },
 };

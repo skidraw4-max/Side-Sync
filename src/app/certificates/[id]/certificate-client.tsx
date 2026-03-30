@@ -6,6 +6,13 @@ import { BrandLogoMark } from "@/components/BrandLogo";
 import { Printer, FileDown, Loader2, CircleHelp } from "lucide-react";
 import { normalizePublicCertificateCodeForLinkedIn } from "@/lib/certificate-linkedin-cert-id";
 
+/** 미니멀 B&W: 흰 배경·검정 테두리, 호버 시 반전 */
+const btnOutline =
+  "inline-flex items-center justify-center gap-2 rounded-md border border-black bg-white px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-black hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-black";
+
+const btnOutlineIcon =
+  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black bg-white text-black transition-colors hover:bg-black hover:text-white";
+
 export interface CertificateClientProps {
   projectTitle: string;
   participantName: string;
@@ -14,11 +21,8 @@ export interface CertificateClientProps {
   issuanceNumber: string;
   issuedAtLabel: string;
   shareUrl: string | null;
-  /** LinkedIn certId(짧은 식별번호)·certUrl — DB project_certificate_codes.code (예: ss-xxxxxxxxxxxx) */
   certificatePublicCode: string | null;
-  /** 공개 검증 링크 베이스 (예: https://sidesync.io) */
   verifySiteOrigin: string;
-  /** 서버에서 조립한 링크드인 URL(짧은 certId·certUrl 보장). 있으면 이 링크만 사용 */
   linkedInAddCertificationHref: string | null;
 }
 
@@ -39,7 +43,6 @@ export default function CertificateClient({
   const [pdfBusy, setPdfBusy] = useState(false);
   const [linkedInHelpOpen, setLinkedInHelpOpen] = useState(false);
 
-  /** 링크드인 certId·certUrl 전용: 짧은 코드만 사용 (토큰·잘못된 props 무시) */
   const linkedInCertId = useMemo(
     () => normalizePublicCertificateCodeForLinkedIn(certificatePublicCode),
     [certificatePublicCode]
@@ -103,34 +106,44 @@ export default function CertificateClient({
     return () => document.removeEventListener("pointerdown", onDocPointerDown);
   }, [linkedInHelpOpen]);
 
+  const linkedInBtnInner = (
+    <>
+      <svg
+        className="h-[18px] w-[18px] shrink-0 text-current"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        aria-hidden
+      >
+        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+      </svg>
+      링크드인 프로필에 추가하기
+    </>
+  );
+
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 print:max-w-none print:px-0 print:py-0">
+    <div className="mx-auto max-w-3xl px-4 py-8 font-sans text-[#111] print:max-w-none print:px-0 print:py-0">
       <div className="no-print mb-6 flex flex-wrap items-center justify-between gap-3">
         <Link
           href="/projects"
-          className="text-sm font-medium text-slate-600 underline-offset-4 hover:text-slate-900 hover:underline"
+          className="text-sm font-medium text-[#111] underline-offset-4 hover:underline"
         >
           ← 내 프로젝트
         </Link>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 shadow-sm hover:bg-slate-50"
-          >
-            <Printer className="h-4 w-4" aria-hidden />
+          <button type="button" onClick={handlePrint} className={btnOutline}>
+            <Printer className="h-4 w-4 shrink-0" aria-hidden />
             인쇄
           </button>
           <button
             type="button"
             onClick={() => void handlePdf()}
             disabled={pdfBusy}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#1e3a5f] px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#152a45] disabled:opacity-60"
+            className={btnOutline}
           >
             {pdfBusy ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
             ) : (
-              <FileDown className="h-4 w-4" aria-hidden />
+              <FileDown className="h-4 w-4 shrink-0" aria-hidden />
             )}
             PDF로 저장
           </button>
@@ -140,35 +153,19 @@ export default function CertificateClient({
                 href={linkedInAddCertificationHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg bg-[#0A66C2] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#004182]"
+                className={`${btnOutline} font-semibold`}
                 aria-label="링크드인 프로필에 자격 증명 추가"
               >
-                <svg
-                  className="h-[18px] w-[18px] shrink-0 text-white"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  aria-hidden
-                >
-                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-                </svg>
-                링크드인 프로필에 추가하기
+                {linkedInBtnInner}
               </a>
             ) : (
               <button
                 type="button"
                 onClick={handleLinkedInUnavailable}
-                className="inline-flex items-center gap-2 rounded-lg bg-[#0A66C2] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#004182] disabled:opacity-60"
+                className={`${btnOutline} font-semibold`}
                 aria-label="링크드인 프로필에 자격 증명 추가 (준비되지 않음)"
               >
-                <svg
-                  className="h-[18px] w-[18px] shrink-0 text-white"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  aria-hidden
-                >
-                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-                </svg>
-                링크드인 프로필에 추가하기
+                {linkedInBtnInner}
               </button>
             )}
             <button
@@ -177,7 +174,7 @@ export default function CertificateClient({
               aria-expanded={linkedInHelpOpen}
               aria-controls="linkedin-cert-help-panel"
               onClick={() => setLinkedInHelpOpen((o) => !o)}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#0A66C2]/40 bg-white text-[#0A66C2] shadow-sm hover:bg-[#0A66C2]/5"
+              className={btnOutlineIcon}
               title="링크드인 등록이 왜 도움이 되나요?"
             >
               <CircleHelp className="h-4 w-4 shrink-0" aria-hidden />
@@ -187,12 +184,10 @@ export default function CertificateClient({
               <div
                 id="linkedin-cert-help-panel"
                 role="tooltip"
-                className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-slate-200 bg-white p-3 text-left shadow-lg ring-1 ring-black/5"
+                className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-[min(20rem,calc(100vw-2rem))] border border-[#ddd] bg-white p-3 text-left text-[#111]"
               >
-                <p className="text-xs font-semibold text-slate-900">
-                  링크드인에 등록하면 무엇이 좋은가요?
-                </p>
-                <ul className="mt-2 list-disc space-y-1.5 pl-4 text-[11px] leading-relaxed text-slate-600">
+                <p className="text-xs font-semibold">링크드인에 등록하면 무엇이 좋은가요?</p>
+                <ul className="mt-2 list-disc space-y-1.5 pl-4 text-[11px] leading-relaxed text-[#111]">
                   <li>내 프로필의 &apos;라이선스 및 자격증&apos; 섹션에 공식적으로 기록됩니다.</li>
                   <li>채용 담당자에게 실무 협업 경험을 데이터로 증명할 수 있습니다.</li>
                   <li>Side-Sync가 보증하는 고유 발급 번호가 포함됩니다.</li>
@@ -204,26 +199,27 @@ export default function CertificateClient({
       </div>
 
       {shareUrl ? (
-        <div className="no-print mb-4 rounded-lg border border-amber-200 bg-amber-50/90 px-4 py-3 text-xs text-amber-950">
+        <div className="no-print mb-4 border border-[#ddd] bg-white px-4 py-3 text-xs text-[#111]">
           <p className="font-semibold">본인 확인용 조회 링크</p>
-          <p className="mt-1 text-amber-900/90">
-            아래 링크를 저장해 두면 로그인 없이도 동일 증명서를 다시 열 수 있습니다. 링크가 있으면 누구나 열람할 수 있으니 타인과 공유하지 마세요.
+          <p className="mt-1 text-[11px] leading-relaxed text-[#111]">
+            아래 링크를 저장해 두면 로그인 없이도 동일 증명서를 다시 열 수 있습니다. 링크가 있으면 누구나
+            열람할 수 있으니 타인과 공유하지 마세요.
           </p>
-          <p className="mt-2 break-all font-mono text-[11px] text-amber-950">{shareUrl}</p>
+          <p className="mt-2 break-all font-mono text-[11px] text-[#111]">{shareUrl}</p>
           {linkedInCertId ? (
-            <p className="mt-3 border-t border-amber-200/80 pt-3 text-amber-900/90">
+            <p className="mt-3 border-t border-[#ddd] pt-3 text-[11px] text-[#111]">
               <span className="font-semibold">공개 검증 코드</span> (링크드인 식별번호·누구나 검증 가능):{" "}
-              <span className="font-mono text-[11px] text-amber-950">{linkedInCertId}</span>
+              <span className="font-mono">{linkedInCertId}</span>
             </p>
           ) : null}
         </div>
       ) : null}
 
       {!shareUrl && linkedInCertId ? (
-        <div className="no-print mb-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-700">
-          <p className="font-semibold text-slate-900">공개 검증</p>
-          <p className="mt-1 font-mono text-[11px] text-slate-800">{linkedInCertId}</p>
-          <p className="mt-1 break-all text-[11px] text-slate-600">
+        <div className="no-print mb-4 border border-[#ddd] bg-white px-4 py-3 text-xs text-[#111]">
+          <p className="font-semibold">공개 검증</p>
+          <p className="mt-1 font-mono text-[11px]">{linkedInCertId}</p>
+          <p className="mt-1 break-all text-[11px]">
             {verifySiteOrigin.replace(/\/$/, "")}/verify/{linkedInCertId}
           </p>
         </div>
@@ -231,54 +227,57 @@ export default function CertificateClient({
 
       <div
         ref={sheetRef}
-        className="certificate-sheet border border-[#c5a572] bg-[#fffef8] px-8 py-10 shadow-lg print:border-0 print:shadow-none md:px-12 md:py-14"
-        style={{
-          boxShadow: "0 0 0 8px #fffef8, 0 0 0 10px #c5a572",
-        }}
+        className="certificate-sheet border border-[#ddd] bg-white px-8 py-10 md:px-12 md:py-14 print:border-0 print:shadow-none"
       >
-        <div className="flex flex-col items-center border-b-2 border-[#1e3a5f]/20 pb-6">
-          <BrandLogoMark size={56} priority className="rounded-xl" />
-          <h1 className="mt-4 text-center text-2xl font-bold tracking-[0.2em] text-[#1e3a5f] md:text-3xl">
+        <div className="flex flex-col items-center border-b border-black pb-6">
+          <BrandLogoMark
+            size={56}
+            priority
+            className="rounded-xl grayscale contrast-[1.05]"
+          />
+          <h1 className="mt-4 text-center text-2xl font-bold tracking-[0.2em] text-black md:text-3xl">
             활 동 확 인 서
           </h1>
-          <p className="mt-2 text-center text-sm font-medium text-[#1e3a5f]/80">Certificate of Participation</p>
-          <p className="mt-1 text-center text-xs text-slate-500">Side-Sync · 사이드 프로젝트 협업 플랫폼</p>
+          <p className="mt-2 text-center text-sm font-medium text-[#111]">
+            Certificate of Participation
+          </p>
+          <p className="mt-1 text-center text-xs text-[#111]">Side-Sync · 사이드 프로젝트 협업 플랫폼</p>
         </div>
 
-        <div className="mt-10 space-y-6 text-[15px] leading-relaxed text-slate-800">
+        <div className="mt-10 space-y-6 text-[15px] leading-relaxed text-[#111]">
           <p className="text-center text-base md:text-lg">
             본 문서는 아래 인원이 Side-Sync에 등록된 프로젝트에 참여했음을 확인합니다.
           </p>
 
           <table className="mx-auto w-full max-w-lg border-collapse text-left">
             <tbody>
-              <tr className="border-b border-slate-200">
-                <th className="w-[140px] py-3 pr-4 align-top text-sm font-semibold text-slate-600">성명</th>
-                <td className="py-3 text-lg font-semibold text-slate-900">{participantName}</td>
+              <tr className="border-b border-[#ddd]">
+                <th className="w-[140px] py-3 pr-4 align-top text-sm font-semibold text-black">성명</th>
+                <td className="py-3 text-lg font-semibold text-black">{participantName}</td>
               </tr>
-              <tr className="border-b border-slate-200">
-                <th className="py-3 pr-4 align-top text-sm font-semibold text-slate-600">프로젝트명</th>
-                <td className="py-3 font-medium text-slate-900">{projectTitle}</td>
+              <tr className="border-b border-[#ddd]">
+                <th className="py-3 pr-4 align-top text-sm font-semibold text-black">프로젝트명</th>
+                <td className="py-3 font-medium text-black">{projectTitle}</td>
               </tr>
               {roleLabel ? (
-                <tr className="border-b border-slate-200">
-                  <th className="py-3 pr-4 align-top text-sm font-semibold text-slate-600">역할·포지션</th>
-                  <td className="py-3 text-slate-800">{roleLabel}</td>
+                <tr className="border-b border-[#ddd]">
+                  <th className="py-3 pr-4 align-top text-sm font-semibold text-black">역할·포지션</th>
+                  <td className="py-3 text-[#111]">{roleLabel}</td>
                 </tr>
               ) : null}
-              <tr className="border-b border-slate-200">
-                <th className="py-3 pr-4 align-top text-sm font-semibold text-slate-600">참여 기간</th>
-                <td className="py-3 text-slate-800">{periodLabel}</td>
+              <tr className="border-b border-[#ddd]">
+                <th className="py-3 pr-4 align-top text-sm font-semibold text-black">참여 기간</th>
+                <td className="py-3 text-[#111]">{periodLabel}</td>
               </tr>
-              <tr className="border-b border-slate-200">
-                <th className="py-3 pr-4 align-top text-sm font-semibold text-slate-600">발급 번호</th>
-                <td className="py-3 font-mono text-sm font-semibold tracking-wide text-[#1e3a5f]">
+              <tr className="border-b border-[#ddd]">
+                <th className="py-3 pr-4 align-top text-sm font-semibold text-black">발급 번호</th>
+                <td className="py-3 font-mono text-sm font-semibold tracking-wide text-black">
                   {issuanceNumber}
                 </td>
               </tr>
               <tr>
-                <th className="py-3 pr-4 align-top text-sm font-semibold text-slate-600">발급 일자</th>
-                <td className="py-3 text-slate-800">{issuedAtLabel}</td>
+                <th className="py-3 pr-4 align-top text-sm font-semibold text-black">발급 일자</th>
+                <td className="py-3 text-[#111]">{issuedAtLabel}</td>
               </tr>
             </tbody>
           </table>
@@ -286,13 +285,13 @@ export default function CertificateClient({
 
         <div className="mt-14 flex justify-center">
           <div className="text-center">
-            <div className="mx-auto h-px w-48 bg-slate-400" />
-            <p className="mt-3 text-sm font-semibold text-slate-700">발급 기관</p>
-            <p className="text-lg font-bold text-[#1e3a5f]">Side-Sync</p>
+            <div className="mx-auto h-px w-48 bg-black" />
+            <p className="mt-3 text-sm font-semibold text-black">발급 기관</p>
+            <p className="text-lg font-bold text-black">Side-Sync</p>
           </div>
         </div>
 
-        <p className="mt-12 border-t border-slate-200 pt-6 text-center text-xs leading-relaxed text-slate-500">
+        <p className="mt-12 border-t border-[#ddd] pt-6 text-center text-xs leading-relaxed text-[#111]">
           본 증명서는 Side-Sync 내 활동 기록을 바탕으로 발급되었으며, 법적 효력은 없습니다.
         </p>
       </div>

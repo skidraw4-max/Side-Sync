@@ -4,8 +4,9 @@ import Footer from "@/components/Footer";
 import NotificationsCenter from "@/components/NotificationsCenter";
 
 export const metadata: Metadata = {
-  title: "알림 | Side-Sync",
-  description: "알림 및 AI 프로젝트 추천",
+  title: "알림",
+  description:
+    "Side-Sync 알림 센터에서 지원 결과, 팀 초대, AI 기반 프로젝트 추천 등을 한곳에서 확인하세요.",
 };
 
 export default function NotificationsPage() {

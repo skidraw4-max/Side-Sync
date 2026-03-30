@@ -1,5 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import WorkspaceHeader from "@/components/WorkspaceHeader";
+
+export const metadata: Metadata = {
+  title: "공지 작성",
+  description:
+    "워크스페이스에 새 공지를 작성하는 UI 예시 페이지입니다. 프로젝트별 공지는 해당 프로젝트 워크스페이스에서 관리합니다.",
+  robots: { index: false, follow: true },
+};
 
 const CATEGORIES = [
   { id: "general", label: "General", icon: "circle", active: false },
