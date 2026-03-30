@@ -15,6 +15,12 @@ import {
   formatMannerTemperatureForCard,
   type LeaderMannerRow,
 } from "@/lib/manner-temp-display";
+import {
+  normalizeGradientForCard,
+  normalizeProjectDescription,
+  normalizeProjectTitle,
+  normalizeTechStackForCard,
+} from "@/lib/project-row-normalize";
 
 const PROJECTS_QUERY_KEY = ["projects"] as const;
 
@@ -36,7 +42,7 @@ type RowMinimal = Pick<
   Database["public"]["Tables"]["projects"]["Row"],
   "id" | "title" | "description" | "goal" | "tech_stack" | "status" | "recruitment_status"
 > & {
-  manner_temp_target?: string | null;
+  manner_temp_target?: string | number | null;
   team_leader_id?: string | null;
   summary?: string | null;
   content?: string | null;
@@ -47,18 +53,18 @@ function mapRowToCard(
   leaderMap: Map<string, LeaderMannerRow>,
   opts?: { showWorkspaceLink?: boolean }
 ): ProjectWithId {
-  const r = row as RowMinimal & { gradient?: string | null };
+  const r = row as RowMinimal & { gradient?: unknown };
   return {
-    id: row.id,
-    title: row.title,
-    description: row.description ?? undefined,
-    techStack: Array.isArray(row.tech_stack) ? row.tech_stack : [],
+    id: typeof row.id === "string" ? row.id : String(row.id ?? ""),
+    title: normalizeProjectTitle(row.title),
+    description: normalizeProjectDescription(row.description),
+    techStack: normalizeTechStackForCard(row.tech_stack),
     mannerTemperature: formatMannerTemperatureForCard(
       r.team_leader_id ?? null,
       leaderMap,
       row.manner_temp_target ?? null
     ),
-    gradient: r.gradient?.trim() ? r.gradient : DEFAULT_GRADIENT,
+    gradient: normalizeGradientForCard(r.gradient, DEFAULT_GRADIENT),
     recruitmentState: inferProjectRecruitmentState(
       row.status,
       row.recruitment_status as RecruitmentStatusRow[] | null
@@ -173,7 +179,8 @@ async function fetchProjects(searchQuery?: string): Promise<ProjectWithId[]> {
     return filtered.map((row) =>
       mapRowToCard(row, leaderMap, { showWorkspaceLink: acceptedIds.has(row.id) })
     );
-  } catch {
+  } catch (e) {
+    console.warn("[useProjects] fetchProjects 실패:", e);
     if (tokens.length === 0) return FALLBACK_PROJECTS;
     return [];
   }

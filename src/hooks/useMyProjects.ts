@@ -10,7 +10,17 @@ import { inferProjectRecruitmentState } from "@/lib/project-recruitment-state";
 import { APPLICATION_STATUS } from "@/lib/application-status";
 import { isMyProjectsDebugEnabled } from "@/lib/debug-my-projects";
 import { fetchLedProjectsForUser, fetchProjectsByIds } from "@/lib/supabase-project-queries";
-import { fetchLeaderMannerMap, formatMannerTemperatureForCard } from "@/lib/manner-temp-display";
+import {
+  fetchLeaderMannerMap,
+  formatMannerTemperatureForCard,
+  type LeaderMannerRow,
+} from "@/lib/manner-temp-display";
+import {
+  normalizeGradientForCard,
+  normalizeProjectDescription,
+  normalizeProjectTitle,
+  normalizeTechStackForCard,
+} from "@/lib/project-row-normalize";
 
 const DEFAULT_GRADIENT = "from-blue-200 via-indigo-200 to-purple-200";
 
@@ -84,7 +94,12 @@ async function fetchMyProjects(userId: string): Promise<ProjectWithId[]> {
       );
     }
 
-    const memberProjects = await fetchProjectsByIds(supabase, memberIdsOnly);
+    let memberProjects: ProjectRow[] = [];
+    try {
+      memberProjects = await fetchProjectsByIds(supabase, memberIdsOnly);
+    } catch (memberErr) {
+      console.warn("[useMyProjects] fetchProjectsByIds 실패, 멤버 프로젝트 없음으로 처리:", memberErr);
+    }
 
     const combined = [...safeLedProjects, ...memberProjects] as ProjectRow[];
 
@@ -92,27 +107,44 @@ async function fetchMyProjects(userId: string): Promise<ProjectWithId[]> {
       console.log("🔍 [useMyProjects] Step F — 최종 합쳐진 프로젝트 개수 (카드 수):", combined.length);
     }
 
-    const leaderMap = await fetchLeaderMannerMap(
-      supabase,
-      combined.map((row) => row.team_leader_id)
-    );
+    let leaderMap = new Map<string, LeaderMannerRow>();
+    try {
+      leaderMap = await fetchLeaderMannerMap(
+        supabase,
+        combined.map((row) => row.team_leader_id)
+      );
+    } catch (mapErr) {
+      console.warn("[useMyProjects] fetchLeaderMannerMap 실패, 프로젝트 기본 온도만 사용:", mapErr);
+    }
 
-    return combined.map((row) => ({
-      id: row.id,
-      title: row.title,
-      description: row.description ?? undefined,
-      techStack: Array.isArray(row.tech_stack) ? row.tech_stack : [],
-      mannerTemperature: formatMannerTemperatureForCard(
-        row.team_leader_id,
-        leaderMap,
-        (row as { manner_temp_target?: string | null }).manner_temp_target ?? null
-      ),
-      gradient: (row as { gradient?: string | null }).gradient ?? DEFAULT_GRADIENT,
-      recruitmentState: inferProjectRecruitmentState(
-        row.status,
-        row.recruitment_status as RecruitmentStatusRow[] | null
-      ),
-    }));
+    const cards: ProjectWithId[] = [];
+    for (const row of combined) {
+      try {
+        const mannerTarget = (row as { manner_temp_target?: unknown }).manner_temp_target;
+        cards.push({
+          id: typeof row.id === "string" ? row.id : String(row.id ?? ""),
+          title: normalizeProjectTitle(row.title),
+          description: normalizeProjectDescription(row.description),
+          techStack: normalizeTechStackForCard(row.tech_stack),
+          mannerTemperature: formatMannerTemperatureForCard(
+            row.team_leader_id,
+            leaderMap,
+            mannerTarget as string | number | null | undefined
+          ),
+          gradient: normalizeGradientForCard(
+            (row as { gradient?: unknown }).gradient,
+            DEFAULT_GRADIENT
+          ),
+          recruitmentState: inferProjectRecruitmentState(
+            row.status,
+            row.recruitment_status as RecruitmentStatusRow[] | null
+          ),
+        });
+      } catch (rowErr) {
+        console.warn("[useMyProjects] 프로젝트 행 가공 실패, 건너뜀:", row?.id, rowErr);
+      }
+    }
+    return cards;
   } catch (err) {
     console.error("[useMyProjects] fetchMyProjects 에러:", err);
     return [];

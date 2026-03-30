@@ -1,9 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
+import { coerceDisplayString } from "@/lib/project-row-normalize";
 
 export type LeaderMannerRow = {
   manner_temp: number | null;
-  manner_temp_target: string | null;
+  /** DB/JSON에서 숫자 등 비문자열이 올 수 있음 — 표시 시 coerce */
+  manner_temp_target: string | number | null;
 };
 
 /** 팀장 id → 프로필 매너 (목록 카드용 배치 조회) */
@@ -38,11 +40,15 @@ export async function fetchLeaderMannerMap(
 export function formatMannerTemperatureForCard(
   leaderId: string | null | undefined,
   leaderMap: Map<string, LeaderMannerRow>,
-  projectMannerTarget: string | null | undefined
+  projectMannerTarget: string | number | null | undefined
 ): string {
-  const fallback = (projectMannerTarget?.trim() || "36.5°C").includes("°")
-    ? (projectMannerTarget?.trim() ?? "36.5°C")
-    : `${projectMannerTarget ?? "36.5"}°C`;
+  const rawTarget = coerceDisplayString(projectMannerTarget);
+  const fallback =
+    rawTarget && rawTarget.includes("°")
+      ? rawTarget
+      : rawTarget
+        ? `${rawTarget}°C`
+        : "36.5°C";
 
   if (!leaderId) return fallback;
 
@@ -50,9 +56,9 @@ export function formatMannerTemperatureForCard(
   if (row && typeof row.manner_temp === "number" && Number.isFinite(row.manner_temp)) {
     return `${row.manner_temp.toFixed(1)}°C`;
   }
-  if (row?.manner_temp_target?.trim()) {
-    const t = row.manner_temp_target.trim();
-    return t.includes("°") ? t : `${t}°C`;
+  const leaderTarget = coerceDisplayString(row?.manner_temp_target ?? null);
+  if (leaderTarget) {
+    return leaderTarget.includes("°") ? leaderTarget : `${leaderTarget}°C`;
   }
   return fallback;
 }
