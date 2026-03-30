@@ -10,8 +10,9 @@ type ProjectRow = Pick<
 
 /**
  * POST: 프로젝트 종료 (팀장 전용)
- * - projects.status → 'completed'
+ * - projects.status → 'completed' (hiring | ongoing 에서만)
  * - 팀원 전원에게 "상호 평가를 완료해주세요" 알림 전송
+ * - UPDATE는 서비스 롤이 있으면 RLS와 무관하게 적용(팀장 여부는 위에서 검증)
  */
 export async function POST(
   _request: Request,
@@ -55,20 +56,26 @@ export async function POST(
     .eq("id", projectId)
     .single();
 
-  if ((projectWithStatus as unknown as { status?: string } | null)?.status === "completed") {
+  const currentStatus = (projectWithStatus as { status?: string } | null)?.status;
+  if (currentStatus === "completed") {
     return NextResponse.json(
       { error: "이미 종료된 프로젝트입니다." },
       { status: 400 }
     );
   }
 
-  const { error: updateError } = await supabase
+  const patch = {
+    status: "completed" as const,
+    updated_at: new Date().toISOString(),
+  };
+
+  const admin = createAdminClient();
+  const updater = admin ?? supabase;
+  // Supabase 클라이언트가 union 시 update payload를 never로 추론할 수 있음
+  const { error: updateError } = await updater
     .from("projects")
-    // @ts-expect-error Supabase client incorrectly infers 'never' for projects.update()
-    .update({
-      status: "completed",
-      updated_at: new Date().toISOString(),
-    })
+    // @ts-expect-error — projects.update() payload inference
+    .update(patch)
     .eq("id", projectId);
 
   if (updateError) {
@@ -91,7 +98,6 @@ export async function POST(
   const apps = (acceptedApps ?? []) as Array<{ applicant_id: string }>;
   apps.forEach((a) => teamMemberIds.add(a.applicant_id));
 
-  const admin = createAdminClient();
   if (admin && teamMemberIds.size > 0) {
     for (const memberId of teamMemberIds) {
       // @ts-expect-error Supabase admin client infers never for insert

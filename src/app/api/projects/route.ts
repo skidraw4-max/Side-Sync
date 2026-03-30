@@ -55,6 +55,7 @@ export async function POST(request: Request) {
     manner_temp_target: "36.5",
     team_leader_id: user.id,
     recruitment_status: recruitment_status.length > 0 ? recruitment_status : null,
+    status: "hiring",
   };
 
   const { data, error } = await (supabase as any)

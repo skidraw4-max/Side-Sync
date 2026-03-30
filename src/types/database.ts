@@ -7,6 +7,9 @@ export interface RecruitmentStatusRow {
   status?: "recruiting" | "urgent";
 }
 
+/** projects.status — 모집중 / 진행중 / 완료 */
+export type ProjectLifecycleStatus = "hiring" | "ongoing" | "completed";
+
 export interface Database {
   public: {
     Views: Record<string, never>;
@@ -30,7 +33,7 @@ export interface Database {
           visibility: string | null;
           duration_months: number | null;
           est_launch: string | null;
-          status: "active" | "completed";
+          status: ProjectLifecycleStatus;
           created_at: string;
           updated_at: string;
         };
@@ -47,7 +50,7 @@ export interface Database {
           team_leader_id?: string | null;
           category?: string | null;
           recruitment_status?: RecruitmentStatusRow[] | null;
-          status?: "active" | "completed";
+          status?: ProjectLifecycleStatus;
           created_at?: string;
           updated_at?: string;
         };
@@ -64,7 +67,7 @@ export interface Database {
           team_leader_id?: string | null;
           category?: string | null;
           recruitment_status?: RecruitmentStatusRow[] | null;
-          status?: "active" | "completed";
+          status?: ProjectLifecycleStatus;
           created_at?: string;
           updated_at?: string;
         };

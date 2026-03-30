@@ -45,7 +45,12 @@ export default async function WorkspaceLayout({
       .order("created_at", { ascending: true }),
   ]);
 
-  const project = projectRaw as { id: string; title: string; team_leader_id: string | null; status?: string } | null;
+  const project = projectRaw as {
+    id: string;
+    title: string;
+    team_leader_id: string | null;
+    status?: string | null;
+  } | null;
   const channelsTyped = (channels ?? []) as Array<{ id: string; name: string; slug: string }>;
 
   let channelsList = channelsTyped;
@@ -65,7 +70,11 @@ export default async function WorkspaceLayout({
     }
   }
 
-  const isLeader = project?.team_leader_id === user.id;
+  const leaderId =
+    project?.team_leader_id != null && String(project.team_leader_id).trim() !== ""
+      ? String(project.team_leader_id).trim()
+      : null;
+  const isLeader = leaderId !== null && leaderId === user.id;
   const isAccepted = !!acceptedApp;
 
   if (!project || (!isLeader && !isAccepted)) {
@@ -78,13 +87,26 @@ export default async function WorkspaceLayout({
     .eq("id", user.id)
     .single();
 
+  const statusRaw = project?.status;
+  const projectStatusForShell =
+    typeof statusRaw === "string" && statusRaw.trim() !== "" ? statusRaw.trim() : "hiring";
+
+  if (process.env.NODE_ENV === "development") {
+    console.log("[workspace/layout] sidebar props", {
+      projectId,
+      isLeader,
+      projectStatusForShell,
+      team_leader_id_present: Boolean(leaderId),
+    });
+  }
+
   return (
     <WorkspaceResponsiveShell
       projectId={projectId}
       projectTitle={project.title}
       profile={profile}
       isLeader={isLeader}
-      projectStatus={(project as { status?: string })?.status ?? "active"}
+      projectStatus={projectStatusForShell}
       channels={channelsList.map((c) => ({ id: c.id, slug: c.slug, name: c.name }))}
     >
       {children}

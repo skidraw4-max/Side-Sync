@@ -84,7 +84,7 @@ export async function runAiProjectRecommendationsAction(): Promise<RunAiRecommen
   const { data: projectsRaw, error: projErr } = await admin
     .from("projects")
     .select("id, title, team_leader_id, recruitment_status, visibility, status")
-    .eq("status", "active");
+    .in("status", ["hiring", "ongoing"]);
 
   if (projErr || !projectsRaw?.length) {
     return { ok: false, error: "프로젝트 목록을 불러오지 못했습니다." };

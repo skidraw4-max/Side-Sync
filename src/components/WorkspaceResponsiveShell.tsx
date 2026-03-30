@@ -65,7 +65,7 @@ export default function WorkspaceResponsiveShell({
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex h-screen w-56 shrink-0 flex-col border-r border-gray-200 bg-[#FAFAFA] shadow-xl transition-transform duration-200 sm:relative sm:shadow-none ${
+        className={`fixed inset-y-0 left-0 z-50 flex h-screen min-h-0 w-56 shrink-0 flex-col border-r border-gray-200 bg-[#FAFAFA] shadow-xl transition-transform duration-200 sm:relative sm:shadow-none ${
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full sm:translate-x-0"
         }`}
       >
@@ -82,7 +82,8 @@ export default function WorkspaceResponsiveShell({
             </svg>
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        {/* overflow는 사이드바 내부 nav에만 두어 '프로젝트 종료' 등 하단 고정 UI가 잘리지 않게 함 */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <WorkspaceSidebarNav
           projectId={projectId}
           projectTitle={projectTitle}
