@@ -407,6 +407,8 @@ export interface Database {
           /** auth.users.email 과 동기화 (민감 정보 — RLS로 리더/팀원 등만 조회) */
           email: string | null;
           full_name: string | null;
+          /** 마이페이지 등에 표시하는 직업·역할 (선택) */
+          occupation: string | null;
           role: string | null;
           avatar_url: string | null;
           success_rate: string | null;
@@ -422,6 +424,7 @@ export interface Database {
           id: string;
           email?: string | null;
           full_name?: string | null;
+          occupation?: string | null;
           role?: string | null;
           avatar_url?: string | null;
           success_rate?: string | null;
@@ -436,6 +439,7 @@ export interface Database {
         Update: {
           email?: string | null;
           full_name?: string | null;
+          occupation?: string | null;
           role?: string | null;
           avatar_url?: string | null;
           success_rate?: string | null;

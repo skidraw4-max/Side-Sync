@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
@@ -33,13 +34,20 @@ async function loadProfileForHeader(
 }
 
 const NAV_LINKS = [
-  { label: "Home", href: "/" },
-  { label: "Projects", href: "/projects" },
-  { label: "Workspaces", href: "/projects" },
-  { label: "My Page", href: "/profile" },
+  { label: "홈", href: "/" },
+  { label: "프로젝트 탐색", href: "/explore" },
+  { label: "내 프로젝트", href: "/projects" },
+  { label: "About", href: "/about" },
 ];
 
+function navLinkIsActive(pathname: string | null, href: string): boolean {
+  if (!pathname) return false;
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export default function ProfileHeader() {
+  const pathname = usePathname();
   const [user, setUser] = useState<{
     id: string;
     avatarUrl?: string | null;
@@ -90,13 +98,13 @@ export default function ProfileHeader() {
         textClassName="text-xl font-semibold text-gray-800"
       />
 
-      <nav className="flex items-center gap-6 md:gap-8">
+      <nav className="flex flex-wrap items-center justify-end gap-4 md:gap-8" aria-label="메인">
         {NAV_LINKS.map(({ label, href }) => (
           <Link
-            key={label}
+            key={href}
             href={href}
             className={`text-sm font-medium transition-colors ${
-              href === "/profile"
+              navLinkIsActive(pathname, href)
                 ? "border-b-2 border-[#2563EB] text-[#2563EB]"
                 : "text-gray-600 hover:text-gray-900"
             }`}
@@ -165,14 +173,14 @@ export default function ProfileHeader() {
                 onClick={() => setDropdownOpen(false)}
                 className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
               >
-                My Page
+                마이페이지
               </Link>
               <button
                 type="button"
                 onClick={handleLogout}
                 className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50"
               >
-                Log Out
+                로그아웃
               </button>
             </div>
           )}

@@ -12,18 +12,19 @@ import { ProfilePageSkeleton } from "@/components/Skeleton";
 import { createClient } from "@/lib/supabase/client";
 import { getMergedAvatarUrl, getMergedDisplayName } from "@/lib/auth-user-display";
 import { fetchLedProjectsForUser, fetchProjectsByIds } from "@/lib/supabase-project-queries";
+import { normalizeRawProjectStatus } from "@/lib/project-recruitment-state";
 
 interface ProfileData {
   /** DB + OAuth 메타데이터 병합 결과 (표시용) */
   fullName: string;
   avatarUrl: string | null;
   role: string | null;
+  occupation: string | null;
   mannerTemp: string;
   /** 칭호·퍼센트 게이지용 숫자 온도 */
   mannerTempValue: number;
   successRate: string | null;
   badges: string[];
-  location?: string | null;
 }
 
 interface ProjectItem {
@@ -31,6 +32,8 @@ interface ProjectItem {
   title: string;
   description: string | null;
   gradient: string | null;
+  category: string | null;
+  iconKind: "globe" | "brain" | "palette";
   role: "LEAD" | "PROJECT MGR" | "CONTRIBUTOR";
   contributorCount: number;
   contributorAvatars: string[];
@@ -50,16 +53,55 @@ const ROLE_STYLES: Record<string, string> = {
   CONTRIBUTOR: "bg-gray-100 text-gray-700",
 };
 
-const PROJECT_ICONS = [
-  { slug: "global", icon: "globe" },
-  { slug: "ai", icon: "brain" },
-  { slug: "design", icon: "palette" },
-];
+const ROLE_LABEL_KO: Record<ProjectItem["role"], string> = {
+  LEAD: "리더",
+  "PROJECT MGR": "팀장",
+  CONTRIBUTOR: "팀원",
+};
+
+function projectIconKind(title: string, category: string | null): ProjectItem["iconKind"] {
+  const t = `${category ?? ""} ${title}`.toLowerCase();
+  if (/design|ui|ux|figma|palette|디자인|브랜딩|그래픽/.test(t)) return "palette";
+  if (/ai|ml|llm|gpt|brain|인공지능|머신러닝|데이터\s*과학|딥러닝/.test(t)) return "brain";
+  return "globe";
+}
+
+function ProjectHeroIcon({ kind }: { kind: ProjectItem["iconKind"] }) {
+  const cls = "text-slate-500/90";
+  if (kind === "brain") {
+    return (
+      <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={cls}>
+        <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1 .34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z" />
+        <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0-.34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z" />
+      </svg>
+    );
+  }
+  if (kind === "palette") {
+    return (
+      <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={cls}>
+        <circle cx="13.5" cy="6.5" r=".5" fill="currentColor" />
+        <circle cx="17.5" cy="10.5" r=".5" fill="currentColor" />
+        <circle cx="8.5" cy="7.5" r=".5" fill="currentColor" />
+        <circle cx="6.5" cy="12.5" r=".5" fill="currentColor" />
+        <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.648 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.555C21.965 6.012 17.461 2 12 2z" />
+      </svg>
+    );
+  }
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={cls}>
+      <circle cx="12" cy="12" r="10" />
+      <line x1="2" y1="12" x2="22" y2="12" />
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </svg>
+  );
+}
 
 export default function ProfilePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [projects, setProjects] = useState<ProjectItem[]>([]);
+  const [activityStats, setActivityStats] = useState({ active: 0, completed: 0, leading: 0 });
+  const [totalMilestones, setTotalMilestones] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   /** 탭 복귀·다른 페이지에서 평가 후 돌아올 때 프로필·온도 재조회 */
   const [visibilityTick, setVisibilityTick] = useState(0);
@@ -106,7 +148,7 @@ export default function ProfilePage() {
         // maybeSingle: 프로필 row 없을 때도 에러 없이 null 반환
         const { data: profileRow, error: profileFetchError } = await supabase
           .from("profiles")
-          .select("full_name, avatar_url, role, manner_temp, manner_temp_target, success_rate, badges")
+          .select("full_name, avatar_url, role, occupation, manner_temp, manner_temp_target, success_rate, badges")
           .eq("id", user.id)
           .maybeSingle();
 
@@ -119,11 +161,18 @@ export default function ProfilePage() {
           full_name: string | null;
           avatar_url: string | null;
           role: string | null;
+          occupation: string | null;
           manner_temp: number | null;
           manner_temp_target: string | null;
           success_rate: string | null;
           badges: string[];
         } | null;
+
+        const { count: milestoneCount } = await supabase
+          .from("manner_temp_logs")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id);
+        if (!cancelled) setTotalMilestones(milestoneCount ?? 0);
 
         const mannerNum =
           profile?.manner_temp != null && Number.isFinite(profile.manner_temp)
@@ -139,11 +188,11 @@ export default function ProfilePage() {
           fullName: getMergedDisplayName(user, profile?.full_name),
           avatarUrl: getMergedAvatarUrl(user, profile?.avatar_url),
           role: profile?.role ?? null,
+          occupation: profile?.occupation?.trim() ? profile.occupation.trim() : null,
           mannerTemp: profile?.manner_temp != null ? `${profile.manner_temp}` : (profile?.manner_temp_target ?? "36.5"),
           mannerTempValue,
           successRate: profile?.success_rate ?? "98%",
           badges: Array.isArray(profile?.badges) ? profile.badges : [],
-          location: "San Francisco, CA",
         });
 
         const led = await fetchLedProjectsForUser(supabase as any, user.id);
@@ -160,11 +209,34 @@ export default function ProfilePage() {
         const memberIdsOnly = Array.from(memberProjectIds).filter((id) => !ledIds.has(id));
         const member = await fetchProjectsByIds(supabase as any, memberIdsOnly);
 
-        type ProjectRow = { id: string; title: string; description: string | null; gradient: string | null; team_leader_id: string | null };
-        const allProjects = [
-          ...led,
-          ...member.filter((p) => !led.some((l) => l.id === p.id)),
-        ].slice(0, 3);
+        type ProjectRow = {
+          id: string;
+          title: string;
+          description: string | null;
+          gradient: string | null;
+          category: string | null;
+          team_leader_id: string | null;
+          status: string | null;
+        };
+        const allProjects: ProjectRow[] = [
+          ...led.map((p) => p as ProjectRow),
+          ...member.filter((p) => !led.some((l) => l.id === p.id)).map((p) => p as ProjectRow),
+        ];
+
+        let activeCount = 0;
+        let completedCount = 0;
+        for (const p of allProjects) {
+          const st = normalizeRawProjectStatus(p.status);
+          if (st === "completed") completedCount += 1;
+          else if (st === "hiring" || st === "ongoing") activeCount += 1;
+        }
+        if (!cancelled) {
+          setActivityStats({
+            active: activeCount,
+            completed: completedCount,
+            leading: led.length,
+          });
+        }
 
         const projectIds = allProjects.map((p) => p.id);
         const allMemberIds = new Set<string>();
@@ -215,11 +287,14 @@ export default function ProfilePage() {
               ? ("LEAD" as const)
               : ("CONTRIBUTOR" as const);
 
+          const category = p.category ?? null;
           return {
             id: p.id,
             title: p.title,
             description: p.description,
             gradient: p.gradient,
+            category,
+            iconKind: projectIconKind(p.title, category),
             role,
             contributorCount: memberIds.length,
             contributorAvatars,
@@ -250,7 +325,7 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#F9FAFB]">
         <ProfileHeader />
         <ProfilePageSkeleton />
       </div>
@@ -269,14 +344,14 @@ export default function ProfilePage() {
     : null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F9FAFB]">
       <ProfileHeader />
 
       <main className="px-6 pb-16 pt-8 md:px-12 lg:px-24">
         <div className="mx-auto max-w-5xl">
           {/* 상단 2열: 프로필 카드 + 매너 온도 */}
           <div className="grid gap-6 md:grid-cols-2">
-            <div className="rounded-2xl bg-white p-8 shadow-lg">
+            <div className="rounded-2xl bg-white p-8 shadow-sm">
               <div className="flex flex-col items-center text-center md:flex-row md:items-start md:text-left">
                 <div className="relative shrink-0">
                   {profile?.avatarUrl ? (
@@ -298,11 +373,33 @@ export default function ProfilePage() {
                   />
                 </div>
                 <div className="mt-6 md:ml-8 md:mt-0 md:flex-1">
-                  <h1 className="text-2xl font-bold text-gray-900">
-                    {profile?.fullName ?? "이름 없음"}
-                  </h1>
+                  <div className="flex flex-col items-center gap-2 sm:flex-row sm:flex-wrap sm:items-center md:justify-start">
+                    <h1 className="text-2xl font-bold text-gray-900">{profile?.fullName ?? "이름 없음"}</h1>
+                    {profile?.occupation ? (
+                      <span className="inline-flex shrink-0 items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-600">
+                        🚀 {profile.occupation}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm text-gray-600 md:justify-start">
+                    <span>
+                      진행 중 <span className="font-semibold text-gray-900">{activityStats.active}</span>
+                    </span>
+                    <span className="text-gray-300" aria-hidden>
+                      |
+                    </span>
+                    <span>
+                      완료 <span className="font-semibold text-gray-900">{activityStats.completed}</span>
+                    </span>
+                    <span className="text-gray-300" aria-hidden>
+                      |
+                    </span>
+                    <span>
+                      리딩 <span className="font-semibold text-gray-900">{activityStats.leading}</span>
+                    </span>
+                  </div>
                   {profile?.badges && profile.badges.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-2">
+                    <div className="mt-2 flex flex-wrap justify-center gap-2 md:justify-start">
                       {profile.badges.map((badge) => (
                         <span
                           key={badge}
@@ -316,25 +413,9 @@ export default function ProfilePage() {
                       ))}
                     </div>
                   )}
-                  <p className="mt-1 flex items-center gap-1.5 text-sm text-gray-500">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      className="shrink-0 text-gray-400"
-                    >
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                      <circle cx="12" cy="10" r="3" />
-                    </svg>
-                    {profile?.location ?? "San Francisco, CA"}
-                  </p>
                   <Link
                     href="/profile/edit"
-                    className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#2563EB] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#1d4ed8] transition-colors"
+                    className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#2563EB] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#1d4ed8]"
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -348,13 +429,13 @@ export default function ProfilePage() {
                       <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
                       <path d="m15 5 4 4" />
                     </svg>
-                    Edit Profile
+                    프로필 수정
                   </Link>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-2xl bg-white p-8 shadow-lg">
+            <div className="rounded-2xl bg-white p-8 shadow-sm">
               <div className="mb-6 border-b border-slate-100 pb-6 text-center">
                 <p className="text-lg font-bold text-[#2563EB]">{mannerHonor.name}</p>
                 <p className="mt-1 text-xs font-medium text-slate-500">{mannerHonor.tagline}</p>
@@ -373,10 +454,15 @@ export default function ProfilePage() {
                 positiveRate={positiveRate}
                 showArcOnly
               />
+              <p className="mt-4 flex justify-center">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50/80 px-3 py-1.5 text-xs font-semibold text-emerald-800">
+                  ✅ 총 {totalMilestones}회 마일스톤 완수
+                </span>
+              </p>
             </div>
           </div>
 
-          {/* My Active Projects */}
+          {/* 내 참여 프로젝트 */}
           <div className="mt-12">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-xl font-bold text-gray-900">
@@ -394,17 +480,17 @@ export default function ProfilePage() {
                   <line x1="12" y1="11" x2="12" y2="17" />
                   <line x1="9" y1="14" x2="15" y2="14" />
                 </svg>
-                My Active Projects
+                내 참여 프로젝트
               </h2>
               <Link
                 href="/projects"
                 className="text-sm font-medium text-[#2563EB] hover:underline"
               >
-                View All Projects
+                전체 보기
               </Link>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-3">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {projects.length === 0 ? (
                 <div className="col-span-full">
                   <EmptyState
@@ -423,70 +509,25 @@ export default function ProfilePage() {
                   />
                 </div>
               ) : (
-                projects.map((project, i) => (
+                projects.map((project) => (
                   <div
                     key={project.id}
-                    className="overflow-hidden rounded-2xl bg-white shadow-lg"
+                    className="overflow-hidden rounded-2xl bg-white shadow-sm"
                   >
                     <div className="relative h-24 bg-gradient-to-br from-blue-200 via-indigo-200 to-purple-200">
-                      <div className="absolute inset-0 flex items-center justify-center opacity-30">
-                        {PROJECT_ICONS[i % 3]?.icon === "globe" && (
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="64"
-                            height="64"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                          >
-                            <circle cx="12" cy="12" r="10" />
-                            <line x1="2" y1="12" x2="22" y2="12" />
-                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-                          </svg>
-                        )}
-                        {PROJECT_ICONS[i % 3]?.icon === "brain" && (
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="64"
-                            height="64"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                          >
-                            <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1 .34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z" />
-                            <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0-.34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z" />
-                          </svg>
-                        )}
-                        {PROJECT_ICONS[i % 3]?.icon === "palette" && (
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="64"
-                            height="64"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                          >
-                            <circle cx="13.5" cy="6.5" r=".5" />
-                            <circle cx="17.5" cy="10.5" r=".5" />
-                            <circle cx="8.5" cy="7.5" r=".5" />
-                            <circle cx="6.5" cy="12.5" r=".5" />
-                            <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.648 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.555C21.965 6.012 17.461 2 12 2z" />
-                          </svg>
-                        )}
+                      <div className="absolute inset-0 flex items-center justify-center opacity-40">
+                        <ProjectHeroIcon kind={project.iconKind} />
                       </div>
                     </div>
                     <div className="p-5">
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="font-bold text-gray-900">{project.title}</h3>
                         <span
-                          className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase ${
+                          className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                             ROLE_STYLES[project.role] ?? ROLE_STYLES.CONTRIBUTOR
                           }`}
                         >
-                          {project.role === "LEAD" ? "LEAD STRATEGIST" : project.role === "PROJECT MGR" ? "PROJECT MGR" : "CONTRIBUTOR"}
+                          {ROLE_LABEL_KO[project.role] ?? ROLE_LABEL_KO.CONTRIBUTOR}
                         </span>
                       </div>
                       <p className="mt-2 line-clamp-2 text-sm text-gray-500">
@@ -512,15 +553,13 @@ export default function ProfilePage() {
                             )
                           )}
                         </div>
-                        <span className="text-sm text-gray-500">
-                          {project.contributorCount} Contributors
-                        </span>
+                        <span className="text-sm text-gray-500">참여 {project.contributorCount}명</span>
                       </div>
                       <Link
-                        href={`/projects/${project.id}/workspace/tasks`}
-                        className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-slate-100 py-2.5 text-sm font-medium text-gray-700 hover:bg-slate-200 transition-colors"
+                        href={`/projects/${project.id}/workspace`}
+                        className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-slate-100 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-slate-200"
                       >
-                        Go to Workspace
+                        워크스페이스로 이동
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           width="16"

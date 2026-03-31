@@ -57,12 +57,12 @@ export function ProjectCardSkeleton() {
 /** 프로필 페이지 전체 스켈레톤 (ProfileHeader는 페이지에서 따로 래핑) */
 export function ProfilePageSkeleton() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F9FAFB]">
       <main className="px-6 pb-16 pt-8 md:px-12 lg:px-24">
         <div className="mx-auto max-w-5xl">
           <div className="grid gap-6 md:grid-cols-2">
             {/* 프로필 카드 스켈레톤 */}
-            <div className="rounded-2xl bg-white p-8 shadow-lg">
+            <div className="rounded-2xl bg-white p-8 shadow-sm">
               <div className="flex flex-col items-center md:flex-row md:items-start">
                 <Skeleton className="h-[120px] w-[120px] shrink-0" rounded="full" />
                 <div className="mt-6 flex-1 space-y-3 md:ml-8 md:mt-0">
@@ -73,7 +73,7 @@ export function ProfilePageSkeleton() {
               </div>
             </div>
             {/* 매너 온도 스켈레톤 */}
-            <div className="rounded-2xl bg-white p-8 shadow-lg">
+            <div className="rounded-2xl bg-white p-8 shadow-sm">
               <div className="flex flex-col items-center">
                 <Skeleton className="h-32 w-32" rounded="full" />
                 <Skeleton className="mt-4 h-5 w-24" />

@@ -18,6 +18,7 @@ export default function ProfileEditPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [fullName, setFullName] = useState("");
+  const [occupation, setOccupation] = useState("");
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
   const [selectedStacks, setSelectedStacks] = useState<string[]>([]);
@@ -37,13 +38,21 @@ export default function ProfileEditPage() {
       }
       (supabase as any)
         .from("profiles")
-        .select("full_name, username, bio, avatar_url, tech_stack")
+        .select("full_name, occupation, username, bio, avatar_url, tech_stack")
         .eq("id", user.id)
         .single()
         .then(({ data: rawData }: { data: unknown }) => {
-          const data = rawData as { full_name: string | null; username: string | null; bio: string | null; avatar_url: string | null; tech_stack: string[] } | null;
+          const data = rawData as {
+            full_name: string | null;
+            occupation: string | null;
+            username: string | null;
+            bio: string | null;
+            avatar_url: string | null;
+            tech_stack: string[];
+          } | null;
           if (data) {
             setFullName(data.full_name ?? "");
+            setOccupation(data.occupation ?? "");
             setUsername(data.username ?? "");
             setBio(data.bio ?? "");
             setSelectedStacks(Array.isArray(data.tech_stack) ? data.tech_stack : []);
@@ -127,6 +136,7 @@ export default function ProfileEditPage() {
         id: user.id,
         email: user.email ?? null,
         full_name: fullName.trim() || null,
+        occupation: occupation.trim() || null,
         username: username.trim() || null,
         bio: bio.trim() || null,
         tech_stack: selectedStacks.length > 0 ? selectedStacks : [],
@@ -257,6 +267,20 @@ export default function ProfileEditPage() {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="e.g. Alex Johnson"
+                  className="mt-2 w-full rounded-lg border border-gray-200 bg-gray-50 py-3 px-4 text-gray-900 placeholder:text-gray-400 focus:border-[#2563EB] focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
+                />
+              </div>
+
+              <div className="mt-6">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  직업 · 역할
+                </label>
+                <p className="mt-1 text-xs text-gray-500">마이페이지 이름 옆 태그(🚀)로 표시됩니다.</p>
+                <input
+                  type="text"
+                  value={occupation}
+                  onChange={(e) => setOccupation(e.target.value)}
+                  placeholder="예: 프론트엔드 개발자"
                   className="mt-2 w-full rounded-lg border border-gray-200 bg-gray-50 py-3 px-4 text-gray-900 placeholder:text-gray-400 focus:border-[#2563EB] focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
                 />
               </div>
