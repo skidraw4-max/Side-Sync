@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { User } from "@supabase/supabase-js";
+import { useQueryClient } from "@tanstack/react-query";
 import ProfileHeader from "@/components/ProfileHeader";
 import Footer from "@/components/Footer";
 import EmptyState from "@/components/EmptyState";
@@ -13,6 +15,8 @@ import { createClient } from "@/lib/supabase/client";
 import { getMergedAvatarUrl, getMergedDisplayName } from "@/lib/auth-user-display";
 import { fetchLedProjectsForUser, fetchProjectsByIds } from "@/lib/supabase-project-queries";
 import { normalizeRawProjectStatus } from "@/lib/project-recruitment-state";
+import { resolveMannerTempForProfile } from "@/lib/manner-temp-coerce";
+import { MY_PROFILE_ROW_QUERY_KEY, useMyProfileRow } from "@/hooks/useMyProfileRow";
 
 interface ProfileData {
   /** DB + OAuth 메타데이터 병합 결과 (표시용) */
@@ -98,109 +102,133 @@ function ProjectHeroIcon({ kind }: { kind: ProjectItem["iconKind"] }) {
 
 export default function ProfilePage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(false);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [activityStats, setActivityStats] = useState({ active: 0, completed: 0, leading: 0 });
   const [totalMilestones, setTotalMilestones] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  /** 탭 복귀·다른 페이지에서 평가 후 돌아올 때 프로필·온도 재조회 */
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  /** 탭 복귀·다른 페이지에서 평가 후 돌아올 때 프로젝트·프로필 재조회 */
   const [visibilityTick, setVisibilityTick] = useState(0);
+
+  const profileQuery = useMyProfileRow(authUser?.id);
 
   useEffect(() => {
     const onVisibility = () => {
       if (document.visibilityState === "visible") {
+        void queryClient.invalidateQueries({ queryKey: [MY_PROFILE_ROW_QUERY_KEY] });
         setVisibilityTick((t) => t + 1);
       }
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => {
     let cancelled = false;
+    const supabase = createClient();
 
-    async function fetchData() {
+    void supabase.auth.getSession().then(async ({ data: { session }, error: sessionError }) => {
+      if (cancelled) return;
+      if (sessionError) {
+        console.error("[ProfilePage] session error:", sessionError);
+        router.push("/login");
+        setAuthReady(true);
+        return;
+      }
+      const sessionUser = session?.user;
+      if (!sessionUser) {
+        router.push("/login");
+        setAuthReady(true);
+        return;
+      }
+      const {
+        data: { user: jwtUser },
+      } = await supabase.auth.getUser();
+      if (cancelled) return;
+      setAuthUser(jwtUser ?? sessionUser);
+      setAuthReady(true);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setAuthUser(session.user);
+      } else {
+        setAuthUser(null);
+        router.push("/login");
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, [router]);
+
+  useEffect(() => {
+    if (!authUser) return;
+    if (!profileQuery.isSuccess && !profileQuery.isError) return;
+    if (profileQuery.isError) {
+      console.error("[ProfilePage] 프로필 조회 실패:", profileQuery.error);
+      const resolved = resolveMannerTempForProfile(null, null);
+      setTotalMilestones(0);
+      setProfile({
+        fullName: getMergedDisplayName(authUser, null),
+        avatarUrl: getMergedAvatarUrl(authUser, null),
+        role: null,
+        occupation: null,
+        mannerTemp: resolved.mannerTempString,
+        mannerTempValue: resolved.mannerTempValue,
+        successRate: "98%",
+        badges: [],
+      });
+      return;
+    }
+    const bundle = profileQuery.data;
+    if (!bundle) return;
+
+    const row = bundle.row;
+    const { mannerTempValue, mannerTempString } = resolveMannerTempForProfile(
+      row?.manner_temp,
+      row?.manner_temp_target
+    );
+    setTotalMilestones(bundle.milestoneCount);
+    setProfile({
+      fullName: getMergedDisplayName(authUser, row?.full_name),
+      avatarUrl: getMergedAvatarUrl(authUser, row?.avatar_url),
+      role: row?.role ?? null,
+      occupation: row?.occupation?.trim() ? row.occupation.trim() : null,
+      mannerTemp: mannerTempString,
+      mannerTempValue,
+      successRate: row?.success_rate ?? "98%",
+      badges: Array.isArray(row?.badges) ? row.badges : [],
+    });
+  }, [authUser, profileQuery.data, profileQuery.isSuccess, profileQuery.isError, profileQuery.error]);
+
+  useEffect(() => {
+    if (!authUser?.id) {
+      setProjectsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setProjectsLoading(true);
+    const uid = authUser.id;
+
+    async function fetchProjects() {
       try {
         const supabase = createClient();
-        // getSession: 캐시에서 먼저 확인 (getUser는 서버 검증으로 느릴 수 있음)
-        const {
-          data: { session },
-          error: sessionError,
-        } = await (supabase as any).auth.getSession();
 
-        if (cancelled) return;
-        if (sessionError) {
-          console.error("[ProfilePage] session error:", sessionError);
-          router.push("/login");
-          return;
-        }
-        const sessionUser = session?.user;
-        if (!sessionUser) {
-          router.push("/login");
-          return;
-        }
-
-        const {
-          data: { user: jwtUser },
-        } = await supabase.auth.getUser();
-        const user = jwtUser ?? sessionUser;
-
-        // maybeSingle: 프로필 row 없을 때도 에러 없이 null 반환
-        const { data: profileRow, error: profileFetchError } = await supabase
-          .from("profiles")
-          .select("full_name, avatar_url, role, occupation, manner_temp, manner_temp_target, success_rate, badges")
-          .eq("id", user.id)
-          .maybeSingle();
-
-        if (profileFetchError) {
-          console.warn("[ProfilePage] profiles 조회:", profileFetchError.message);
-        }
-
-        if (cancelled) return;
-        const profile = profileRow as {
-          full_name: string | null;
-          avatar_url: string | null;
-          role: string | null;
-          occupation: string | null;
-          manner_temp: number | null;
-          manner_temp_target: string | null;
-          success_rate: string | null;
-          badges: string[];
-        } | null;
-
-        const { count: milestoneCount } = await supabase
-          .from("manner_temp_logs")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id);
-        if (!cancelled) setTotalMilestones(milestoneCount ?? 0);
-
-        const mannerNum =
-          profile?.manner_temp != null && Number.isFinite(profile.manner_temp)
-            ? profile.manner_temp
-            : parseFloat(
-                String(profile?.manner_temp_target ?? "36.5")
-                  .replace(/[°C\s]/g, "")
-                  .split(/[^\d.-]/)[0] ?? "36.5"
-              );
-        const mannerTempValue = Number.isFinite(mannerNum) ? mannerNum : 36.5;
-
-        setProfile({
-          fullName: getMergedDisplayName(user, profile?.full_name),
-          avatarUrl: getMergedAvatarUrl(user, profile?.avatar_url),
-          role: profile?.role ?? null,
-          occupation: profile?.occupation?.trim() ? profile.occupation.trim() : null,
-          mannerTemp: profile?.manner_temp != null ? `${profile.manner_temp}` : (profile?.manner_temp_target ?? "36.5"),
-          mannerTempValue,
-          successRate: profile?.success_rate ?? "98%",
-          badges: Array.isArray(profile?.badges) ? profile.badges : [],
-        });
-
-        const led = await fetchLedProjectsForUser(supabase as any, user.id);
+        const led = await fetchLedProjectsForUser(supabase as any, uid);
 
         const { data: acceptedApps } = await (supabase as any)
           .from("applications")
           .select("project_id")
-          .eq("applicant_id", user.id)
+          .eq("applicant_id", uid)
           .eq("status", "accepted");
 
         const memberProjectIds = new Set(((acceptedApps ?? []) as Array<{ project_id: string }>).map((a) => a.project_id));
@@ -283,7 +311,7 @@ export default function ProfilePage() {
             .filter(Boolean) as string[];
 
           const role =
-            p.team_leader_id === user.id
+            p.team_leader_id === uid
               ? ("LEAD" as const)
               : ("CONTRIBUTOR" as const);
 
@@ -304,26 +332,29 @@ export default function ProfilePage() {
         if (cancelled) return;
         setProjects(projectsList);
       } catch (err) {
-        console.error("[ProfilePage] fetchData error:", err);
+        console.error("[ProfilePage] fetchProjects error:", err);
       } finally {
-        if (!cancelled) setIsLoading(false);
+        if (!cancelled) setProjectsLoading(false);
       }
     }
 
-    fetchData();
+    void fetchProjects();
 
-    // 8초 후에도 완료되지 않으면 로딩 해제 (getUser 등 무한 대기 방지)
     const timeoutId = setTimeout(() => {
-      setIsLoading(false);
+      if (!cancelled) setProjectsLoading(false);
     }, 8000);
 
     return () => {
       cancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [router, visibilityTick]);
+  }, [authUser, visibilityTick]);
 
-  if (isLoading) {
+  const profileReady = !authUser || profileQuery.isSuccess || profileQuery.isError;
+  const isLoading =
+    !authReady || (!!authUser && !profileReady) || (!!authUser && projectsLoading);
+
+  if (isLoading || !profile) {
     return (
       <div className="min-h-screen bg-[#F9FAFB]">
         <ProfileHeader />

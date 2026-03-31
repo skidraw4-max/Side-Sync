@@ -2,6 +2,7 @@
 
 interface MannerTemperatureGaugeProps {
   value: string;
+  /** 생략 시 `value` 문자열에서 파싱 (아크 채움 각도) */
   percent?: number;
   positiveRate?: string;
   /** 매너 칭호 (예: 든든한 파트너) */
@@ -13,9 +14,14 @@ interface MannerTemperatureGaugeProps {
   showArcOnly?: boolean;
 }
 
+function percentFromGaugeValue(value: string): number {
+  const n = parseFloat(String(value).replace(/[°C\s]/g, ""));
+  return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 36.5;
+}
+
 export default function MannerTemperatureGauge({
   value,
-  percent = 36.5,
+  percent,
   positiveRate = "98%",
   honorName,
   honorTagline,
@@ -23,7 +29,8 @@ export default function MannerTemperatureGauge({
   percentileHint,
   showArcOnly = false,
 }: MannerTemperatureGaugeProps) {
-  const clampedPercent = Math.min(100, Math.max(0, percent));
+  const effectivePercent = percent !== undefined && Number.isFinite(percent) ? percent : percentFromGaugeValue(value);
+  const clampedPercent = Math.min(100, Math.max(0, effectivePercent));
   const radius = 80;
   const strokeWidth = 12;
   const center = 100;

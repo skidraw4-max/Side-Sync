@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import Footer from "@/components/Footer";
 import EmptyState from "@/components/EmptyState";
 import { EvaluatePageSkeleton } from "@/components/Skeleton";
+import { MY_PROFILE_ROW_QUERY_KEY } from "@/hooks/useMyProfileRow";
 
 const QUICK_FEEDBACK_OPTIONS = [
   { label: "시간을 잘 지켜요", score: 0.3 },
@@ -154,6 +155,7 @@ export default function EvaluatePage() {
 
     void queryClient.invalidateQueries({ queryKey: ["projects"] });
     void queryClient.invalidateQueries({ queryKey: ["projects", "mine"] });
+    void queryClient.invalidateQueries({ queryKey: [MY_PROFILE_ROW_QUERY_KEY] });
     router.refresh();
 
     setEvaluatedIds((prev) => new Set([...prev, evaluateeId]));
