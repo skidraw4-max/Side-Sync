@@ -16,6 +16,7 @@ import {
   normalizePublicCertificateCodeForLinkedIn,
 } from "@/lib/certificate-linkedin-cert-id";
 import CertificateClient from "./certificate-client";
+import { normalizeRawProjectStatus } from "@/lib/project-recruitment-state";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -87,25 +88,41 @@ export default async function CertificatePage({ params, searchParams }: PageProp
     updated_at: string;
   };
 
-  if (project.status !== "completed") {
+  if (normalizeRawProjectStatus(project.status) !== "completed") {
     notFound();
   }
 
-  const { data: appRaw } = await db
+  /** maybeSingle()은 동일 (project, applicant)에 2행 이상이면 PostgREST 오류로 data가 비고 404가 납니다. */
+  const { data: appRows } = await db
     .from("applications")
     .select("status, role, created_at, updated_at")
     .eq("project_id", projectId)
     .eq("applicant_id", viewerUserId)
-    .maybeSingle();
+    .order("created_at", { ascending: false });
 
-  const app = appRaw as
-    | { status: string; role: string | null; created_at: string; updated_at: string }
-    | null;
+  type AppRow = { status: string; role: string | null; created_at: string; updated_at: string };
+  const list = (appRows ?? []) as AppRow[];
+  const app =
+    list.find((a) => a.status === "accepted") ??
+    list.find((a) => a.status === "pending") ??
+    list[0] ??
+    null;
 
   const isLeader = project.team_leader_id === viewerUserId;
   const isAcceptedMember = app?.status === "accepted";
 
+  let isPeerParticipant = false;
   if (!isLeader && !isAcceptedMember) {
+    const { data: peRows } = await db
+      .from("peer_evaluations")
+      .select("id")
+      .eq("project_id", projectId)
+      .or(`evaluator_id.eq.${viewerUserId},evaluatee_id.eq.${viewerUserId}`)
+      .limit(1);
+    isPeerParticipant = Array.isArray(peRows) && peRows.length > 0;
+  }
+
+  if (!isLeader && !isAcceptedMember && !isPeerParticipant) {
     notFound();
   }
 
@@ -143,13 +160,17 @@ export default async function CertificatePage({ params, searchParams }: PageProp
       ? app.created_at
       : isLeader
         ? project.created_at
-        : app?.created_at ?? project.created_at;
+        : app
+          ? app.created_at
+          : project.created_at;
   const periodEnd = project.updated_at || project.created_at;
 
   const periodLabel = `${format(new Date(periodStart), "yyyy년 M월 d일", { locale: ko })} ~ ${format(new Date(periodEnd), "yyyy년 M월 d일", { locale: ko })}`;
   const issuedAtLabel = format(new Date(), "yyyy년 M월 d일", { locale: ko });
   const issuanceNumber = certificateIssuanceNumber(projectId, viewerUserId);
-  const roleLabel = app?.role?.trim() || (isLeader ? "프로젝트 리더" : null);
+  const roleLabel =
+    app?.role?.trim() ||
+    (isLeader ? "프로젝트 리더" : isPeerParticipant ? "프로젝트 팀원" : null);
 
   const rawPublicCode = await ensureCertificatePublicCode(db, projectId, viewerUserId);
   const certificatePublicCode = normalizePublicCertificateCodeForLinkedIn(rawPublicCode);
