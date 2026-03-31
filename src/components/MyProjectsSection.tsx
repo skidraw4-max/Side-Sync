@@ -74,6 +74,7 @@ export default function MyProjectsSection() {
               description={project.description}
               gradient={project.gradient}
               recruitmentState={project.recruitmentState}
+              completedPostAction={project.completedPostAction ?? null}
               showWorkspaceLink
             />
           ))}

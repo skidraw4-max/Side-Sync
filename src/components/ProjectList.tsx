@@ -53,6 +53,7 @@ export default function ProjectList({ userId }: ProjectListProps) {
               description={project.description}
               gradient={project.gradient}
               recruitmentState={project.recruitmentState}
+              completedPostAction={project.completedPostAction ?? null}
               showWorkspaceLink
             />
           ))}

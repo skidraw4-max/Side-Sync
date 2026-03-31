@@ -20,6 +20,8 @@ export interface ProjectCardProps {
   showWorkspaceLink?: boolean;
   /** 모집 상태 배지 (미지정 시 모집 중 스타일) */
   recruitmentState?: ProjectRecruitmentState;
+  /** 완료 프로젝트(내 목록): 평가하기 / 증명서 발급 */
+  completedPostAction?: "evaluate" | "certificate" | null;
 }
 
 const RECRUITMENT_BADGE: Record<
@@ -65,6 +67,7 @@ export default function ProjectCard({
   gradient = "from-blue-200 via-indigo-200 to-purple-200",
   showWorkspaceLink = false,
   recruitmentState = "recruiting",
+  completedPostAction = null,
 }: ProjectCardProps) {
   const badge = RECRUITMENT_BADGE[recruitmentState] ?? RECRUITMENT_BADGE.recruiting;
   const isUrgent = recruitmentState === "urgent";
@@ -174,6 +177,24 @@ export default function ProjectCard({
           >
             워크스페이스 이동
           </Link>
+          {completedPostAction === "evaluate" ? (
+            <Link
+              href={`/projects/${id}/evaluate`}
+              className="block w-full rounded-xl border-2 border-emerald-600 bg-emerald-50 py-2.5 text-center text-xs font-bold text-emerald-900 transition-colors hover:bg-emerald-100 sm:text-sm"
+              onClick={(e) => e.stopPropagation()}
+            >
+              평가하기
+            </Link>
+          ) : null}
+          {completedPostAction === "certificate" ? (
+            <Link
+              href={`/certificates/${id}`}
+              className="block w-full rounded-xl border-2 border-emerald-700 bg-emerald-600 py-2.5 text-center text-xs font-bold text-white shadow-md transition-colors hover:bg-emerald-700 sm:text-sm"
+              onClick={(e) => e.stopPropagation()}
+            >
+              증명서 발급
+            </Link>
+          ) : null}
         </div>
       </article>
     );

@@ -153,6 +153,7 @@ export default function EvaluatePage() {
     }
 
     void queryClient.invalidateQueries({ queryKey: ["projects"] });
+    void queryClient.invalidateQueries({ queryKey: ["projects", "mine"] });
     router.refresh();
 
     setEvaluatedIds((prev) => new Set([...prev, evaluateeId]));

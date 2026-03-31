@@ -21,11 +21,14 @@ import {
   normalizeProjectTitle,
   normalizeTechStackForCard,
 } from "@/lib/project-row-normalize";
+import { normalizeRawProjectStatus } from "@/lib/project-recruitment-state";
 
 const DEFAULT_GRADIENT = "from-blue-200 via-indigo-200 to-purple-200";
 
 export interface ProjectWithId extends ProjectCardProps {
   id: string;
+  /** 완료 프로젝트: 평가 미완료 → evaluate, 평가 완료 → certificate */
+  completedPostAction?: "evaluate" | "certificate" | null;
 }
 
 type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
@@ -107,6 +110,49 @@ async function fetchMyProjects(userId: string): Promise<ProjectWithId[]> {
       console.log("🔍 [useMyProjects] Step F — 최종 합쳐진 프로젝트 개수 (카드 수):", combined.length);
     }
 
+    const projectIds = combined
+      .map((r) => (typeof r.id === "string" ? r.id : String(r.id ?? "")))
+      .filter(Boolean);
+
+    const evalByProject = new Map<string, Set<string>>();
+    const appsByProject = new Map<string, string[]>();
+
+    if (projectIds.length > 0) {
+      const [evalRes, appsRes] = await Promise.all([
+        supabase
+          .from("peer_evaluations")
+          .select("project_id, evaluatee_id")
+          .eq("evaluator_id", userId)
+          .in("project_id", projectIds),
+        supabase
+          .from("applications")
+          .select("project_id, applicant_id")
+          .in("project_id", projectIds)
+          .eq("status", APPLICATION_STATUS.ACCEPTED),
+      ]);
+
+      for (const er of (evalRes.data ?? []) as Array<{ project_id: string; evaluatee_id: string }>) {
+        if (!evalByProject.has(er.project_id)) evalByProject.set(er.project_id, new Set());
+        evalByProject.get(er.project_id)!.add(er.evaluatee_id);
+      }
+
+      for (const ar of (appsRes.data ?? []) as Array<{ project_id: string; applicant_id: string }>) {
+        if (!appsByProject.has(ar.project_id)) appsByProject.set(ar.project_id, []);
+        appsByProject.get(ar.project_id)!.push(ar.applicant_id);
+      }
+    }
+
+    const peersToEvaluate = (row: ProjectRow, viewerId: string): string[] => {
+      const pid = typeof row.id === "string" ? row.id : String(row.id ?? "");
+      const ids = new Set<string>();
+      if (row.team_leader_id) ids.add(row.team_leader_id);
+      for (const aid of appsByProject.get(pid) ?? []) {
+        ids.add(aid);
+      }
+      ids.delete(viewerId);
+      return Array.from(ids);
+    };
+
     let leaderMap = new Map<string, LeaderMannerRow>();
     try {
       leaderMap = await fetchLeaderMannerMap(
@@ -121,8 +167,18 @@ async function fetchMyProjects(userId: string): Promise<ProjectWithId[]> {
     for (const row of combined) {
       try {
         const mannerTarget = (row as { manner_temp_target?: unknown }).manner_temp_target;
+        const pid = typeof row.id === "string" ? row.id : String(row.id ?? "");
+        const lifecycle = normalizeRawProjectStatus(row.status);
+        let completedPostAction: "evaluate" | "certificate" | null = null;
+        if (lifecycle === "completed") {
+          const peers = peersToEvaluate(row, userId);
+          const evaluated = evalByProject.get(pid) ?? new Set();
+          const allEvaluated = peers.length === 0 || peers.every((peerId) => evaluated.has(peerId));
+          completedPostAction = allEvaluated ? "certificate" : "evaluate";
+        }
+
         cards.push({
-          id: typeof row.id === "string" ? row.id : String(row.id ?? ""),
+          id: pid,
           title: normalizeProjectTitle(row.title),
           description: normalizeProjectDescription(row.description),
           techStack: normalizeTechStackForCard(row.tech_stack),
@@ -139,6 +195,7 @@ async function fetchMyProjects(userId: string): Promise<ProjectWithId[]> {
             row.status,
             row.recruitment_status as RecruitmentStatusRow[] | null
           ),
+          completedPostAction,
         });
       } catch (rowErr) {
         console.warn("[useMyProjects] 프로젝트 행 가공 실패, 건너뜀:", row?.id, rowErr);
