@@ -112,8 +112,11 @@ export default function ProfilePage() {
   const [projectsLoading, setProjectsLoading] = useState(false);
   /** 탭 복귀·다른 페이지에서 평가 후 돌아올 때 프로젝트·프로필 재조회 */
   const [visibilityTick, setVisibilityTick] = useState(0);
+  /** 프로필 쿼리가 끝나지 않을 때 스켈레톤에서 벗어나기 */
+  const [profileLoadDeadlineExceeded, setProfileLoadDeadlineExceeded] = useState(false);
 
-  const profileQuery = useMyProfileRow(authUser?.id);
+  const authUserId = authUser?.id;
+  const profileQuery = useMyProfileRow(authUserId);
 
   useEffect(() => {
     const onVisibility = () => {
@@ -132,6 +135,7 @@ export default function ProfilePage() {
 
     void supabase.auth.getSession().then(async ({ data: { session }, error: sessionError }) => {
       if (cancelled) return;
+      console.log("[DEBUG] Fetching Profile Start — auth getSession resolved");
       if (sessionError) {
         console.error("[ProfilePage] session error:", sessionError);
         router.push("/login");
@@ -150,6 +154,7 @@ export default function ProfilePage() {
       if (cancelled) return;
       setAuthUser(jwtUser ?? sessionUser);
       setAuthReady(true);
+      console.log("[DEBUG] Auth user ready", { userId: (jwtUser ?? sessionUser).id });
     });
 
     const {
@@ -176,6 +181,7 @@ export default function ProfilePage() {
       console.error("[ProfilePage] 프로필 조회 실패:", profileQuery.error);
       const resolved = resolveMannerTempForProfile(null, null);
       setTotalMilestones(0);
+      setProfileLoadDeadlineExceeded(false);
       setProfile({
         fullName: getMergedDisplayName(authUser, null),
         avatarUrl: getMergedAvatarUrl(authUser, null),
@@ -197,6 +203,7 @@ export default function ProfilePage() {
       row?.manner_temp_target
     );
     setTotalMilestones(bundle.milestoneCount);
+    setProfileLoadDeadlineExceeded(false);
     setProfile({
       fullName: getMergedDisplayName(authUser, row?.full_name),
       avatarUrl: getMergedAvatarUrl(authUser, row?.avatar_url),
@@ -207,17 +214,53 @@ export default function ProfilePage() {
       successRate: row?.success_rate ?? "98%",
       badges: Array.isArray(row?.badges) ? row.badges : [],
     });
-  }, [authUser, profileQuery.data, profileQuery.isSuccess, profileQuery.isError, profileQuery.error]);
+    console.log("[DEBUG] Profile Data Received — merged into UI state", { mannerTempValue });
+    // dataUpdatedAt / status만 의존: error 객체 참조 변화로 effect 무한 실행 방지
+  }, [authUser, profileQuery.isSuccess, profileQuery.isError, profileQuery.dataUpdatedAt, profileQuery.status]);
+
+  /** 프로필 쿼리가 성공/실패 없이 멈출 때(네트워크 등) 스켈레톤 탈출 */
+  useEffect(() => {
+    if (!authUserId) return;
+    if (profile) {
+      setProfileLoadDeadlineExceeded(false);
+      return;
+    }
+    const stillWaiting = !profileQuery.isSuccess && !profileQuery.isError;
+    if (!stillWaiting) return;
+
+    const t = window.setTimeout(() => {
+      console.warn("[DEBUG] Profile load deadline exceeded — rendering defaults");
+      setProfileLoadDeadlineExceeded(true);
+      const u = authUser;
+      if (!u) return;
+      const resolved = resolveMannerTempForProfile(null, null);
+      setTotalMilestones(0);
+      setProjectsLoading(false);
+      setProfile({
+        fullName: getMergedDisplayName(u, null),
+        avatarUrl: getMergedAvatarUrl(u, null),
+        role: null,
+        occupation: null,
+        mannerTemp: resolved.mannerTempString,
+        mannerTempValue: resolved.mannerTempValue,
+        successRate: "98%",
+        badges: [],
+      });
+    }, 22_000);
+
+    return () => window.clearTimeout(t);
+  }, [authUser, authUserId, profile, profileQuery.isSuccess, profileQuery.isError]);
 
   useEffect(() => {
-    if (!authUser?.id) {
+    if (!authUserId) {
       setProjectsLoading(false);
       return;
     }
 
     let cancelled = false;
     setProjectsLoading(true);
-    const uid = authUser.id;
+    const uid = authUserId;
+    console.log("[DEBUG] Fetching projects list start", { uid });
 
     async function fetchProjects() {
       try {
@@ -331,8 +374,10 @@ export default function ProfilePage() {
 
         if (cancelled) return;
         setProjects(projectsList);
+        console.log("[DEBUG] Projects list received", { count: projectsList.length });
       } catch (err) {
         console.error("[ProfilePage] fetchProjects error:", err);
+        if (!cancelled) setProjects([]);
       } finally {
         if (!cancelled) setProjectsLoading(false);
       }
@@ -341,24 +386,47 @@ export default function ProfilePage() {
     void fetchProjects();
 
     const timeoutId = setTimeout(() => {
-      if (!cancelled) setProjectsLoading(false);
+      if (!cancelled) {
+        setProjectsLoading(false);
+        console.warn("[DEBUG] Projects fetch safety timeout — stopping loading flag");
+      }
     }, 8000);
 
     return () => {
       cancelled = true;
       clearTimeout(timeoutId);
+      setProjectsLoading(false);
     };
-  }, [authUser, visibilityTick]);
+  }, [authUserId, visibilityTick]);
 
   const profileReady = !authUser || profileQuery.isSuccess || profileQuery.isError;
+  const waitingProfileRow = !!authUser && !profileReady;
   const isLoading =
-    !authReady || (!!authUser && !profileReady) || (!!authUser && projectsLoading);
+    !authReady || waitingProfileRow || (!!authUserId && projectsLoading && !profile);
 
-  if (isLoading || !profile) {
+  const showSkeleton = (isLoading || !profile) && !profileLoadDeadlineExceeded;
+
+  if (showSkeleton) {
     return (
       <div className="min-h-screen bg-[#F9FAFB]">
         <ProfileHeader />
         <ProfilePageSkeleton />
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-[#F9FAFB]">
+        <ProfileHeader />
+        <main className="mx-auto max-w-lg px-6 py-16 text-center">
+          <p className="text-lg font-semibold text-gray-900">데이터를 불러올 수 없습니다</p>
+          <p className="mt-2 text-sm text-gray-600">잠시 후 다시 시도하거나 로그인 상태를 확인해 주세요.</p>
+          <Link href="/" className="mt-6 inline-block text-sm font-medium text-blue-600 hover:underline">
+            홈으로
+          </Link>
+        </main>
+        <Footer variant="stitch" />
       </div>
     );
   }
@@ -380,6 +448,16 @@ export default function ProfilePage() {
 
       <main className="px-6 pb-16 pt-8 md:px-12 lg:px-24">
         <div className="mx-auto max-w-5xl">
+          {(profileQuery.isError || profileLoadDeadlineExceeded) && (
+            <div
+              role="status"
+              className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+            >
+              {profileQuery.isError
+                ? "프로필 데이터를 불러오지 못했습니다. 아래는 계정 기본값으로 표시됩니다."
+                : "프로필 조회가 지연되어 기본값으로 표시 중입니다. 네트워크를 확인한 뒤 새로고침해 보세요."}
+            </div>
+          )}
           {/* 상단 2열: 프로필 카드 + 매너 온도 */}
           <div className="grid gap-6 md:grid-cols-2">
             <div className="rounded-2xl bg-white p-8 shadow-sm">
