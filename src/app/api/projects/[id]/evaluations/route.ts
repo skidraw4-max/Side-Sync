@@ -136,35 +136,74 @@ export async function POST(
   const admin = createAdminClient();
   /** 피평가자 프로필은 RLS로 타인이 수정 불가할 수 있어 서비스 롤 우선 */
   const profileClient = admin ?? (await createClient());
+  const pc = profileClient as any;
 
-  const { data: profileData, error: badgeFetchError } = await (profileClient as any)
+  const { data: profileData, error: badgeFetchError } = await pc
     .from("profiles")
     .select("badges")
     .eq("id", evaluateeId)
-    .single();
+    .maybeSingle();
 
   if (badgeFetchError && process.env.NODE_ENV === "development") {
     console.warn("[evaluations] badges fetch:", badgeFetchError.message);
   }
 
   const currentProfile = profileData as { badges?: string[] } | null;
-  let badges: string[] = Array.isArray(currentProfile?.badges) ? currentProfile.badges : [];
+  let badges: string[] = Array.isArray(currentProfile?.badges) ? [...currentProfile.badges] : [];
   if (clampedTemp > 40 && !badges.includes("열정적인 협업자")) {
     badges = [...badges, "열정적인 협업자"];
   }
 
-  const { error: profileUpdateError } = await (profileClient as any)
-    .from("profiles")
-    .update({
-      manner_temp: clampedTemp,
-      manner_temp_target: `${clampedTemp}°C`,
-      badges,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", evaluateeId);
+  const mannerPatch = {
+    manner_temp: clampedTemp,
+    manner_temp_target: `${clampedTemp}°C`,
+  };
+
+  type UpdResult = { error: { message?: string; code?: string } | null; data: unknown };
+  const runUpdate = async (patch: Record<string, unknown>): Promise<UpdResult> => {
+    const { data, error } = await pc.from("profiles").update(patch).eq("id", evaluateeId).select("id");
+    return { data, error };
+  };
+
+  /** 일부 DB/스키마 캐시에서 profiles.updated_at 미인식(PGRST204) 또는 badges 타입 이슈 → 단계적 폴백 */
+  let profileUpdateError: UpdResult["error"] = null;
+  let updatedRows: unknown = null;
+
+  const attempts: Record<string, unknown>[] = [
+    { ...mannerPatch, badges, updated_at: new Date().toISOString() },
+    { ...mannerPatch, badges },
+    mannerPatch,
+  ];
+
+  for (const patch of attempts) {
+    const { data, error } = await runUpdate(patch);
+    updatedRows = data;
+    if (!error) {
+      const n = Array.isArray(data) ? data.length : data ? 1 : 0;
+      if (n > 0) {
+        profileUpdateError = null;
+        break;
+      }
+      profileUpdateError = { message: "UPDATE returned 0 rows", code: "0_ROWS" };
+      continue;
+    }
+    profileUpdateError = error;
+    const msg = (error.message ?? "").toLowerCase();
+    const transientCol =
+      msg.includes("updated_at") ||
+      msg.includes("pgrst204") ||
+      msg.includes("schema cache") ||
+      msg.includes("badges");
+    if (!transientCol) {
+      break;
+    }
+  }
 
   if (profileUpdateError) {
-    console.error("[evaluations] profiles manner update failed:", profileUpdateError);
+    console.error("[evaluations] profiles manner update failed:", profileUpdateError, {
+      evaluateeId,
+      lastAttemptRows: updatedRows,
+    });
     if (admin) {
       await (admin as any)
         .from("peer_evaluations")
@@ -178,6 +217,8 @@ export async function POST(
         error: admin
           ? "매너 온도를 프로필에 반영하지 못했습니다."
           : "매너 온도 반영에 실패했습니다. 서버에 SUPABASE_SERVICE_ROLE_KEY를 설정해 주세요.",
+        details: profileUpdateError.message ?? undefined,
+        code: profileUpdateError.code ?? undefined,
       },
       { status: admin ? 500 : 503 }
     );
