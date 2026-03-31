@@ -1,0 +1,11 @@
+-- manner_temp_logs / profiles 매너 보너스는 앱에서 createAdminClient() → SUPABASE_SERVICE_ROLE_KEY 로만 갱신합니다.
+--
+-- Supabase 호스팅: service_role JWT 는 Row Level Security 를 우회합니다.
+-- public.profiles 정책이 TO authenticated 만 있어도 service_role 은 별도 정책 없이 UPDATE 가 가능해야 합니다.
+--
+-- manner_temp_logs 에만 쌓이고 profiles.manner_temp 가 안 바뀌면:
+-- 1) Vercel 등에 SUPABASE_SERVICE_ROLE_KEY 가 아니라 anon key 가 들어갔는지 확인
+-- 2) UPDATE .select() 반환 행 수가 0인지(앱 로그 [DEBUG] Update Result)
+-- 3) self-hosted PostgREST 라면 API 역할이 RLS 를 우회하는지 확인
+--
+SELECT 1;
