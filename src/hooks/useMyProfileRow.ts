@@ -15,9 +15,19 @@ export const MY_PROFILE_ROW_QUERY_KEY = "my-profile-row" as const;
 const PROFILE_REALTIME_ENABLED = false;
 
 const PROFILE_FETCH_TIMEOUT_MS = 25_000;
+const MILESTONE_COUNT_TIMEOUT_MS = 15_000;
 
-const PROFILE_SELECT =
-  "full_name, avatar_url, role, occupation, manner_temp, manner_temp_target, success_rate, badges" as const;
+/**
+ * 마이그레이션 전 DB·컬럼 누락 시 400 방지 — 앞쪽이 최신 스키마, 뒤로 갈수록 최소 컬럼, 마지막 `*`.
+ */
+const PROFILE_SELECT_VARIANTS = [
+  "full_name, avatar_url, role, occupation, manner_temp, manner_temp_target, success_rate, badges",
+  "full_name, avatar_url, role, manner_temp, manner_temp_target, success_rate, badges",
+  "full_name, avatar_url, manner_temp, manner_temp_target, success_rate, badges",
+  "full_name, avatar_url, manner_temp, manner_temp_target, success_rate",
+  "full_name, avatar_url, manner_temp, manner_temp_target",
+  "*",
+] as const;
 
 export type MyProfileRow = {
   full_name: string | null;
@@ -53,6 +63,90 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   });
 }
 
+function isColumnOrSchemaSelectError(msg: string): boolean {
+  const m = msg.toLowerCase();
+  return (
+    m.includes("column") ||
+    m.includes("does not exist") ||
+    m.includes("schema cache") ||
+    m.includes("pgrst204") ||
+    m.includes("could not find")
+  );
+}
+
+/** `*` 또는 부분 select 결과를 마이페이지용 행으로 정규화 */
+function normalizeProfileRow(raw: Record<string, unknown> | null | undefined): MyProfileRow | null {
+  if (raw == null || typeof raw !== "object") return null;
+  const badgesRaw = raw.badges;
+  const stringish = (v: unknown): string | null => {
+    if (v == null) return null;
+    if (typeof v === "string") return v;
+    if (typeof v === "number" && Number.isFinite(v)) return String(v);
+    return String(v);
+  };
+
+  return {
+    full_name: (raw.full_name as string | null | undefined) ?? null,
+    avatar_url: (raw.avatar_url as string | null | undefined) ?? null,
+    role: (raw.role as string | null | undefined) ?? null,
+    occupation: (raw.occupation as string | null | undefined) ?? null,
+    manner_temp: raw.manner_temp,
+    manner_temp_target: stringish(raw.manner_temp_target),
+    success_rate: stringish(raw.success_rate),
+    badges: Array.isArray(badgesRaw) ? (badgesRaw as string[]) : [],
+  };
+}
+
+async function fetchMyProfileRowResilient(
+  supabase: ReturnType<typeof createClient>,
+  uid: string
+): Promise<MyProfileRow | null> {
+  let lastMessage = "";
+
+  for (const sel of PROFILE_SELECT_VARIANTS) {
+    const { data, error } = await supabase.from("profiles").select(sel).eq("id", uid).maybeSingle();
+
+    if (!error) {
+      if (sel === "*") {
+        return normalizeProfileRow(data as Record<string, unknown> | null);
+      }
+      return normalizeProfileRow(data as unknown as Record<string, unknown> | null);
+    }
+
+    lastMessage = error.message ?? String(error);
+    console.warn("[useMyProfileRow] profiles select variant failed:", { sel, message: lastMessage });
+
+    if (!isColumnOrSchemaSelectError(lastMessage)) {
+      throw error;
+    }
+  }
+
+  throw new Error(lastMessage || "profiles 조회 실패");
+}
+
+async function fetchMilestoneCountSafe(supabase: ReturnType<typeof createClient>, uid: string): Promise<number> {
+  try {
+    const countReq = supabase
+      .from("manner_temp_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", uid);
+
+    const { count, error } = await withTimeout(
+      Promise.resolve(countReq) as Promise<{ count: number | null; error: { message: string } | null }>,
+      MILESTONE_COUNT_TIMEOUT_MS,
+      "manner_temp_logs count 타임아웃"
+    );
+    if (error) {
+      console.warn("[useMyProfileRow] manner_temp_logs count:", error.message);
+      return 0;
+    }
+    return count ?? 0;
+  } catch (e) {
+    console.warn("[useMyProfileRow] manner_temp_logs count skipped:", e);
+    return 0;
+  }
+}
+
 /**
  * 마이페이지용 프로필 행 — 캐시를 짧게 두고 마운트·포커스마다 최신 조회.
  * Realtime은 기본 비활성화(PROFILE_REALTIME_ENABLED).
@@ -75,31 +169,22 @@ export function useMyProfileRow(userId: string | null | undefined) {
       console.log("[DEBUG] Fetching Profile Start", { uid });
       const supabase = createClient();
 
-      const [profileRes, logsRes] = await withTimeout(
-        Promise.all([
-          supabase.from("profiles").select(PROFILE_SELECT).eq("id", uid!).maybeSingle(),
-          supabase.from("manner_temp_logs").select("id", { count: "exact", head: true }).eq("user_id", uid!),
-        ]),
+      const row = await withTimeout(
+        fetchMyProfileRowResilient(supabase, uid!),
         PROFILE_FETCH_TIMEOUT_MS,
-        "프로필/마일스톤 조회 타임아웃"
+        "프로필 조회 타임아웃"
       );
 
-      if (profileRes.error) {
-        console.error("[DEBUG] Profile fetch error:", profileRes.error.message);
-        throw profileRes.error;
-      }
+      const milestoneCount = await fetchMilestoneCountSafe(supabase, uid!);
 
-      const row = profileRes.data as MyProfileRow | null;
       const rawMt = row?.manner_temp;
       const coerced = coerceMannerTempFromDb(rawMt);
       const resolved = resolveMannerTempForProfile(row?.manner_temp, row?.manner_temp_target);
 
-      if (logsRes.error) {
-        console.warn("[useMyProfileRow] manner_temp_logs count:", logsRes.error.message);
-      }
-
       console.log("[DEBUG] Profile Data Received", {
         hasRow: row != null,
+        success_rate: row?.success_rate ?? null,
+        milestoneCount,
         manner_temp_raw: rawMt,
         manner_temp_coerced: coerced,
         manner_temp_target: row?.manner_temp_target ?? null,
@@ -109,7 +194,7 @@ export function useMyProfileRow(userId: string | null | undefined) {
 
       return {
         row,
-        milestoneCount: logsRes.error ? 0 : (logsRes.count ?? 0),
+        milestoneCount,
       };
     },
   });
