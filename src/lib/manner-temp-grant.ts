@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
+import { mannerTempTargetForDb } from "@/lib/manner-temp-db";
 
 export type MannerBonusReason = "accept_bonus" | "completed_bonus";
 
@@ -96,7 +97,7 @@ export async function grantMannerTempBonus(
     .from("profiles")
     .update({
       manner_temp: next,
-      manner_temp_target: `${next}°C`,
+      manner_temp_target: mannerTempTargetForDb(next),
       updated_at: updatedAt,
     })
     .eq("id", uid)

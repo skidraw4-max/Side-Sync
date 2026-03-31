@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { mannerTempTargetForDb } from "@/lib/manner-temp-db";
 
 type ProjectRow = Pick<
   Database["public"]["Tables"]["projects"]["Row"],
@@ -155,8 +156,8 @@ export async function POST(
   }
 
   const mannerPatch = {
-    manner_temp: clampedTemp,
-    manner_temp_target: `${clampedTemp}°C`,
+    manner_temp: Number(clampedTemp),
+    manner_temp_target: mannerTempTargetForDb(clampedTemp),
   };
 
   type UpdResult = { error: { message?: string; code?: string } | null; data: unknown };
