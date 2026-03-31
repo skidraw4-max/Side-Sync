@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
@@ -16,7 +16,11 @@ import { getMergedAvatarUrl, getMergedDisplayName } from "@/lib/auth-user-displa
 import { fetchLedProjectsForUser, fetchProjectsByIds } from "@/lib/supabase-project-queries";
 import { normalizeRawProjectStatus } from "@/lib/project-recruitment-state";
 import { resolveMannerTempForProfile } from "@/lib/manner-temp-coerce";
-import { MY_PROFILE_ROW_QUERY_KEY, useMyProfileRow } from "@/hooks/useMyProfileRow";
+import {
+  MY_PROFILE_ROW_QUERY_KEY,
+  useMyProfileRow,
+  type MyProfileBundle,
+} from "@/hooks/useMyProfileRow";
 
 interface ProfileData {
   /** DB + OAuth 메타데이터 병합 결과 (표시용) */
@@ -63,6 +67,24 @@ const ROLE_LABEL_KO: Record<ProjectItem["role"], string> = {
   CONTRIBUTOR: "팀원",
 };
 
+function buildProfileDataFromBundle(authUser: User, bundle: MyProfileBundle): ProfileData {
+  const row = bundle.row;
+  const { mannerTempValue, mannerTempString } = resolveMannerTempForProfile(
+    row?.manner_temp,
+    row?.manner_temp_target
+  );
+  return {
+    fullName: getMergedDisplayName(authUser, row?.full_name),
+    avatarUrl: getMergedAvatarUrl(authUser, row?.avatar_url),
+    role: row?.role ?? null,
+    occupation: row?.occupation?.trim() ? row.occupation.trim() : null,
+    mannerTemp: mannerTempString,
+    mannerTempValue,
+    successRate: row?.success_rate ?? "98%",
+    badges: Array.isArray(row?.badges) ? row.badges : [],
+  };
+}
+
 function projectIconKind(title: string, category: string | null): ProjectItem["iconKind"] {
   const t = `${category ?? ""} ${title}`.toLowerCase();
   if (/design|ui|ux|figma|palette|디자인|브랜딩|그래픽/.test(t)) return "palette";
@@ -105,10 +127,8 @@ export default function ProfilePage() {
   const queryClient = useQueryClient();
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
-  const [profile, setProfile] = useState<ProfileData | null>(null);
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [activityStats, setActivityStats] = useState({ active: 0, completed: 0, leading: 0 });
-  const [totalMilestones, setTotalMilestones] = useState(0);
   const [projectsLoading, setProjectsLoading] = useState(false);
   /** 탭 복귀·다른 페이지에서 평가 후 돌아올 때 프로젝트·프로필 재조회 */
   const [visibilityTick, setVisibilityTick] = useState(0);
@@ -117,6 +137,50 @@ export default function ProfilePage() {
 
   const authUserId = authUser?.id;
   const profileQuery = useMyProfileRow(authUserId);
+
+  /** 리마운트 직후에도 React Query 캐시가 있으면 첫 페인트부터 표시 (useEffect 대기 제거) */
+  const profileFromQuery = useMemo((): ProfileData | null => {
+    if (!authUser || !profileQuery.isSuccess || !profileQuery.data) return null;
+    return buildProfileDataFromBundle(authUser, profileQuery.data);
+  }, [authUser, profileQuery.isSuccess, profileQuery.data, profileQuery.dataUpdatedAt]);
+
+  const profileFromError = useMemo((): ProfileData | null => {
+    if (!authUser || !profileQuery.isError) return null;
+    const resolved = resolveMannerTempForProfile(null, null);
+    return {
+      fullName: getMergedDisplayName(authUser, null),
+      avatarUrl: getMergedAvatarUrl(authUser, null),
+      role: null,
+      occupation: null,
+      mannerTemp: resolved.mannerTempString,
+      mannerTempValue: resolved.mannerTempValue,
+      successRate: "98%",
+      badges: [],
+    };
+  }, [authUser, profileQuery.isError]);
+
+  const profileDeadlineFallback = useMemo((): ProfileData | null => {
+    if (!authUser || !profileLoadDeadlineExceeded) return null;
+    if (profileQuery.isSuccess || profileQuery.isError) return null;
+    const resolved = resolveMannerTempForProfile(null, null);
+    return {
+      fullName: getMergedDisplayName(authUser, null),
+      avatarUrl: getMergedAvatarUrl(authUser, null),
+      role: null,
+      occupation: null,
+      mannerTemp: resolved.mannerTempString,
+      mannerTempValue: resolved.mannerTempValue,
+      successRate: "98%",
+      badges: [],
+    };
+  }, [authUser, profileLoadDeadlineExceeded, profileQuery.isSuccess, profileQuery.isError]);
+
+  const profile = profileFromQuery ?? profileFromError ?? profileDeadlineFallback ?? null;
+
+  const totalMilestones = useMemo(() => {
+    if (profileQuery.isSuccess && profileQuery.data) return profileQuery.data.milestoneCount;
+    return 0;
+  }, [profileQuery.isSuccess, profileQuery.data, profileQuery.dataUpdatedAt]);
 
   useEffect(() => {
     const onVisibility = () => {
@@ -175,81 +239,40 @@ export default function ProfilePage() {
   }, [router]);
 
   useEffect(() => {
-    if (!authUser) return;
-    if (!profileQuery.isSuccess && !profileQuery.isError) return;
-    if (profileQuery.isError) {
-      console.error("[ProfilePage] 프로필 조회 실패:", profileQuery.error);
-      const resolved = resolveMannerTempForProfile(null, null);
-      setTotalMilestones(0);
+    if (profileQuery.isSuccess || profileQuery.isError) {
       setProfileLoadDeadlineExceeded(false);
-      setProfile({
-        fullName: getMergedDisplayName(authUser, null),
-        avatarUrl: getMergedAvatarUrl(authUser, null),
-        role: null,
-        occupation: null,
-        mannerTemp: resolved.mannerTempString,
-        mannerTempValue: resolved.mannerTempValue,
-        successRate: "98%",
-        badges: [],
-      });
-      return;
     }
-    const bundle = profileQuery.data;
-    if (!bundle) return;
+  }, [profileQuery.isSuccess, profileQuery.isError]);
 
-    const row = bundle.row;
-    const { mannerTempValue, mannerTempString } = resolveMannerTempForProfile(
-      row?.manner_temp,
-      row?.manner_temp_target
-    );
-    setTotalMilestones(bundle.milestoneCount);
-    setProfileLoadDeadlineExceeded(false);
-    setProfile({
-      fullName: getMergedDisplayName(authUser, row?.full_name),
-      avatarUrl: getMergedAvatarUrl(authUser, row?.avatar_url),
-      role: row?.role ?? null,
-      occupation: row?.occupation?.trim() ? row.occupation.trim() : null,
-      mannerTemp: mannerTempString,
-      mannerTempValue,
-      successRate: row?.success_rate ?? "98%",
-      badges: Array.isArray(row?.badges) ? row.badges : [],
-    });
-    console.log("[DEBUG] Profile Data Received — merged into UI state", { mannerTempValue });
-    // dataUpdatedAt / status만 의존: error 객체 참조 변화로 effect 무한 실행 방지
-  }, [authUser, profileQuery.isSuccess, profileQuery.isError, profileQuery.dataUpdatedAt, profileQuery.status]);
+  useEffect(() => {
+    if (profileQuery.isError && profileQuery.error) {
+      console.error("[ProfilePage] 프로필 조회 실패:", profileQuery.error);
+    }
+  }, [profileQuery.isError, profileQuery.error]);
+
+  useEffect(() => {
+    if (profileQuery.isSuccess && profileQuery.data && authUser) {
+      const { mannerTempValue } = resolveMannerTempForProfile(
+        profileQuery.data.row?.manner_temp,
+        profileQuery.data.row?.manner_temp_target
+      );
+      console.log("[DEBUG] Profile Data Received — merged into UI state", { mannerTempValue });
+    }
+  }, [authUser, profileQuery.isSuccess, profileQuery.data, profileQuery.dataUpdatedAt]);
 
   /** 프로필 쿼리가 성공/실패 없이 멈출 때(네트워크 등) 스켈레톤 탈출 */
   useEffect(() => {
     if (!authUserId) return;
-    if (profile) {
-      setProfileLoadDeadlineExceeded(false);
-      return;
-    }
-    const stillWaiting = !profileQuery.isSuccess && !profileQuery.isError;
-    if (!stillWaiting) return;
+    if (profileQuery.isSuccess || profileQuery.isError) return;
 
     const t = window.setTimeout(() => {
       console.warn("[DEBUG] Profile load deadline exceeded — rendering defaults");
       setProfileLoadDeadlineExceeded(true);
-      const u = authUser;
-      if (!u) return;
-      const resolved = resolveMannerTempForProfile(null, null);
-      setTotalMilestones(0);
       setProjectsLoading(false);
-      setProfile({
-        fullName: getMergedDisplayName(u, null),
-        avatarUrl: getMergedAvatarUrl(u, null),
-        role: null,
-        occupation: null,
-        mannerTemp: resolved.mannerTempString,
-        mannerTempValue: resolved.mannerTempValue,
-        successRate: "98%",
-        badges: [],
-      });
     }, 22_000);
 
     return () => window.clearTimeout(t);
-  }, [authUser, authUserId, profile, profileQuery.isSuccess, profileQuery.isError]);
+  }, [authUserId, profileQuery.isSuccess, profileQuery.isError]);
 
   useEffect(() => {
     if (!authUserId) {
@@ -399,12 +422,20 @@ export default function ProfilePage() {
     };
   }, [authUserId, visibilityTick]);
 
-  const profileReady = !authUser || profileQuery.isSuccess || profileQuery.isError;
-  const waitingProfileRow = !!authUser && !profileReady;
-  const isLoading =
-    !authReady || waitingProfileRow || (!!authUserId && projectsLoading && !profile);
+  const hasRenderableProfile = profile != null;
+  /** 캐시 히트 시 isSuccess로 유지되는 동안 대기로 보지 않음(리페치 중에도 스켈레톤 방지) */
+  const waitingProfileRow =
+    !!authUser &&
+    !profileQuery.isSuccess &&
+    !profileQuery.isError &&
+    !profileLoadDeadlineExceeded;
 
-  const showSkeleton = (isLoading || !profile) && !profileLoadDeadlineExceeded;
+  const isLoading =
+    !authReady ||
+    waitingProfileRow ||
+    (!!authUserId && projectsLoading && !hasRenderableProfile);
+
+  const showSkeleton = (isLoading || !hasRenderableProfile) && !profileLoadDeadlineExceeded;
 
   if (showSkeleton) {
     return (
