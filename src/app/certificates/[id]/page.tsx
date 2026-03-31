@@ -95,12 +95,18 @@ export default async function CertificatePage({ params, searchParams }: PageProp
   /** maybeSingle()은 동일 (project, applicant)에 2행 이상이면 PostgREST 오류로 data가 비고 404가 납니다. */
   const { data: appRows } = await db
     .from("applications")
-    .select("status, role, created_at, updated_at")
+    .select("status, role, tech_stack, created_at, updated_at")
     .eq("project_id", projectId)
     .eq("applicant_id", viewerUserId)
     .order("created_at", { ascending: false });
 
-  type AppRow = { status: string; role: string | null; created_at: string; updated_at: string };
+  type AppRow = {
+    status: string;
+    role: string | null;
+    tech_stack: string | null;
+    created_at: string;
+    updated_at: string;
+  };
   const list = (appRows ?? []) as AppRow[];
   const app =
     list.find((a) => a.status === "accepted") ??
@@ -168,9 +174,22 @@ export default async function CertificatePage({ params, searchParams }: PageProp
   const periodLabel = `${format(new Date(periodStart), "yyyy년 M월 d일", { locale: ko })} ~ ${format(new Date(periodEnd), "yyyy년 M월 d일", { locale: ko })}`;
   const issuedAtLabel = format(new Date(), "yyyy년 M월 d일", { locale: ko });
   const issuanceNumber = certificateIssuanceNumber(projectId, viewerUserId);
-  const roleLabel =
-    app?.role?.trim() ||
-    (isLeader ? "프로젝트 리더" : isPeerParticipant ? "프로젝트 팀원" : null);
+  /** 지원서 role 또는 지원 시 선택한 포지션(tech_stack) */
+  const positionFromApplication =
+    (app?.role?.trim() || app?.tech_stack?.trim() || "").trim() || "";
+  const roleLabel = (() => {
+    if (isLeader) {
+      return positionFromApplication
+        ? `프로젝트 리더 / ${positionFromApplication}`
+        : "프로젝트 리더";
+    }
+    if (isAcceptedMember || isPeerParticipant) {
+      return positionFromApplication
+        ? `프로젝트 팀원 / ${positionFromApplication}`
+        : "프로젝트 팀원";
+    }
+    return null;
+  })();
 
   const rawPublicCode = await ensureCertificatePublicCode(db, projectId, viewerUserId);
   const certificatePublicCode = normalizePublicCertificateCodeForLinkedIn(rawPublicCode);
