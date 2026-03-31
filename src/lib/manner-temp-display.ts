@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import { coerceDisplayString } from "@/lib/project-row-normalize";
+import { coerceMannerTempFromDb } from "@/lib/manner-temp-coerce";
 
 export type LeaderMannerRow = {
   manner_temp: number | null;
@@ -30,9 +31,51 @@ export async function fetchLeaderMannerMap(
   }
 
   for (const row of data ?? []) {
-    const r = row as { id: string; manner_temp: number | null; manner_temp_target: string | null };
-    map.set(r.id, { manner_temp: r.manner_temp, manner_temp_target: r.manner_temp_target });
+    const r = row as { id: string; manner_temp: unknown; manner_temp_target: string | null };
+    const mt = coerceMannerTempFromDb(r.manner_temp);
+    map.set(r.id, {
+      manner_temp: mt,
+      manner_temp_target: r.manner_temp_target,
+    });
   }
+  return map;
+}
+
+/**
+ * 목록 카드용: 세션으로 읽은 맵이 비어 있거나 불완전할 때(비로그인 RLS 등),
+ * `/api/projects/leader-manner`로 실제 팀 리더 매너만 보강합니다.
+ */
+export async function fetchLeaderMannerMapForProjectCards(
+  supabase: SupabaseClient<Database>,
+  leaderIds: (string | null | undefined)[]
+): Promise<Map<string, LeaderMannerRow>> {
+  const map = await fetchLeaderMannerMap(supabase, leaderIds);
+  const unique = [...new Set(leaderIds.filter((id): id is string => typeof id === "string" && id.length > 0))];
+  const missing = unique.filter((id) => !map.has(id));
+  if (missing.length === 0) return map;
+
+  if (typeof window === "undefined") {
+    return map;
+  }
+
+  try {
+    const res = await fetch("/api/projects/leader-manner", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: missing }),
+    });
+    if (!res.ok) return map;
+    const json = (await res.json()) as Record<string, LeaderMannerRow | undefined>;
+    for (const id of missing) {
+      const row = json[id];
+      if (row && (row.manner_temp != null || row.manner_temp_target != null)) {
+        map.set(id, row);
+      }
+    }
+  } catch {
+    /* 네트워크 오류 시 기존 맵 유지 */
+  }
+
   return map;
 }
 
@@ -53,8 +96,9 @@ export function formatMannerTemperatureForCard(
   if (!leaderId) return fallback;
 
   const row = leaderMap.get(leaderId);
-  if (row && typeof row.manner_temp === "number" && Number.isFinite(row.manner_temp)) {
-    return `${row.manner_temp.toFixed(1)}°C`;
+  const mt = row ? coerceMannerTempFromDb(row.manner_temp) : null;
+  if (mt != null) {
+    return `${mt.toFixed(1)}°C`;
   }
   const leaderTarget = coerceDisplayString(row?.manner_temp_target ?? null);
   if (leaderTarget) {

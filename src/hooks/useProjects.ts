@@ -11,7 +11,7 @@ import type { ProjectCardProps } from "@/components/ProjectCard";
 import { APPLICATION_STATUS } from "@/lib/application-status";
 import { inferProjectRecruitmentState } from "@/lib/project-recruitment-state";
 import {
-  fetchLeaderMannerMap,
+  fetchLeaderMannerMapForProjectCards,
   formatMannerTemperatureForCard,
   type LeaderMannerRow,
 } from "@/lib/manner-temp-display";
@@ -144,7 +144,7 @@ async function fetchProjects(searchQuery?: string): Promise<ProjectWithId[]> {
       if (rows.length === 0) {
         return FALLBACK_PROJECTS;
       }
-      const leaderMap = await fetchLeaderMannerMap(
+      const leaderMap = await fetchLeaderMannerMapForProjectCards(
         supabase,
         rows.map((row) => (row as RowMinimal).team_leader_id)
       );
@@ -161,7 +161,7 @@ async function fetchProjects(searchQuery?: string): Promise<ProjectWithId[]> {
 
     if (!rpcError && rpcData !== null && Array.isArray(rpcData)) {
       const rows = rpcData as unknown as RowMinimal[];
-      const leaderMap = await fetchLeaderMannerMap(
+      const leaderMap = await fetchLeaderMannerMapForProjectCards(
         supabase,
         rows.map((row) => row.team_leader_id)
       );
@@ -172,7 +172,7 @@ async function fetchProjects(searchQuery?: string): Promise<ProjectWithId[]> {
 
     const rows = await fetchAllProjectsRows(supabase);
     const filtered = rows.filter((r) => projectMatchesSearchTokens(r, tokens));
-    const leaderMap = await fetchLeaderMannerMap(
+    const leaderMap = await fetchLeaderMannerMapForProjectCards(
       supabase,
       filtered.map((row) => (row as RowMinimal).team_leader_id)
     );
