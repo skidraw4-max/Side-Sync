@@ -39,7 +39,7 @@ export default function Footer({ variant = "default" }: FooterProps) {
           Side-Sync는 사이드 프로젝트 팀 빌딩을 돕기 위해 기획자가 독학으로 운영하는 1인 개발 서비스입니다.
         </p>
         <p className="mt-4 text-center text-sm text-gray-500">
-          © 2024 Side-Sync Platform. All rights reserved.
+          © 2026 Side-Sync Platform. All rights reserved.
         </p>
       </footer>
     );
@@ -76,7 +76,7 @@ export default function Footer({ variant = "default" }: FooterProps) {
         Side-Sync는 사이드 프로젝트 팀 빌딩을 돕기 위해 기획자가 독학으로 운영하는 1인 개발 서비스입니다.
       </p>
       <p className="mt-4 text-center text-sm text-gray-500">
-        © 2024 Side-Sync Platform. All rights reserved.
+        © 2026 Side-Sync Platform. All rights reserved.
       </p>
     </footer>
   );
