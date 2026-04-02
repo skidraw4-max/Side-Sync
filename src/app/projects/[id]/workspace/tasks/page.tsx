@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { sortTasksForBoard } from "@/lib/kanban/task-order";
 import KanbanTasksBoard from "./KanbanTasksBoard";
 import TasksAccessDeniedRedirect from "./redirect-no-access";
 
@@ -87,42 +88,68 @@ export default async function TasksPage({ params }: TasksPageProps) {
           .in("id", Array.from(teamMemberIds))
       : { data: [] };
 
-  // due_date 컬럼이 실제 DB에 없는 환경을 대비해서,
-  // due_date 포함 SELECT 실패 시 due_date 제외로 재시도합니다.
+  // due_date / sort_order / description 컬럼이 없는 환경은 SELECT를 줄여 재시도합니다.
   let supportsDueDate = true;
-  let tasksResult:
-    | { data: unknown; error: { message: string } | null }
-    | null = null;
-  tasksResult = await supabase
-    .from("tasks")
-    .select("id, title, category, priority, status, assignee_id, due_date")
-    .eq("project_id", projectId)
-    .order("created_at", { ascending: false });
+  let supportsSortOrder = true;
+  let supportsDescription = true;
 
-  if (tasksResult && tasksResult.error) {
+  const isMissingColumn = (lower: string, col: string) =>
+    lower.includes(`column tasks.${col} does not exist`) ||
+    (lower.includes(col) && (lower.includes("does not exist") || lower.includes("not exist")));
+
+  const tasksSelect = (opts: { due: boolean; sort: boolean; desc: boolean }) => {
+    const cols = [
+      "id",
+      "title",
+      "category",
+      "priority",
+      "status",
+      "assignee_id",
+    ];
+    if (opts.due) cols.push("due_date");
+    if (opts.sort) cols.push("sort_order");
+    if (opts.desc) cols.push("description");
+    return cols.join(", ");
+  };
+
+  const fetchTasks = () =>
+    supabase
+      .from("tasks")
+      .select(
+        tasksSelect({
+          due: supportsDueDate,
+          sort: supportsSortOrder,
+          desc: supportsDescription,
+        })
+      )
+      .eq("project_id", projectId);
+
+  let tasksResult = await fetchTasks();
+
+  while (tasksResult.error) {
     const lower = tasksResult.error.message?.toLowerCase?.() ?? "";
-    const isMissingDueDate =
-      lower.includes("column tasks.due_date does not exist") ||
-      (lower.includes("due_date") &&
-        (lower.includes("does not exist") || lower.includes("not exist")));
-
-    if (isMissingDueDate) {
+    let fixed = false;
+    if (supportsSortOrder && isMissingColumn(lower, "sort_order")) {
+      supportsSortOrder = false;
+      fixed = true;
+    } else if (supportsDueDate && isMissingColumn(lower, "due_date")) {
       supportsDueDate = false;
-      tasksResult = await supabase
-        .from("tasks")
-        .select("id, title, category, priority, status, assignee_id")
-        .eq("project_id", projectId)
-        .order("created_at", { ascending: false });
-    } else {
+      fixed = true;
+    } else if (supportsDescription && isMissingColumn(lower, "description")) {
+      supportsDescription = false;
+      fixed = true;
+    }
+    if (!fixed) {
       return (
         <div className="p-6 text-sm text-red-600">
           업무를 불러오지 못했습니다: {tasksResult.error.message}
         </div>
       );
     }
+    tasksResult = await fetchTasks();
   }
 
-  const tasksTyped = (tasksResult?.data ?? []) as Array<{
+  const tasksTyped = (tasksResult.data ?? []) as Array<{
     id: string;
     title: string;
     category: string | null;
@@ -130,6 +157,8 @@ export default async function TasksPage({ params }: TasksPageProps) {
     status: string;
     assignee_id: string | null;
     due_date?: string | null;
+    sort_order?: number;
+    description?: string | null;
   }>;
   const assigneeIds = [...new Set(tasksTyped.map((t) => t.assignee_id).filter(Boolean))] as string[];
   const assigneeProfileIds = new Set(assigneeIds);
@@ -147,13 +176,17 @@ export default async function TasksPage({ params }: TasksPageProps) {
     allProfilesTyped.map((p) => [p.id, { fullName: p.full_name, avatarUrl: p.avatar_url }])
   );
 
-  const tasksWithAssignee = tasksTyped.map((t) => ({
-    ...t,
-    category: t.category ?? "",
-    priority: (t as { priority?: string }).priority ?? "medium",
-    due_date: supportsDueDate ? (t.due_date ?? null) : null,
-    assignee: t.assignee_id ? (profileMap.get(t.assignee_id) ?? null) : null,
-  }));
+  const tasksWithAssignee = sortTasksForBoard(
+    tasksTyped.map((t) => ({
+      ...t,
+      category: t.category ?? "",
+      priority: (t as { priority?: string }).priority ?? "medium",
+      due_date: supportsDueDate ? (t.due_date ?? null) : null,
+      sort_order: supportsSortOrder ? (t.sort_order ?? 0) : 0,
+      description: supportsDescription ? (t.description ?? null) : undefined,
+      assignee: t.assignee_id ? (profileMap.get(t.assignee_id) ?? null) : null,
+    }))
+  );
 
   // teamMembers: auth user id 기준 (assignee_id FK가 auth.users 참조)
   const profilesTyped = (profiles ?? []) as Array<{ id: string; full_name: string | null; avatar_url: string | null }>;
@@ -184,6 +217,8 @@ export default async function TasksPage({ params }: TasksPageProps) {
       currentUserId={currentUser?.id ?? null}
       recruitmentRoles={recruitmentRoles}
       supportsDueDate={supportsDueDate}
+      supportsSortOrder={supportsSortOrder}
+      supportsDescription={supportsDescription}
     />
   );
 }

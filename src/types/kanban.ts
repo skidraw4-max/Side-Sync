@@ -17,5 +17,9 @@ export interface KanbanTaskWithAssignee {
   status: string;
   assignee_id: string | null;
   due_date: string | null;
+  /** 상세 설명 (DB에 description 컬럼이 있을 때) */
+  description?: string | null;
+  /** 컬럼 내 순서 (같은 project_id·status 안에서 0부터) */
+  sort_order?: number;
   assignee: KanbanAssignee | null;
 }

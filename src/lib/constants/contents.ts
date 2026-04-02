@@ -54,6 +54,8 @@ export const WORKSPACE = {
   kanbanColumnDone: "완료",
   /** 칸반 보드 제목 */
   kanbanBoardTitle: "프로젝트 칸반",
+  /** 칸반 카드 드래그 핸들 (접근성) */
+  dragHandleLabel: "끌어서 순서 또는 컬럼 이동",
   /** 태스크 생성 버튼·모달 */
   taskCreate: "업무 만들기",
   taskCreateNew: "새 업무 등록",
@@ -68,6 +70,8 @@ export const WORKSPACE = {
   taskStatusLabel: "상태",
   taskAssigneeLabel: "담당자",
   taskDueDateLabel: "마감일",
+  taskDescriptionLabel: "상세 설명",
+  taskDescriptionPlaceholder: "업무 맥락, 체크리스트, 참고 링크 등을 적을 수 있어요.",
   taskPriorityLabel: "우선순위",
   /** 새 업무 모달 하단: 진행 단계 안내 */
   taskColumnHintPrefix: "진행 단계",

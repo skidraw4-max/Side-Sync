@@ -1,9 +1,15 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import {
+  applyFullTaskUpdate,
+  applyTaskStatusMove,
+  layoutSignature,
+  sortTasksForBoard,
+} from "@/lib/kanban/task-order";
 import type { KanbanAssignee, KanbanTaskWithAssignee, KanbanTeamMember } from "@/types/kanban";
 import { WORKSPACE } from "@/lib/constants/contents";
 
@@ -14,9 +20,9 @@ type TaskRowFromRealtime = {
   priority?: string;
   status: string;
   assignee_id: string | null;
-  // Supabase realtime payload가 항상 모든 컬럼을 포함하지 않을 수 있어,
-  // due_date가 없으면 (undefined면) 기존 상태를 유지하도록 처리합니다.
   due_date?: string | null;
+  sort_order?: number;
+  description?: string | null;
 };
 
 export interface UseKanbanOptions {
@@ -31,14 +37,19 @@ export interface CommitTaskUpdatePayload {
   assignee_id: string | null;
   status: "todo" | "doing" | "done";
   due_date: string | null;
+  /** undefined면 PATCH에 넣지 않음 */
+  description?: string | null;
 }
 
 export function useKanban({ projectId, initialTasks, teamMembers }: UseKanbanOptions) {
   const router = useRouter();
   const [tasks, setTasks] = useState<KanbanTaskWithAssignee[]>(initialTasks);
+  const tasksRef = useRef(tasks);
+  tasksRef.current = tasks;
 
   useEffect(() => {
     setTasks(initialTasks);
+    tasksRef.current = initialTasks;
   }, [initialTasks]);
 
   const patchTaskApi = useCallback(
@@ -59,7 +70,6 @@ export function useKanban({ projectId, initialTasks, teamMembers }: UseKanbanOpt
     [projectId]
   );
 
-  // Supabase Realtime: 다른 팀원이 tasks를 변경하면 새로고침 없이 반영
   useEffect(() => {
     const supabase = createClient();
     const channel = supabase
@@ -84,21 +94,26 @@ export function useKanban({ projectId, initialTasks, teamMembers }: UseKanbanOpt
             const exists = prev.some((t) => t.id === row.id);
             if (!exists) return prev;
 
-            return prev.map((t) =>
-              t.id === row.id
-                ? {
-                    ...t,
-                    title: row.title,
-                    category: row.category,
-                    priority: row.priority ?? "medium",
-                    status: row.status,
-                    assignee_id: row.assignee_id,
-                    due_date: "due_date" in row ? row.due_date ?? null : t.due_date,
-                    assignee: assignee
-                      ? { fullName: assignee.fullName, avatarUrl: assignee.avatarUrl }
-                      : null,
-                  }
-                : t
+            return sortTasksForBoard(
+              prev.map((t) =>
+                t.id === row.id
+                  ? {
+                      ...t,
+                      title: row.title,
+                      category: row.category,
+                      priority: row.priority ?? "medium",
+                      status: row.status,
+                      assignee_id: row.assignee_id,
+                      due_date: "due_date" in row ? row.due_date ?? null : t.due_date,
+                      sort_order: "sort_order" in row ? row.sort_order ?? t.sort_order : t.sort_order,
+                      description:
+                        "description" in row ? row.description ?? null : t.description,
+                      assignee: assignee
+                        ? { fullName: assignee.fullName, avatarUrl: assignee.avatarUrl }
+                        : null,
+                    }
+                  : t
+              )
             );
           });
         }
@@ -121,7 +136,8 @@ export function useKanban({ projectId, initialTasks, teamMembers }: UseKanbanOpt
 
           setTasks((prev) => {
             if (prev.some((t) => t.id === row.id)) return prev;
-            return [
+            return sortTasksForBoard([
+              ...prev,
               {
                 id: row.id,
                 title: row.title,
@@ -130,12 +146,13 @@ export function useKanban({ projectId, initialTasks, teamMembers }: UseKanbanOpt
                 status: row.status,
                 assignee_id: row.assignee_id,
                 due_date: "due_date" in row ? row.due_date ?? null : null,
+                sort_order: row.sort_order ?? 0,
+                description: "description" in row ? row.description ?? null : undefined,
                 assignee: assignee
                   ? { fullName: assignee.fullName, avatarUrl: assignee.avatarUrl }
                   : null,
               },
-              ...prev,
-            ];
+            ]);
           });
         }
       )
@@ -166,25 +183,26 @@ export function useKanban({ projectId, initialTasks, teamMembers }: UseKanbanOpt
         newStatus === "todo" || newStatus === "doing" || newStatus === "done"
           ? newStatus
           : "todo";
-      let prevStatus = "todo";
-      setTasks((prev) => {
-        const t = prev.find((x) => x.id === taskId);
-        prevStatus = t?.status ?? "todo";
-        return prev.map((x) => (x.id === taskId ? { ...x, status: safe } : x));
-      });
+      const prev = tasksRef.current;
+      const next = applyTaskStatusMove(prev, taskId, safe);
+      const before = new Map(prev.map((t) => [t.id, layoutSignature(t)]));
+      setTasks(next);
+      tasksRef.current = next;
 
       try {
-        await patchTaskApi(taskId, {
-          status: safe,
-        });
+        const toPatch = next.filter((t) => layoutSignature(t) !== before.get(t.id));
+        await Promise.all(
+          toPatch.map((t) =>
+            patchTaskApi(t.id, { status: t.status, sort_order: t.sort_order ?? 0 })
+          )
+        );
         router.refresh();
       } catch (e) {
         toast.error(
           e instanceof Error ? e.message : WORKSPACE.toastStatusChangeFailed
         );
-        setTasks((prev) =>
-          prev.map((t) => (t.id === taskId ? { ...t, status: prevStatus } : t))
-        );
+        setTasks(prev);
+        tasksRef.current = prev;
       }
     },
     [patchTaskApi, router]
@@ -241,41 +259,81 @@ export function useKanban({ projectId, initialTasks, teamMembers }: UseKanbanOpt
     [router, teamMembers, patchTaskApi]
   );
 
-  /** 모달 저장: API PATCH 후 로컬 tasks 반영 */
   const commitTaskUpdate = useCallback(
     async (taskId: string, payload: CommitTaskUpdatePayload) => {
-      const body: Record<string, unknown> = {
-        title: payload.title,
-        priority: payload.priority,
-        assignee_id: payload.assignee_id,
-        status: payload.status,
-        due_date: payload.due_date,
-      };
-      await patchTaskApi(taskId, body);
-
+      const prev = tasksRef.current;
       const newAssignee = payload.assignee_id
         ? teamMembers.find((m) => m.id === payload.assignee_id)
         : null;
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.id === taskId
-            ? {
-                ...t,
-                title: payload.title,
-                priority: payload.priority,
-                assignee_id: payload.assignee_id,
-                assignee: newAssignee
-                  ? { fullName: newAssignee.fullName, avatarUrl: newAssignee.avatarUrl }
-                  : null,
-                due_date: payload.due_date,
-                status: payload.status,
-              }
-            : t
-        )
-      );
-      router.refresh();
+      const assignee = newAssignee
+        ? { fullName: newAssignee.fullName, avatarUrl: newAssignee.avatarUrl }
+        : null;
+
+      const next = applyFullTaskUpdate(prev, taskId, payload, assignee);
+      const before = new Map(prev.map((t) => [t.id, layoutSignature(t)]));
+      setTasks(next);
+      tasksRef.current = next;
+
+      try {
+        const self = next.find((t) => t.id === taskId);
+        if (!self) throw new Error("업무를 찾을 수 없습니다.");
+
+        const patchBody: Record<string, unknown> = {
+          title: payload.title,
+          priority: payload.priority,
+          assignee_id: payload.assignee_id,
+          status: payload.status,
+          due_date: payload.due_date,
+          sort_order: self.sort_order ?? 0,
+        };
+        if (payload.description !== undefined) {
+          patchBody.description = payload.description;
+        }
+        await patchTaskApi(taskId, patchBody);
+
+        const others = next.filter(
+          (t) => t.id !== taskId && layoutSignature(t) !== before.get(t.id)
+        );
+        await Promise.all(
+          others.map((t) =>
+            patchTaskApi(t.id, { status: t.status, sort_order: t.sort_order ?? 0 })
+          )
+        );
+        router.refresh();
+      } catch (e) {
+        setTasks(prev);
+        tasksRef.current = prev;
+        throw e;
+      }
     },
     [patchTaskApi, router, teamMembers]
+  );
+
+  const reorderAfterDrag = useCallback(
+    async (nextTasks: KanbanTaskWithAssignee[], rollback: KanbanTaskWithAssignee[]) => {
+      const prev = rollback;
+      const before = new Map(prev.map((t) => [t.id, layoutSignature(t)]));
+      setTasks(nextTasks);
+      tasksRef.current = nextTasks;
+      try {
+        const toPatch = nextTasks.filter(
+          (t) => layoutSignature(t) !== before.get(t.id)
+        );
+        await Promise.all(
+          toPatch.map((t) =>
+            patchTaskApi(t.id, { status: t.status, sort_order: t.sort_order ?? 0 })
+          )
+        );
+        router.refresh();
+      } catch (e) {
+        setTasks(prev);
+        tasksRef.current = prev;
+        toast.error(
+          e instanceof Error ? e.message : WORKSPACE.toastStatusChangeFailed
+        );
+      }
+    },
+    [patchTaskApi, router]
   );
 
   return {
@@ -284,5 +342,6 @@ export function useKanban({ projectId, initialTasks, teamMembers }: UseKanbanOpt
     handleStatusChange,
     handleAssigneeChange,
     commitTaskUpdate,
+    reorderAfterDrag,
   };
 }

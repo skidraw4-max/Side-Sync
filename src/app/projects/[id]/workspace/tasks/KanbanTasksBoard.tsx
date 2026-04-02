@@ -1,14 +1,18 @@
 "use client";
 
-import { useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import EmptyState from "@/components/EmptyState";
-import TaskCard from "@/components/workspace/TaskCard";
+import KanbanBoardHeader from "@/components/workspace/kanban/KanbanBoardHeader";
+import KanbanColumns from "@/components/workspace/kanban/KanbanColumns";
+import KanbanTaskCreateModal from "@/components/workspace/kanban/KanbanTaskCreateModal";
+import KanbanTaskEditModal from "@/components/workspace/kanban/KanbanTaskEditModal";
 import { useKanban } from "@/hooks/useKanban";
-import { KANBAN_STATUS_OPTIONS } from "@/lib/kanban/constants";
-import { COMMON, WORKSPACE } from "@/lib/constants/contents";
+import { buildKanbanAssigneeOptions } from "@/lib/kanban/build-assignee-options";
+import { nextSortOrderInColumn, sortTasksForBoard } from "@/lib/kanban/task-order";
+import { WORKSPACE } from "@/lib/constants/contents";
 import type { KanbanTaskWithAssignee, KanbanTeamMember } from "@/types/kanban";
 
 interface KanbanTasksBoardProps {
@@ -19,6 +23,8 @@ interface KanbanTasksBoardProps {
   currentUserId: string | null;
   recruitmentRoles: string[];
   supportsDueDate: boolean;
+  supportsSortOrder: boolean;
+  supportsDescription: boolean;
 }
 
 export default function KanbanTasksBoard({
@@ -29,9 +35,12 @@ export default function KanbanTasksBoard({
   currentUserId,
   recruitmentRoles = [],
   supportsDueDate,
+  supportsSortOrder,
+  supportsDescription,
 }: KanbanTasksBoardProps) {
   const router = useRouter();
-  const { tasks, setTasks, handleStatusChange, handleAssigneeChange, commitTaskUpdate } =
+  const dragRollbackRef = useRef<KanbanTaskWithAssignee[]>([]);
+  const { tasks, setTasks, handleStatusChange, handleAssigneeChange, commitTaskUpdate, reorderAfterDrag } =
     useKanban({
       projectId,
       initialTasks,
@@ -45,49 +54,35 @@ export default function KanbanTasksBoard({
   const [newPriority, setNewPriority] = useState<"high" | "medium" | "low">("medium");
   const [newAssigneeId, setNewAssigneeId] = useState<string>("");
   const [newDueDate, setNewDueDate] = useState("");
+  const [newDescription, setNewDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingTask, setEditingTask] = useState<KanbanTaskWithAssignee | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editPriority, setEditPriority] = useState<"high" | "medium" | "low">("medium");
   const [editAssigneeId, setEditAssigneeId] = useState<string>("");
   const [editDueDate, setEditDueDate] = useState("");
+  const [editDescription, setEditDescription] = useState("");
   const [editStatus, setEditStatus] = useState<"todo" | "doing" | "done">("todo");
 
   const meInTeam = Boolean(currentUserId && teamMembers.some((m) => m.id === currentUserId));
 
-  const assigneeOptions = useMemo(() => {
-    const opts: { value: string; label: string; isUser: boolean }[] = [];
-    opts.push({ value: "", label: WORKSPACE.assigneeUnset, isUser: false });
-    if (meInTeam && currentUserId) {
-      const me = teamMembers.find((m) => m.id === currentUserId);
-      opts.push({
-        value: currentUserId,
-        label: `${WORKSPACE.meSelfPrefix} (${me?.fullName ?? WORKSPACE.meFallbackName})`,
-        isUser: true,
-      });
-    }
-    teamMembers
-      .filter((m) => m.id !== currentUserId)
-      .forEach((m) =>
-        opts.push({ value: m.id, label: m.fullName ?? WORKSPACE.memberFallback, isUser: true })
-      );
-    if (recruitmentRoles.length > 0) {
-      recruitmentRoles.forEach((r, i) =>
-        opts.push({
-          value: `__role_${i}`,
-          label: `${r} (${WORKSPACE.recruitingSlotSuffix})`,
-          isUser: false,
-        })
-      );
-    }
-    return opts;
-  }, [currentUserId, meInTeam, recruitmentRoles, teamMembers]);
+  const assigneeOptions = useMemo(
+    () =>
+      buildKanbanAssigneeOptions({
+        currentUserId,
+        teamMembers,
+        recruitmentRoles,
+      }),
+    [currentUserId, recruitmentRoles, teamMembers]
+  );
 
-  const filteredTasks = searchQuery.trim()
+  const q = searchQuery.trim().toLowerCase();
+  const filteredTasks = q
     ? tasks.filter(
         (t) =>
-          t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (t.assignee?.fullName ?? "").toLowerCase().includes(searchQuery.toLowerCase())
+          t.title.toLowerCase().includes(q) ||
+          (t.assignee?.fullName ?? "").toLowerCase().includes(q) ||
+          (t.description ?? "").toLowerCase().includes(q)
       )
     : tasks;
 
@@ -95,12 +90,26 @@ export default function KanbanTasksBoard({
   const doingTasks = filteredTasks.filter((t) => t.status === "doing");
   const doneTasks = filteredTasks.filter((t) => t.status === "done");
 
+  const dragEnabled = supportsSortOrder && !searchQuery.trim();
+
+  const handleDragStart = useCallback(() => {
+    dragRollbackRef.current = [...tasks];
+  }, [tasks]);
+
+  const handleDragEndReorder = useCallback(
+    (next: KanbanTaskWithAssignee[]) => {
+      void reorderAfterDrag(next, dragRollbackRef.current);
+    },
+    [reorderAfterDrag]
+  );
+
   const openNewTaskModal = (column: "todo" | "doing" | "done") => {
     setNewTaskColumn(column);
     setNewTitle("");
     setNewPriority("medium");
     setNewAssigneeId(meInTeam && currentUserId ? currentUserId : "");
     setNewDueDate("");
+    setNewDescription("");
     setShowNewTaskModal(true);
   };
 
@@ -111,10 +120,7 @@ export default function KanbanTasksBoard({
     }
     setIsSubmitting(true);
 
-    const supabase = createClient();
-
-    const insertPayload: Record<string, unknown> = {
-      project_id: projectId,
+    const body: Record<string, unknown> = {
       title: newTitle.trim(),
       category: "GENERAL",
       priority: newPriority,
@@ -124,47 +130,77 @@ export default function KanbanTasksBoard({
           ? newAssigneeId.trim()
           : null,
     };
-    let { data: inserted, error } = await (supabase as any)
-      .from("tasks")
-      .insert(insertPayload)
-      .select("id, title, category, priority, status, assignee_id")
-      .single();
-
-    if (error && insertPayload.assignee_id) {
-      console.warn("[KanbanTasksBoard] assignee_id로 등록 실패, 담당자 없이 재시도:", error.message);
-      const retryPayload = { ...insertPayload, assignee_id: null };
-      const { data: retryData, error: retryError } = await (supabase as any)
-        .from("tasks")
-        .insert(retryPayload)
-        .select("id, title, category, priority, status, assignee_id")
-        .single();
-      inserted = retryData;
-      error = retryError;
+    if (supportsSortOrder) {
+      body.sort_order = nextSortOrderInColumn(tasks, newTaskColumn);
     }
+    if (supportsDueDate && newDueDate.trim()) {
+      body.due_date = newDueDate.trim();
+    }
+    if (supportsDescription) {
+      const d = newDescription.trim();
+      body.description = d.length === 0 ? null : d.slice(0, 8000);
+    }
+
+    const res = await fetch(`/api/projects/${projectId}/tasks`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify(body),
+    });
+    const json = (await res.json().catch(() => ({}))) as {
+      task?: Record<string, unknown>;
+      error?: string;
+    };
 
     setIsSubmitting(false);
     setShowNewTaskModal(false);
 
-    if (error) {
-      console.error("[KanbanTasksBoard] 업무 등록 에러:", error.message, error.code, error.details);
-      toast.error(`${WORKSPACE.toastTaskCreateFailedPrefix} (${error.message})`);
+    if (!res.ok) {
+      console.error("[KanbanTasksBoard] 업무 등록 실패:", json.error ?? res.status);
+      toast.error(
+        json.error
+          ? `${WORKSPACE.toastTaskCreateFailedPrefix} (${json.error})`
+          : WORKSPACE.toastTaskCreateFailedPrefix
+      );
       return;
     }
+
+    const inserted = json.task;
+    if (!inserted?.id) {
+      toast.error(WORKSPACE.toastTaskCreateFailedPrefix);
+      return;
+    }
+
+    const supabase = createClient();
 
     const assignee = newAssigneeId
       ? teamMembers.find((m) => m.id === newAssigneeId)
       : null;
-    setTasks((prev) => [
-      {
-        ...inserted,
-        priority: inserted.priority ?? "medium",
-        due_date: null,
-        assignee: assignee
-          ? { fullName: assignee.fullName, avatarUrl: assignee.avatarUrl }
-          : null,
-      },
-      ...prev,
-    ]);
+    const insertedRow = inserted as {
+      id: string;
+      sort_order?: number;
+      priority?: string;
+      due_date?: string | null;
+      description?: string | null;
+    };
+    setTasks((prev) =>
+      sortTasksForBoard([
+        ...prev,
+        {
+          ...inserted,
+          id: insertedRow.id,
+          priority: insertedRow.priority ?? "medium",
+          due_date: supportsDueDate ? (insertedRow.due_date ?? null) : null,
+          sort_order: supportsSortOrder ? (insertedRow.sort_order ?? 0) : 0,
+          description: supportsDescription
+            ? (insertedRow.description ?? (newDescription.trim() ? newDescription.trim().slice(0, 8000) : null))
+            : undefined,
+          assignee: assignee
+            ? { fullName: assignee.fullName, avatarUrl: assignee.avatarUrl }
+            : null,
+        } as KanbanTaskWithAssignee,
+      ])
+    );
 
     const assigneeIdForDb =
       newAssigneeId && !newAssigneeId.startsWith("__role_") ? newAssigneeId : null;
@@ -204,6 +240,7 @@ export default function KanbanTasksBoard({
     setEditPriority((task.priority as "high" | "medium" | "low") ?? "medium");
     setEditAssigneeId(task.assignee_id ?? "");
     setEditDueDate(supportsDueDate && task.due_date ? task.due_date.slice(0, 10) : "");
+    setEditDescription(supportsDescription ? (task.description ?? "") : "");
     setEditStatus((task.status as "todo" | "doing" | "done") ?? "todo");
   };
 
@@ -221,6 +258,13 @@ export default function KanbanTasksBoard({
         assignee_id: editAssigneeDbValue,
         status: editStatus,
         due_date: supportsDueDate ? editDueDate || null : null,
+        ...(supportsDescription
+          ? {
+              description: editDescription.trim()
+                ? editDescription.trim().slice(0, 8000)
+                : null,
+            }
+          : {}),
       });
     } catch (e) {
       setIsSubmitting(false);
@@ -245,66 +289,16 @@ export default function KanbanTasksBoard({
       : null;
 
   return (
-    <>
-      <header className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-white px-4 py-3 sm:px-8 sm:py-4">
-        <h1 className="text-xl font-bold text-gray-900">{WORKSPACE.kanbanBoardTitle}</h1>
-        <div className="flex items-center gap-4">
-          <div className="relative hidden sm:block">
-            <input
-              type="search"
-              placeholder={WORKSPACE.taskSearchPlaceholder}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="min-w-0 max-w-full rounded-full border border-gray-200 bg-gray-50 px-4 py-2 pl-10 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 sm:w-40 md:w-64"
-            />
-            <svg
-              className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-          </div>
-          <button type="button" className="rounded-full p-2 text-gray-500 hover:bg-gray-100">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-              <path d="M13 3a2 2 0 0 1-2 2c0-.7.3-1.4.7-1.9" />
-            </svg>
-          </button>
-          {currentMember?.avatarUrl ? (
-            <img
-              src={currentMember.avatarUrl}
-              alt=""
-              className="h-8 w-8 shrink-0 rounded-full border border-gray-200 object-cover"
-            />
-          ) : currentMember ? (
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-100 text-xs font-medium text-gray-700">
-              {(currentMember.fullName?.[0] ?? "?").toUpperCase()}
-            </div>
-          ) : null}
-        </div>
-      </header>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <KanbanBoardHeader
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        currentMember={currentMember}
+      />
 
-      <div
-        className="flex-1 overflow-x-auto overflow-y-auto p-4 sm:p-8 overscroll-contain touch-pan-y"
-        style={{ WebkitOverflowScrolling: "touch" } as CSSProperties}
-      >
-        {tasks.length === 0 ? (
-          <div className="flex flex-1 items-center justify-center">
+      {tasks.length === 0 ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <div className="flex min-h-[50vh] flex-1 items-center justify-center p-4 sm:p-8">
             <EmptyState
               icon={
                 <svg
@@ -324,273 +318,71 @@ export default function KanbanTasksBoard({
               title={WORKSPACE.taskEmptyTitle}
               description={WORKSPACE.taskEmptyDescription}
               actions={[
-                { label: WORKSPACE.taskCreateFirst, onClick: () => openNewTaskModal("todo"), primary: true },
+                {
+                  label: WORKSPACE.taskCreateFirst,
+                  onClick: () => openNewTaskModal("todo"),
+                  primary: true,
+                },
               ]}
             />
           </div>
-        ) : (
-          <div className="flex min-w-max gap-4 sm:gap-6">
-            {columns.map((col) => (
-              <div key={col.id} className="flex w-72 shrink-0 flex-col sm:w-80">
-                <div className="mb-4 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <h2 className="font-semibold text-gray-900">{col.title}</h2>
-                    <span className="flex h-6 min-w-[24px] items-center justify-center rounded-full bg-gray-200 px-2 text-xs font-medium text-gray-600">
-                      {col.tasks.length}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => openNewTaskModal(col.id)}
-                    className="flex h-7 w-7 items-center justify-center rounded-md bg-[#2563EB] text-white hover:bg-[#1d4ed8]"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <line x1="12" y1="5" x2="12" y2="19" />
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
-                  </button>
-                </div>
-                <div className="flex flex-col gap-4">
-                  {col.tasks.map((task) => (
-                    <TaskCard
-                      key={task.id}
-                      task={task}
-                      teamMembers={teamMembers}
-                      onStatusChange={handleStatusChange}
-                      onAssigneeChange={handleAssigneeChange}
-                      onEdit={openEditModal}
-                    />
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => openNewTaskModal(col.id)}
-                    className="flex items-center justify-center gap-2 whitespace-nowrap rounded-xl border-2 border-dashed border-gray-200 px-3 py-4 text-sm text-gray-500 transition-colors hover:border-gray-300 hover:text-gray-600"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <line x1="12" y1="5" x2="12" y2="19" />
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
-                    {WORKSPACE.taskAddToColumn}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {showNewTaskModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={() => setShowNewTaskModal(false)}
-        >
-          <div
-            className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-lg font-semibold text-gray-900">{WORKSPACE.taskCreateNew}</h3>
-            <div className="mt-4 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  {WORKSPACE.taskTitleLabel}
-                </label>
-                <input
-                  type="text"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder={WORKSPACE.taskCreatePlaceholder}
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  {WORKSPACE.taskPriorityLabel}
-                </label>
-                <select
-                  value={newPriority}
-                  onChange={(e) => setNewPriority(e.target.value as "high" | "medium" | "low")}
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="high">{WORKSPACE.priorityHigh}</option>
-                  <option value="medium">{WORKSPACE.priorityMedium}</option>
-                  <option value="low">{WORKSPACE.priorityLow}</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  {WORKSPACE.taskAssigneeLabel}
-                </label>
-                <select
-                  value={newAssigneeId}
-                  onChange={(e) => setNewAssigneeId(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  {assigneeOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {supportsDueDate ? (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    {WORKSPACE.taskDueDateLabel}
-                  </label>
-                  <input
-                    type="date"
-                    value={newDueDate}
-                    onChange={(e) => setNewDueDate(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-              ) : null}
-              <p className="text-xs text-gray-500">
-                {WORKSPACE.taskColumnHintPrefix}:{" "}
-                {KANBAN_STATUS_OPTIONS.find((o) => o.value === newTaskColumn)?.label ??
-                  newTaskColumn}
-              </p>
-            </div>
-            <div className="mt-6 flex flex-wrap justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setShowNewTaskModal(false)}
-                className="whitespace-nowrap rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                {COMMON.cancel}
-              </button>
-              <button
-                type="button"
-                onClick={handleCreateTask}
-                disabled={!newTitle.trim() || isSubmitting}
-                className="whitespace-nowrap rounded-lg bg-[#2563EB] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#1d4ed8] disabled:opacity-50"
-              >
-                {isSubmitting ? WORKSPACE.taskRegistering : COMMON.register}
-              </button>
-            </div>
-          </div>
         </div>
+      ) : (
+        <KanbanColumns
+          columns={columns}
+          teamMembers={teamMembers}
+          onStatusChange={handleStatusChange}
+          onAssigneeChange={handleAssigneeChange}
+          onEdit={openEditModal}
+          onAddTask={openNewTaskModal}
+          dragEnabled={dragEnabled}
+          onDragStart={handleDragStart}
+          onDragEndReorder={supportsSortOrder ? handleDragEndReorder : undefined}
+        />
       )}
 
-      {editingTask && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={() => setEditingTask(null)}
-        >
-          <div
-            className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-lg font-semibold text-gray-900">{WORKSPACE.taskEdit}</h3>
-            <div className="mt-4 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  {WORKSPACE.taskTitleLabel}
-                </label>
-                <input
-                  type="text"
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  placeholder={WORKSPACE.taskCreatePlaceholder}
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  {WORKSPACE.taskPriorityLabel}
-                </label>
-                <select
-                  value={editPriority}
-                  onChange={(e) => setEditPriority(e.target.value as "high" | "medium" | "low")}
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="high">{WORKSPACE.priorityHigh}</option>
-                  <option value="medium">{WORKSPACE.priorityMedium}</option>
-                  <option value="low">{WORKSPACE.priorityLow}</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  {WORKSPACE.taskStatusLabel}
-                </label>
-                <select
-                  value={editStatus}
-                  onChange={(e) => setEditStatus(e.target.value as "todo" | "doing" | "done")}
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  {KANBAN_STATUS_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  {WORKSPACE.taskAssigneeLabel}
-                </label>
-                <select
-                  value={editAssigneeId}
-                  onChange={(e) => setEditAssigneeId(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  {assigneeOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {supportsDueDate ? (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    {WORKSPACE.taskDueDateLabel}
-                  </label>
-                  <input
-                    type="date"
-                    value={editDueDate}
-                    onChange={(e) => setEditDueDate(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-              ) : null}
-            </div>
-            <div className="mt-6 flex flex-wrap justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setEditingTask(null)}
-                className="whitespace-nowrap rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                {COMMON.cancel}
-              </button>
-              <button
-                type="button"
-                onClick={handleUpdateTask}
-                disabled={!editTitle.trim() || isSubmitting}
-                className="whitespace-nowrap rounded-lg bg-[#2563EB] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#1d4ed8] disabled:opacity-50"
-              >
-                {isSubmitting ? WORKSPACE.taskSaving : COMMON.save}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+      <KanbanTaskCreateModal
+        open={showNewTaskModal}
+        onClose={() => setShowNewTaskModal(false)}
+        newTaskColumn={newTaskColumn}
+        newTitle={newTitle}
+        onNewTitleChange={setNewTitle}
+        newPriority={newPriority}
+        onNewPriorityChange={setNewPriority}
+        newAssigneeId={newAssigneeId}
+        onNewAssigneeIdChange={setNewAssigneeId}
+        newDueDate={newDueDate}
+        onNewDueDateChange={setNewDueDate}
+        assigneeOptions={assigneeOptions}
+        supportsDueDate={supportsDueDate}
+        supportsDescription={supportsDescription}
+        newDescription={newDescription}
+        onNewDescriptionChange={setNewDescription}
+        isSubmitting={isSubmitting}
+        onSubmit={handleCreateTask}
+      />
+
+      <KanbanTaskEditModal
+        task={editingTask}
+        onClose={() => setEditingTask(null)}
+        editTitle={editTitle}
+        onEditTitleChange={setEditTitle}
+        editPriority={editPriority}
+        onEditPriorityChange={setEditPriority}
+        editStatus={editStatus}
+        onEditStatusChange={setEditStatus}
+        editAssigneeId={editAssigneeId}
+        onEditAssigneeIdChange={setEditAssigneeId}
+        editDueDate={editDueDate}
+        onEditDueDateChange={setEditDueDate}
+        editDescription={editDescription}
+        onEditDescriptionChange={setEditDescription}
+        assigneeOptions={assigneeOptions}
+        supportsDueDate={supportsDueDate}
+        supportsDescription={supportsDescription}
+        isSubmitting={isSubmitting}
+        onSave={handleUpdateTask}
+      />
+    </div>
   );
 }

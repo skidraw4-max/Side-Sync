@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { DraggableProvidedDragHandleProps } from "@hello-pangea/dnd";
 import type { KanbanTaskWithAssignee, KanbanTeamMember } from "@/types/kanban";
 import { PRIORITY_STYLES, KANBAN_STATUS_OPTIONS, formatKanbanDueDate } from "@/lib/kanban/constants";
 import { WORKSPACE } from "@/lib/constants/contents";
@@ -11,6 +12,7 @@ export interface TaskCardProps {
   onStatusChange: (taskId: string, newStatus: string) => void;
   onAssigneeChange: (taskId: string, assigneeId: string | null) => void;
   onEdit: (task: KanbanTaskWithAssignee) => void;
+  dragHandleProps?: DraggableProvidedDragHandleProps | null;
 }
 
 function priorityLabel(p: string): string {
@@ -25,6 +27,7 @@ export default function TaskCard({
   onStatusChange,
   onAssigneeChange,
   onEdit,
+  dragHandleProps,
 }: TaskCardProps) {
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [isAssigneeOpen, setIsAssigneeOpen] = useState(false);
@@ -38,13 +41,40 @@ export default function TaskCard({
       onClick={() => onEdit(task)}
     >
       <div className="flex items-start justify-between gap-2">
-        <span
-          className={`inline-block whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${
-            PRIORITY_STYLES[task.priority] ?? PRIORITY_STYLES.medium
-          }`}
-        >
-          {priorityLabel(task.priority)}
-        </span>
+        <div className="flex min-w-0 flex-1 items-start gap-1">
+          {dragHandleProps ? (
+            <button
+              type="button"
+              className="-ml-1 shrink-0 cursor-grab touch-none rounded p-1 text-gray-400 hover:bg-gray-100 active:cursor-grabbing"
+              aria-label={WORKSPACE.dragHandleLabel}
+              onClick={(e) => e.stopPropagation()}
+              {...dragHandleProps}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden
+              >
+                <circle cx="9" cy="6" r="1.5" />
+                <circle cx="15" cy="6" r="1.5" />
+                <circle cx="9" cy="12" r="1.5" />
+                <circle cx="15" cy="12" r="1.5" />
+                <circle cx="9" cy="18" r="1.5" />
+                <circle cx="15" cy="18" r="1.5" />
+              </svg>
+            </button>
+          ) : null}
+          <span
+            className={`inline-block whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${
+              PRIORITY_STYLES[task.priority] ?? PRIORITY_STYLES.medium
+            }`}
+          >
+            {priorityLabel(task.priority)}
+          </span>
+        </div>
         <div className="relative min-w-0 shrink-0" onClick={(e) => e.stopPropagation()}>
           <button
             type="button"
@@ -85,6 +115,9 @@ export default function TaskCard({
         </div>
       </div>
       <p className="mt-2 font-medium text-gray-900">{task.title}</p>
+      {task.description?.trim() ? (
+        <p className="mt-1 line-clamp-2 text-xs text-gray-600">{task.description.trim()}</p>
+      ) : null}
       {task.due_date && (
         <p className="mt-1 text-xs text-gray-500">{formatKanbanDueDate(task.due_date)}</p>
       )}

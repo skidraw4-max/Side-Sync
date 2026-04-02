@@ -129,6 +129,8 @@ export interface Database {
           status: "todo" | "doing" | "done";
           assignee_id: string | null;
           due_date: string | null;
+          description: string | null;
+          sort_order: number;
           created_at: string;
           updated_at: string;
         };
@@ -141,6 +143,8 @@ export interface Database {
           status?: "todo" | "doing" | "done";
           assignee_id?: string | null;
           due_date?: string | null;
+          description?: string | null;
+          sort_order?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -151,6 +155,8 @@ export interface Database {
           status?: "todo" | "doing" | "done";
           assignee_id?: string | null;
           due_date?: string | null;
+          description?: string | null;
+          sort_order?: number;
           updated_at?: string;
         };
       };

@@ -5,12 +5,21 @@ import { ADSENSE_CLIENT_ID, ADSENSE_SLOTS } from "@/lib/ads-config";
 
 interface WorkspaceSidebarProps {
   activeItem?: "notice" | "kanban" | "files";
+  /** 있으면 해당 프로젝트 칸반으로, 없으면 프로젝트 목록으로 이동 */
+  projectId?: string;
 }
 
-export default function WorkspaceSidebar({ activeItem = "files" }: WorkspaceSidebarProps) {
+export default function WorkspaceSidebar({
+  activeItem = "files",
+  projectId,
+}: WorkspaceSidebarProps) {
+  const kanbanHref = projectId
+    ? `/projects/${projectId}/workspace/tasks`
+    : "/projects";
+
   const navItems = [
     { id: "notice" as const, label: "Notice", href: "/workspace/notices", icon: "bell" },
-    { id: "kanban" as const, label: "Kanban", href: "/projects/1/workspace", icon: "chart" },
+    { id: "kanban" as const, label: "Kanban", href: kanbanHref, icon: "chart" },
     { id: "files" as const, label: "Files", href: "/workspace/files", icon: "folder" },
   ];
 
