@@ -10,11 +10,13 @@ import {
 } from "@hello-pangea/dnd";
 import TaskCard from "@/components/workspace/TaskCard";
 import { WORKSPACE } from "@/lib/constants/contents";
+import type { KanbanTaskStatus } from "@/lib/kanban/constants";
+import { KANBAN_STATUS_HEADER_CLASS } from "@/lib/kanban/constants";
 import { mergeColumnsToTasks } from "@/lib/kanban/task-order";
 import type { KanbanTaskWithAssignee, KanbanTeamMember } from "@/types/kanban";
 
 export type KanbanColumnModel = {
-  id: "todo" | "doing" | "done";
+  id: KanbanTaskStatus;
   title: string;
   tasks: KanbanTaskWithAssignee[];
 };
@@ -22,10 +24,12 @@ export type KanbanColumnModel = {
 interface KanbanColumnsProps {
   columns: KanbanColumnModel[];
   teamMembers: KanbanTeamMember[];
-  onStatusChange: (taskId: string, newStatus: string) => void;
+  teamLeaderId: string | null;
+  currentUserId: string | null;
+  onStatusChange: (taskId: string, newStatus: string, opts?: { statusComment?: string }) => void;
   onAssigneeChange: (taskId: string, assigneeId: string | null) => void;
   onEdit: (task: KanbanTaskWithAssignee) => void;
-  onAddTask: (column: "todo" | "doing" | "done") => void;
+  onAddTask: (column: KanbanTaskStatus) => void;
   dragEnabled: boolean;
   onDragStart?: () => void;
   onDragEndReorder?: (nextTasks: KanbanTaskWithAssignee[]) => void;
@@ -34,6 +38,8 @@ interface KanbanColumnsProps {
 function columnTaskList(
   col: KanbanColumnModel,
   teamMembers: KanbanTeamMember[],
+  teamLeaderId: string | null,
+  currentUserId: string | null,
   onStatusChange: KanbanColumnsProps["onStatusChange"],
   onAssigneeChange: KanbanColumnsProps["onAssigneeChange"],
   onEdit: KanbanColumnsProps["onEdit"],
@@ -51,6 +57,8 @@ function columnTaskList(
             <TaskCard
               task={task}
               teamMembers={teamMembers}
+              teamLeaderId={teamLeaderId}
+              currentUserId={currentUserId}
               onStatusChange={onStatusChange}
               onAssigneeChange={onAssigneeChange}
               onEdit={onEdit}
@@ -64,6 +72,8 @@ function columnTaskList(
         key={task.id}
         task={task}
         teamMembers={teamMembers}
+        teamLeaderId={teamLeaderId}
+        currentUserId={currentUserId}
         onStatusChange={onStatusChange}
         onAssigneeChange={onAssigneeChange}
         onEdit={onEdit}
@@ -73,7 +83,7 @@ function columnTaskList(
 }
 
 function columnAddButton(
-  colId: "todo" | "doing" | "done",
+  colId: KanbanTaskStatus,
   onAddTask: KanbanColumnsProps["onAddTask"]
 ) {
   return (
@@ -102,6 +112,8 @@ function columnAddButton(
 export default function KanbanColumns({
   columns,
   teamMembers,
+  teamLeaderId,
+  currentUserId,
   onStatusChange,
   onAssigneeChange,
   onEdit,
@@ -126,20 +138,22 @@ export default function KanbanColumns({
       return;
     }
 
-    const sourceCol = source.droppableId as "todo" | "doing" | "done";
-    const destCol = destination.droppableId as "todo" | "doing" | "done";
+    const sourceCol = source.droppableId as KanbanTaskStatus;
+    const destCol = destination.droppableId as KanbanTaskStatus;
 
-    const cols = {
-      todo: [...(columns.find((c) => c.id === "todo")?.tasks ?? [])],
-      doing: [...(columns.find((c) => c.id === "doing")?.tasks ?? [])],
-      done: [...(columns.find((c) => c.id === "done")?.tasks ?? [])],
+    const cols: Record<KanbanTaskStatus, KanbanTaskWithAssignee[]> = {
+      requested: [...(columns.find((c) => c.id === "requested")?.tasks ?? [])],
+      in_progress: [...(columns.find((c) => c.id === "in_progress")?.tasks ?? [])],
+      feedback: [...(columns.find((c) => c.id === "feedback")?.tasks ?? [])],
+      completed: [...(columns.find((c) => c.id === "completed")?.tasks ?? [])],
+      on_hold: [...(columns.find((c) => c.id === "on_hold")?.tasks ?? [])],
     };
 
     const [removed] = cols[sourceCol].splice(source.index, 1);
     if (!removed) return;
     cols[destCol].splice(destination.index, 0, { ...removed, status: destCol });
 
-    const next = mergeColumnsToTasks(cols.todo, cols.doing, cols.done);
+    const next = mergeColumnsToTasks(cols);
     onDragEndReorder(next);
   };
 
@@ -147,17 +161,21 @@ export default function KanbanColumns({
     <div className="flex min-w-max gap-4 sm:gap-6">
       {columns.map((col) => (
         <div key={col.id} className="flex w-72 shrink-0 flex-col sm:w-80">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h2 className="font-semibold text-gray-900">{col.title}</h2>
-              <span className="flex h-6 min-w-[24px] items-center justify-center rounded-full bg-gray-200 px-2 text-xs font-medium text-gray-600">
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <span
+                className={`truncate rounded-full px-2.5 py-0.5 text-sm font-semibold ${KANBAN_STATUS_HEADER_CLASS[col.id]}`}
+              >
+                {col.title}
+              </span>
+              <span className="flex h-6 min-w-[24px] shrink-0 items-center justify-center rounded-full bg-gray-200 px-2 text-xs font-medium text-gray-600">
                 {col.tasks.length}
               </span>
             </div>
             <button
               type="button"
               onClick={() => onAddTask(col.id)}
-              className="flex h-7 w-7 items-center justify-center rounded-md bg-[#2563EB] text-white hover:bg-[#1d4ed8]"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#2563EB] text-white hover:bg-[#1d4ed8]"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -185,6 +203,8 @@ export default function KanbanColumns({
                     {columnTaskList(
                       col,
                       teamMembers,
+                      teamLeaderId,
+                      currentUserId,
                       onStatusChange,
                       onAssigneeChange,
                       onEdit,
@@ -201,6 +221,8 @@ export default function KanbanColumns({
               {columnTaskList(
                 col,
                 teamMembers,
+                teamLeaderId,
+                currentUserId,
                 onStatusChange,
                 onAssigneeChange,
                 onEdit,

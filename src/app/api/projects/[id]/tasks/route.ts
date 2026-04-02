@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { projectTaskAccessDenied } from "@/lib/api/project-task-access";
-import { KANBAN_PRIORITY_SET, KANBAN_STATUS_SET } from "@/lib/kanban/constants";
+import { KANBAN_PRIORITY_SET } from "@/lib/kanban/constants";
 
 function isMissingSortOrderColumn(msg: string): boolean {
   const lower = msg.toLowerCase();
@@ -36,8 +36,20 @@ function isMissingDescriptionColumn(msg: string): boolean {
   );
 }
 
+function isMissingRequestedByColumn(msg: string): boolean {
+  const lower = msg.toLowerCase();
+  return (
+    lower.includes("requested_by") &&
+    (lower.includes("does not exist") ||
+      lower.includes("not exist") ||
+      lower.includes("could not find") ||
+      lower.includes("schema cache"))
+  );
+}
+
 function selectForInsertRow(row: Record<string, unknown>): string {
   const parts = ["id", "title", "category", "priority", "status", "assignee_id"];
+  if ("requested_by" in row) parts.push("requested_by");
   if ("sort_order" in row) parts.push("sort_order");
   if ("due_date" in row) parts.push("due_date");
   if ("description" in row) parts.push("description");
@@ -69,10 +81,8 @@ export async function POST(
     return NextResponse.json({ error: "제목이 비어 있습니다." }, { status: 400 });
   }
 
-  const status = typeof body.status === "string" ? body.status : "";
-  if (!KANBAN_STATUS_SET.has(status)) {
-    return NextResponse.json({ error: "유효하지 않은 상태입니다." }, { status: 400 });
-  }
+  /** 신규 업무는 항상 요청 단계로 등록 */
+  const status = "requested" as const;
 
   const priority = typeof body.priority === "string" ? body.priority : "";
   if (!KANBAN_PRIORITY_SET.has(priority)) {
@@ -126,6 +136,19 @@ export async function POST(
   const denied = await projectTaskAccessDenied(supabase, projectId, user.id);
   if (denied) return denied;
 
+  if (!assignee_id) {
+    return NextResponse.json(
+      { error: "요청 단계에서는 담당자를 지정해 주세요." },
+      { status: 400 }
+    );
+  }
+  if (due_date === undefined) {
+    return NextResponse.json(
+      { error: "요청 단계에서는 마감일을 지정해 주세요." },
+      { status: 400 }
+    );
+  }
+
   const insertRow = async (row: Record<string, unknown>) =>
     (supabase as any)
       .from("tasks")
@@ -140,6 +163,7 @@ export async function POST(
     priority,
     status,
     assignee_id,
+    requested_by: user.id,
   };
   if (sort_order !== undefined) row.sort_order = sort_order;
   if (due_date !== undefined) row.due_date = due_date;
@@ -166,6 +190,14 @@ export async function POST(
   if (error && description !== undefined && isMissingDescriptionColumn(error.message)) {
     const { description: _desc, ...withoutDesc } = row;
     row = withoutDesc;
+    const retry = await insertRow(row);
+    inserted = retry.data;
+    error = retry.error;
+  }
+
+  if (error && isMissingRequestedByColumn(error.message)) {
+    const { requested_by: _rb, ...withoutRb } = row;
+    row = withoutRb;
     const retry = await insertRow(row);
     inserted = retry.data;
     error = retry.error;

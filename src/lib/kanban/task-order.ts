@@ -1,6 +1,23 @@
 import type { KanbanAssignee, KanbanTaskWithAssignee } from "@/types/kanban";
+import { KANBAN_COLUMN_ORDER, type KanbanTaskStatus } from "@/lib/kanban/constants";
 
-const STATUS_RANK: Record<string, number> = { todo: 0, doing: 1, done: 2 };
+const STATUS_RANK: Record<string, number> = {
+  requested: 0,
+  in_progress: 1,
+  feedback: 2,
+  completed: 3,
+  on_hold: 4,
+};
+
+function emptyColumns(): Record<KanbanTaskStatus, KanbanTaskWithAssignee[]> {
+  return {
+    requested: [],
+    in_progress: [],
+    feedback: [],
+    completed: [],
+    on_hold: [],
+  };
+}
 
 /** 보드 표시용: 컬럼 순서 → 컬럼 내 sort_order */
 export function sortTasksForBoard(tasks: KanbanTaskWithAssignee[]): KanbanTaskWithAssignee[] {
@@ -13,35 +30,31 @@ export function sortTasksForBoard(tasks: KanbanTaskWithAssignee[]): KanbanTaskWi
 }
 
 export function mergeColumnsToTasks(
-  todo: KanbanTaskWithAssignee[],
-  doing: KanbanTaskWithAssignee[],
-  done: KanbanTaskWithAssignee[]
+  cols: Record<KanbanTaskStatus, KanbanTaskWithAssignee[]>
 ): KanbanTaskWithAssignee[] {
-  const assign = (list: KanbanTaskWithAssignee[], status: "todo" | "doing" | "done") =>
-    list.map((t, i) => ({ ...t, status, sort_order: i }));
-  return sortTasksForBoard([
-    ...assign(todo, "todo"),
-    ...assign(doing, "doing"),
-    ...assign(done, "done"),
-  ]);
+  const chunks: KanbanTaskWithAssignee[] = [];
+  for (const status of KANBAN_COLUMN_ORDER) {
+    const list = cols[status] ?? [];
+    list.forEach((t, i) => chunks.push({ ...t, status, sort_order: i }));
+  }
+  return sortTasksForBoard(chunks);
 }
 
 /** 상태 변경(카드 UI·모달) 시: 해당 카드를 제외한 뒤 목표 컬럼 맨 아래에 두고 재번호 */
 export function applyTaskStatusMove(
   tasks: KanbanTaskWithAssignee[],
   taskId: string,
-  newStatus: "todo" | "doing" | "done"
+  newStatus: KanbanTaskStatus
 ): KanbanTaskWithAssignee[] {
   const moved = tasks.find((t) => t.id === taskId);
   if (!moved) return tasks;
   const rest = tasks.filter((t) => t.id !== taskId);
-  const cols = {
-    todo: rest.filter((t) => t.status === "todo"),
-    doing: rest.filter((t) => t.status === "doing"),
-    done: rest.filter((t) => t.status === "done"),
-  };
+  const cols = emptyColumns();
+  for (const s of KANBAN_COLUMN_ORDER) {
+    cols[s] = rest.filter((t) => t.status === s);
+  }
   cols[newStatus].push({ ...moved, status: newStatus });
-  return mergeColumnsToTasks(cols.todo, cols.doing, cols.done);
+  return mergeColumnsToTasks(cols);
 }
 
 export function layoutSignature(t: KanbanTaskWithAssignee): string {
@@ -50,7 +63,7 @@ export function layoutSignature(t: KanbanTaskWithAssignee): string {
 
 export function nextSortOrderInColumn(
   tasks: KanbanTaskWithAssignee[],
-  column: "todo" | "doing" | "done"
+  column: KanbanTaskStatus
 ): number {
   const inCol = tasks.filter((t) => t.status === column);
   if (inCol.length === 0) return 0;
@@ -65,7 +78,7 @@ export function applyFullTaskUpdate(
     title: string;
     priority: string;
     assignee_id: string | null;
-    status: "todo" | "doing" | "done";
+    status: KanbanTaskStatus;
     due_date: string | null;
     /** undefined면 기존 설명 유지 */
     description?: string | null;
@@ -95,11 +108,10 @@ export function applyFullTaskUpdate(
   }
 
   const rest = tasks.filter((t) => t.id !== taskId);
-  const cols = {
-    todo: rest.filter((t) => t.status === "todo"),
-    doing: rest.filter((t) => t.status === "doing"),
-    done: rest.filter((t) => t.status === "done"),
-  };
+  const cols = emptyColumns();
+  for (const s of KANBAN_COLUMN_ORDER) {
+    cols[s] = rest.filter((t) => t.status === s);
+  }
   cols[payload.status].push({
     ...cur,
     title: payload.title,
@@ -110,5 +122,5 @@ export function applyFullTaskUpdate(
     description: nextDescription,
     status: payload.status,
   });
-  return mergeColumnsToTasks(cols.todo, cols.doing, cols.done);
+  return mergeColumnsToTasks(cols);
 }

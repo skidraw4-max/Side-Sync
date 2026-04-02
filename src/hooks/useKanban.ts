@@ -11,6 +11,7 @@ import {
   sortTasksForBoard,
 } from "@/lib/kanban/task-order";
 import type { KanbanAssignee, KanbanTaskWithAssignee, KanbanTeamMember } from "@/types/kanban";
+import { KANBAN_STATUS_SET, type KanbanTaskStatus } from "@/lib/kanban/constants";
 import { WORKSPACE } from "@/lib/constants/contents";
 
 type TaskRowFromRealtime = {
@@ -23,6 +24,7 @@ type TaskRowFromRealtime = {
   due_date?: string | null;
   sort_order?: number;
   description?: string | null;
+  requested_by?: string | null;
 };
 
 export interface UseKanbanOptions {
@@ -35,10 +37,12 @@ export interface CommitTaskUpdatePayload {
   title: string;
   priority: "high" | "medium" | "low";
   assignee_id: string | null;
-  status: "todo" | "doing" | "done";
+  status: KanbanTaskStatus;
   due_date: string | null;
   /** undefined면 PATCH에 넣지 않음 */
   description?: string | null;
+  /** 피드백·보류 등 전환 시 */
+  statusComment?: string;
 }
 
 export function useKanban({ projectId, initialTasks, teamMembers }: UseKanbanOptions) {
@@ -108,6 +112,8 @@ export function useKanban({ projectId, initialTasks, teamMembers }: UseKanbanOpt
                       sort_order: "sort_order" in row ? row.sort_order ?? t.sort_order : t.sort_order,
                       description:
                         "description" in row ? row.description ?? null : t.description,
+                      requested_by:
+                        "requested_by" in row ? row.requested_by ?? null : t.requested_by,
                       assignee: assignee
                         ? { fullName: assignee.fullName, avatarUrl: assignee.avatarUrl }
                         : null,
@@ -148,6 +154,7 @@ export function useKanban({ projectId, initialTasks, teamMembers }: UseKanbanOpt
                 due_date: "due_date" in row ? row.due_date ?? null : null,
                 sort_order: row.sort_order ?? 0,
                 description: "description" in row ? row.description ?? null : undefined,
+                requested_by: "requested_by" in row ? row.requested_by ?? null : undefined,
                 assignee: assignee
                   ? { fullName: assignee.fullName, avatarUrl: assignee.avatarUrl }
                   : null,
@@ -178,11 +185,12 @@ export function useKanban({ projectId, initialTasks, teamMembers }: UseKanbanOpt
   }, [projectId, teamMembers]);
 
   const handleStatusChange = useCallback(
-    async (taskId: string, newStatus: string) => {
-      const safe =
-        newStatus === "todo" || newStatus === "doing" || newStatus === "done"
-          ? newStatus
-          : "todo";
+    async (taskId: string, newStatus: string, opts?: { statusComment?: string }) => {
+      if (!KANBAN_STATUS_SET.has(newStatus)) {
+        toast.error(WORKSPACE.toastStatusChangeFailed);
+        return;
+      }
+      const safe = newStatus as KanbanTaskStatus;
       const prev = tasksRef.current;
       const next = applyTaskStatusMove(prev, taskId, safe);
       const before = new Map(prev.map((t) => [t.id, layoutSignature(t)]));
@@ -192,9 +200,16 @@ export function useKanban({ projectId, initialTasks, teamMembers }: UseKanbanOpt
       try {
         const toPatch = next.filter((t) => layoutSignature(t) !== before.get(t.id));
         await Promise.all(
-          toPatch.map((t) =>
-            patchTaskApi(t.id, { status: t.status, sort_order: t.sort_order ?? 0 })
-          )
+          toPatch.map((t) => {
+            const body: Record<string, unknown> = {
+              status: t.status,
+              sort_order: t.sort_order ?? 0,
+            };
+            if (t.id === taskId && opts?.statusComment) {
+              body.status_comment = opts.statusComment;
+            }
+            return patchTaskApi(t.id, body);
+          })
         );
         router.refresh();
       } catch (e) {
@@ -288,6 +303,9 @@ export function useKanban({ projectId, initialTasks, teamMembers }: UseKanbanOpt
         };
         if (payload.description !== undefined) {
           patchBody.description = payload.description;
+        }
+        if (payload.statusComment) {
+          patchBody.status_comment = payload.statusComment;
         }
         await patchTaskApi(taskId, patchBody);
 

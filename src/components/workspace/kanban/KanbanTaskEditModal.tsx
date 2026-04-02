@@ -1,5 +1,13 @@
+"use client";
+
+import { useMemo } from "react";
 import { COMMON, WORKSPACE } from "@/lib/constants/contents";
-import { KANBAN_STATUS_OPTIONS } from "@/lib/kanban/constants";
+import {
+  KANBAN_COLUMN_ORDER,
+  KANBAN_STATUS_OPTIONS,
+  type KanbanTaskStatus,
+} from "@/lib/kanban/constants";
+import { listAllowedNextStatuses, transitionRequiresStatusComment } from "@/lib/kanban/task-status-policy";
 import type { KanbanAssigneeOption } from "@/lib/kanban/build-assignee-options";
 import type { KanbanTaskWithAssignee } from "@/types/kanban";
 
@@ -10,17 +18,21 @@ interface KanbanTaskEditModalProps {
   onEditTitleChange: (v: string) => void;
   editPriority: "high" | "medium" | "low";
   onEditPriorityChange: (v: "high" | "medium" | "low") => void;
-  editStatus: "todo" | "doing" | "done";
-  onEditStatusChange: (v: "todo" | "doing" | "done") => void;
+  editStatus: KanbanTaskStatus;
+  onEditStatusChange: (v: KanbanTaskStatus) => void;
   editAssigneeId: string;
   onEditAssigneeIdChange: (v: string) => void;
   editDueDate: string;
   onEditDueDateChange: (v: string) => void;
   editDescription: string;
   onEditDescriptionChange: (v: string) => void;
+  editStatusComment: string;
+  onEditStatusCommentChange: (v: string) => void;
   assigneeOptions: KanbanAssigneeOption[];
   supportsDueDate: boolean;
   supportsDescription: boolean;
+  currentUserId: string | null;
+  teamLeaderId: string | null;
   isSubmitting: boolean;
   onSave: () => void;
 }
@@ -40,18 +52,41 @@ export default function KanbanTaskEditModal({
   onEditDueDateChange,
   editDescription,
   onEditDescriptionChange,
+  editStatusComment,
+  onEditStatusCommentChange,
   assigneeOptions,
   supportsDueDate,
   supportsDescription,
+  currentUserId,
+  teamLeaderId,
   isSubmitting,
   onSave,
 }: KanbanTaskEditModalProps) {
+  const statusSelectOptions = useMemo(() => {
+    if (!task) return [];
+    const allowed = listAllowedNextStatuses({
+      task,
+      userId: currentUserId,
+      teamLeaderId,
+    });
+    const ids = new Set<KanbanTaskStatus>([task.status as KanbanTaskStatus, ...allowed]);
+    return KANBAN_COLUMN_ORDER.filter((id) => ids.has(id)).map((id) => ({
+      value: id,
+      label: KANBAN_STATUS_OPTIONS.find((o) => o.value === id)?.label ?? id,
+    }));
+  }, [task, currentUserId, teamLeaderId]);
+
+  const needsTransitionComment =
+    !!task &&
+    editStatus !== task.status &&
+    transitionRequiresStatusComment(task.status as KanbanTaskStatus, editStatus);
+
   if (!task) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
-        className={`w-full rounded-xl bg-white p-6 shadow-xl ${supportsDescription ? "max-w-lg" : "max-w-md"}`}
+        className={`w-full rounded-xl bg-white p-6 shadow-xl ${supportsDescription || needsTransitionComment ? "max-w-lg" : "max-w-md"}`}
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-lg font-semibold text-gray-900">{WORKSPACE.taskEdit}</h3>
@@ -88,10 +123,10 @@ export default function KanbanTaskEditModal({
             </label>
             <select
               value={editStatus}
-              onChange={(e) => onEditStatusChange(e.target.value as "todo" | "doing" | "done")}
+              onChange={(e) => onEditStatusChange(e.target.value as KanbanTaskStatus)}
               className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
-              {KANBAN_STATUS_OPTIONS.map((o) => (
+              {statusSelectOptions.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
@@ -138,6 +173,22 @@ export default function KanbanTaskEditModal({
                 placeholder={WORKSPACE.taskDescriptionPlaceholder}
                 rows={4}
                 maxLength={8000}
+                className="mt-1 w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+          ) : null}
+          {needsTransitionComment ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                {WORKSPACE.taskStatusCommentLabel}{" "}
+                <span className="text-red-600">*</span>
+              </label>
+              <textarea
+                value={editStatusComment}
+                onChange={(e) => onEditStatusCommentChange(e.target.value)}
+                placeholder={WORKSPACE.taskStatusCommentPlaceholder}
+                rows={3}
+                maxLength={4000}
                 className="mt-1 w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>

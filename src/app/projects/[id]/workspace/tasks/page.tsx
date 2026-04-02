@@ -92,12 +92,18 @@ export default async function TasksPage({ params }: TasksPageProps) {
   let supportsDueDate = true;
   let supportsSortOrder = true;
   let supportsDescription = true;
+  let supportsRequestedBy = true;
 
   const isMissingColumn = (lower: string, col: string) =>
     lower.includes(`column tasks.${col} does not exist`) ||
     (lower.includes(col) && (lower.includes("does not exist") || lower.includes("not exist")));
 
-  const tasksSelect = (opts: { due: boolean; sort: boolean; desc: boolean }) => {
+  const tasksSelect = (opts: {
+    due: boolean;
+    sort: boolean;
+    desc: boolean;
+    reqBy: boolean;
+  }) => {
     const cols = [
       "id",
       "title",
@@ -106,6 +112,7 @@ export default async function TasksPage({ params }: TasksPageProps) {
       "status",
       "assignee_id",
     ];
+    if (opts.reqBy) cols.push("requested_by");
     if (opts.due) cols.push("due_date");
     if (opts.sort) cols.push("sort_order");
     if (opts.desc) cols.push("description");
@@ -120,6 +127,7 @@ export default async function TasksPage({ params }: TasksPageProps) {
           due: supportsDueDate,
           sort: supportsSortOrder,
           desc: supportsDescription,
+          reqBy: supportsRequestedBy,
         })
       )
       .eq("project_id", projectId);
@@ -137,6 +145,9 @@ export default async function TasksPage({ params }: TasksPageProps) {
       fixed = true;
     } else if (supportsDescription && isMissingColumn(lower, "description")) {
       supportsDescription = false;
+      fixed = true;
+    } else if (supportsRequestedBy && isMissingColumn(lower, "requested_by")) {
+      supportsRequestedBy = false;
       fixed = true;
     }
     if (!fixed) {
@@ -159,6 +170,7 @@ export default async function TasksPage({ params }: TasksPageProps) {
     due_date?: string | null;
     sort_order?: number;
     description?: string | null;
+    requested_by?: string | null;
   }>;
   const assigneeIds = [...new Set(tasksTyped.map((t) => t.assignee_id).filter(Boolean))] as string[];
   const assigneeProfileIds = new Set(assigneeIds);
@@ -184,6 +196,7 @@ export default async function TasksPage({ params }: TasksPageProps) {
       due_date: supportsDueDate ? (t.due_date ?? null) : null,
       sort_order: supportsSortOrder ? (t.sort_order ?? 0) : 0,
       description: supportsDescription ? (t.description ?? null) : undefined,
+      requested_by: supportsRequestedBy ? (t.requested_by ?? null) : undefined,
       assignee: t.assignee_id ? (profileMap.get(t.assignee_id) ?? null) : null,
     }))
   );
@@ -219,6 +232,7 @@ export default async function TasksPage({ params }: TasksPageProps) {
       supportsDueDate={supportsDueDate}
       supportsSortOrder={supportsSortOrder}
       supportsDescription={supportsDescription}
+      teamLeaderId={projectTyped?.team_leader_id ?? null}
     />
   );
 }

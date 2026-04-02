@@ -126,8 +126,14 @@ export interface Database {
           title: string;
           category: string;
           priority: "high" | "medium" | "low";
-          status: "todo" | "doing" | "done";
+          status:
+            | "requested"
+            | "in_progress"
+            | "feedback"
+            | "completed"
+            | "on_hold";
           assignee_id: string | null;
+          requested_by: string | null;
           due_date: string | null;
           description: string | null;
           sort_order: number;
@@ -140,8 +146,14 @@ export interface Database {
           title: string;
           category?: string;
           priority?: "high" | "medium" | "low";
-          status?: "todo" | "doing" | "done";
+          status?:
+            | "requested"
+            | "in_progress"
+            | "feedback"
+            | "completed"
+            | "on_hold";
           assignee_id?: string | null;
+          requested_by?: string | null;
           due_date?: string | null;
           description?: string | null;
           sort_order?: number;
@@ -152,12 +164,42 @@ export interface Database {
           title?: string;
           category?: string;
           priority?: "high" | "medium" | "low";
-          status?: "todo" | "doing" | "done";
+          status?:
+            | "requested"
+            | "in_progress"
+            | "feedback"
+            | "completed"
+            | "on_hold";
           assignee_id?: string | null;
+          requested_by?: string | null;
           due_date?: string | null;
           description?: string | null;
           sort_order?: number;
           updated_at?: string;
+        };
+      };
+      task_comments: {
+        Row: {
+          id: string;
+          task_id: string;
+          project_id: string;
+          author_id: string;
+          body: string;
+          transition: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          task_id: string;
+          project_id: string;
+          author_id: string;
+          body: string;
+          transition?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          body?: string;
+          transition?: string | null;
         };
       };
       notices: {

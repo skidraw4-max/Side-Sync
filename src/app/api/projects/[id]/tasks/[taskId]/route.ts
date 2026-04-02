@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { projectTaskAccessDenied } from "@/lib/api/project-task-access";
+import type { KanbanTaskStatus } from "@/lib/kanban/constants";
 import { KANBAN_PRIORITY_SET, KANBAN_STATUS_SET } from "@/lib/kanban/constants";
+import {
+  transitionRequiresStatusComment,
+  validateStatusTransition,
+} from "@/lib/kanban/task-status-policy";
 
 /**
  * PATCH /api/projects/[id]/tasks/[taskId]
@@ -36,26 +41,61 @@ export async function PATCH(
   const denied = await projectTaskAccessDenied(supabase, projectId, user.id);
   if (denied) return denied;
 
-  const { data: taskRow } = await supabase
+  const { data: taskRow, error: taskErr } = await supabase
     .from("tasks")
-    .select("id, project_id")
+    .select("id, project_id, status, assignee_id, requested_by")
     .eq("id", taskId)
     .single();
 
-  const tr = taskRow as { id: string; project_id: string } | null;
-  if (!tr || tr.project_id !== projectId) {
+  const tr = taskRow as {
+    id: string;
+    project_id: string;
+    status: string;
+    assignee_id: string | null;
+    requested_by: string | null;
+  } | null;
+
+  if (taskErr || !tr || tr.project_id !== projectId) {
     return NextResponse.json({ error: "업무를 찾을 수 없습니다." }, { status: 404 });
   }
 
-  // 일부 운영 환경에서는 tasks.updated_at 컬럼이 없을 수 있어, updated_at은 일단 보내지 않습니다.
-  // (컬럼이 존재하는 환경이라면 DB 트리거/기본값이 처리하거나, 추후 스키마 일치 시 별도 추가 가능)
+  const { data: projRow } = await supabase
+    .from("projects")
+    .select("team_leader_id")
+    .eq("id", projectId)
+    .single();
+
+  const teamLeaderId = (projRow as { team_leader_id: string | null } | null)?.team_leader_id ?? null;
+
+  const currentStatus = tr.status as KanbanTaskStatus;
+  const nextStatus =
+    typeof body.status === "string" && KANBAN_STATUS_SET.has(body.status)
+      ? (body.status as KanbanTaskStatus)
+      : null;
+
+  const statusCommentRaw =
+    typeof body.status_comment === "string" ? body.status_comment.trim() : "";
+  const statusComment = statusCommentRaw ? statusCommentRaw.slice(0, 4000) : "";
+
+  if (nextStatus !== null && nextStatus !== currentStatus) {
+    const v = validateStatusTransition({
+      from: currentStatus,
+      to: nextStatus,
+      userId: user.id,
+      assigneeId: tr.assignee_id,
+      teamLeaderId,
+      requestedBy: tr.requested_by,
+      statusComment: statusComment || undefined,
+    });
+    if (!v.ok) {
+      return NextResponse.json({ error: v.error }, { status: 403 });
+    }
+  }
+
   const patch: Record<string, unknown> = {};
 
-  if (typeof body.status === "string") {
-    if (!KANBAN_STATUS_SET.has(body.status)) {
-      return NextResponse.json({ error: "유효하지 않은 상태입니다." }, { status: 400 });
-    }
-    patch.status = body.status;
+  if (nextStatus !== null) {
+    patch.status = nextStatus;
   }
 
   if (typeof body.title === "string") {
@@ -111,8 +151,6 @@ export async function PATCH(
     return NextResponse.json({ error: "변경할 내용이 없습니다." }, { status: 400 });
   }
 
-  // Supabase JS update는 schema cache 검증 단계에서 updated_at 미존재로 실패할 수 있어,
-  // PostgREST fetch로 직접 PATCH하여 스키마 캐시 문제를 우회합니다.
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!supabaseUrl || !anonKey) {
@@ -162,7 +200,29 @@ export async function PATCH(
   for (let attempt = 0; attempt < 24; attempt++) {
     if (Object.keys(candidate).length === 0) break;
     const result = await tryPatch(candidate);
-    if (result.ok) return NextResponse.json({ ok: true });
+    if (result.ok) {
+      if (
+        nextStatus !== null &&
+        nextStatus !== currentStatus &&
+        transitionRequiresStatusComment(currentStatus, nextStatus) &&
+        statusComment
+      ) {
+        const { error: cErr } = await (supabase as any).from("task_comments").insert({
+          task_id: taskId,
+          project_id: projectId,
+          author_id: user.id,
+          body: statusComment,
+          transition: `to_${nextStatus}`,
+        });
+        if (cErr) {
+          return NextResponse.json(
+            { error: cErr.message || "코멘트 저장에 실패했습니다." },
+            { status: 400 }
+          );
+        }
+      }
+      return NextResponse.json({ ok: true });
+    }
     lastErr = { status: result.status, text: result.text };
     const lower = result.text?.toLowerCase?.() ?? "";
 

@@ -1,11 +1,11 @@
 import { COMMON, WORKSPACE } from "@/lib/constants/contents";
-import { KANBAN_STATUS_OPTIONS } from "@/lib/kanban/constants";
+import { KANBAN_STATUS_OPTIONS, type KanbanTaskStatus } from "@/lib/kanban/constants";
 import type { KanbanAssigneeOption } from "@/lib/kanban/build-assignee-options";
 
 interface KanbanTaskCreateModalProps {
   open: boolean;
   onClose: () => void;
-  newTaskColumn: "todo" | "doing" | "done";
+  newTaskColumn: KanbanTaskStatus;
   newTitle: string;
   onNewTitleChange: (v: string) => void;
   newPriority: "high" | "medium" | "low";
@@ -126,7 +126,8 @@ export default function KanbanTaskCreateModal({
               />
             </div>
           ) : null}
-          <p className="text-xs text-gray-500">
+          <p className="text-xs leading-relaxed text-gray-500">
+            {WORKSPACE.taskCreateAlwaysRequestedHint}{" "}
             {WORKSPACE.taskColumnHintPrefix}:{" "}
             {KANBAN_STATUS_OPTIONS.find((o) => o.value === newTaskColumn)?.label ??
               newTaskColumn}

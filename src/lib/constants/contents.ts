@@ -46,12 +46,12 @@ export const COMMON = {
 } as const;
 
 export const WORKSPACE = {
-  /** 칸반 — 준비 단계 */
-  kanbanColumnTodo: "준비",
-  /** 칸반 — 진행 중 */
-  kanbanColumnDoing: "진행",
-  /** 칸반 — 완료 */
-  kanbanColumnDone: "완료",
+  /** 칸반 5단계 컬럼 */
+  kanbanColumnRequested: "요청",
+  kanbanColumnInProgress: "진행",
+  kanbanColumnFeedback: "피드백",
+  kanbanColumnCompleted: "완료",
+  kanbanColumnOnHold: "보류",
   /** 칸반 보드 제목 */
   kanbanBoardTitle: "프로젝트 칸반",
   /** 칸반 카드 드래그 핸들 (접근성) */
@@ -74,7 +74,8 @@ export const WORKSPACE = {
   taskDescriptionPlaceholder: "업무 맥락, 체크리스트, 참고 링크 등을 적을 수 있어요.",
   taskPriorityLabel: "우선순위",
   /** 새 업무 모달 하단: 진행 단계 안내 */
-  taskColumnHintPrefix: "진행 단계",
+  taskColumnHintPrefix: "등록 위치(컬럼)",
+  taskCreateAlwaysRequestedHint: "신규 업무는 항상 「요청」 단계로 등록되며, 담당자·마감일이 필요합니다.",
   /** 컬럼 하단 추가 */
   taskAddToColumn: "업무 추가",
   /** 우선순위 */
@@ -83,6 +84,13 @@ export const WORKSPACE = {
   priorityLow: "낮음",
   /** 상태 변경 */
   statusChange: "상태 변경",
+  taskStatusCommentLabel: "상태 변경 메모",
+  taskStatusCommentPlaceholder:
+    "피드백 제출·보류 사유 등 팀과 공유할 내용을 적어 주세요.",
+  taskStatusCommentModalTitle: "코멘트 입력",
+  toastRequestedNeedsAssigneeAndDueDate:
+    "요청 단계에서는 담당자와 마감일을 모두 지정해 주세요.",
+  toastStatusCommentRequired: "이 전환에는 코멘트가 필요합니다.",
   assigneeNone: "담당자 없음",
   assigneeUnset: "미지정",
   /** 검색 */
@@ -99,6 +107,8 @@ export const WORKSPACE = {
   toastTaskCreateFailedPrefix: "업무 등록에 실패했습니다.",
   toastTaskUpdateFailed: "업무 수정에 실패했습니다.",
   toastStatusChangeFailed: "상태 변경에 실패했습니다.",
+  toastDragUseMenuForComment:
+    "피드백·보류로 옮길 때는 카드 메뉴에서 상태를 바꾸고 코멘트를 입력해 주세요.",
   toastAssigneeUpdated: "담당자가 변경되었습니다.",
   toastAssigneeChangeFailed: "담당자 변경에 실패했습니다.",
   saveFailedWithStatus: "저장에 실패했습니다",

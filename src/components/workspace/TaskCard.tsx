@@ -1,15 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { DraggableProvidedDragHandleProps } from "@hello-pangea/dnd";
 import type { KanbanTaskWithAssignee, KanbanTeamMember } from "@/types/kanban";
-import { PRIORITY_STYLES, KANBAN_STATUS_OPTIONS, formatKanbanDueDate } from "@/lib/kanban/constants";
+import {
+  KANBAN_COLUMN_ORDER,
+  KANBAN_STATUS_OPTIONS,
+  PRIORITY_STYLES,
+  formatKanbanDueDate,
+} from "@/lib/kanban/constants";
+import type { KanbanTaskStatus } from "@/lib/kanban/constants";
+import { listAllowedNextStatuses } from "@/lib/kanban/task-status-policy";
 import { WORKSPACE } from "@/lib/constants/contents";
 
 export interface TaskCardProps {
   task: KanbanTaskWithAssignee;
   teamMembers: KanbanTeamMember[];
-  onStatusChange: (taskId: string, newStatus: string) => void;
+  teamLeaderId: string | null;
+  currentUserId: string | null;
+  onStatusChange: (taskId: string, newStatus: string, opts?: { statusComment?: string }) => void;
   onAssigneeChange: (taskId: string, assigneeId: string | null) => void;
   onEdit: (task: KanbanTaskWithAssignee) => void;
   dragHandleProps?: DraggableProvidedDragHandleProps | null;
@@ -24,6 +33,8 @@ function priorityLabel(p: string): string {
 export default function TaskCard({
   task,
   teamMembers,
+  teamLeaderId,
+  currentUserId,
   onStatusChange,
   onAssigneeChange,
   onEdit,
@@ -31,7 +42,26 @@ export default function TaskCard({
 }: TaskCardProps) {
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [isAssigneeOpen, setIsAssigneeOpen] = useState(false);
-  const isDone = task.status === "done";
+  const isDone = task.status === "completed";
+
+  const selectableStatuses = useMemo(() => {
+    const allowed = listAllowedNextStatuses({
+      task,
+      userId: currentUserId,
+      teamLeaderId,
+    });
+    const ids = new Set<KanbanTaskStatus>([task.status as KanbanTaskStatus, ...allowed]);
+    return KANBAN_COLUMN_ORDER.filter((id) => ids.has(id));
+  }, [task, currentUserId, teamLeaderId]);
+
+  const statusOptions = useMemo(
+    () =>
+      selectableStatuses.map((id) => ({
+        value: id,
+        label: KANBAN_STATUS_OPTIONS.find((o) => o.value === id)?.label ?? id,
+      })),
+    [selectableStatuses]
+  );
 
   return (
     <div
@@ -93,13 +123,15 @@ export default function TaskCard({
                 aria-hidden
                 onClick={() => setIsStatusOpen(false)}
               />
-              <div className="absolute right-0 top-full z-20 mt-1 min-w-[140px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-                {KANBAN_STATUS_OPTIONS.map((opt) => (
+              <div className="absolute right-0 top-full z-20 mt-1 min-w-[160px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                {statusOptions.map((opt) => (
                   <button
                     key={opt.value}
                     type="button"
                     onClick={() => {
-                      onStatusChange(task.id, opt.value);
+                      if (opt.value !== task.status) {
+                        onStatusChange(task.id, opt.value);
+                      }
                       setIsStatusOpen(false);
                     }}
                     className={`block w-full whitespace-nowrap px-3 py-2 text-left text-sm hover:bg-gray-50 ${
