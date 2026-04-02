@@ -201,9 +201,24 @@ export const PROJECT = {
   demoStatusFilled: "충원",
 } as const;
 
+/** 로그인·OAuth 안내 */
+export const AUTH = {
+  /** 인앱 브라우저에서 Google 로그인이 막힐 때 상단 안내 */
+  googleInAppBanner:
+    "카카오톡·인스타그램·페이스북 등 인앱 브라우저에서는 Google 로그인이 제한될 수 있어요. Chrome 또는 Safari에서 이 페이지를 열어 주세요.",
+  googleInAppModalTitle: "Google 로그인 안내",
+  googleInAppModalBody:
+    "Google 정책상 인앱 브라우저에서는 로그인이 차단될 수 있습니다(오류 403: disallowed_useragent). 아래에서 주소를 복사한 뒤 Chrome·Safari·삼성 인터넷 등 일반 브라우저에 붙여넣어 주세요.",
+  copyLoginUrl: "이 페이지 주소 복사",
+  copiedLoginUrl: "복사했습니다",
+  shareOpenInBrowser: "다른 앱으로 열기",
+  tryGoogleAnyway: "그래도 Google 로그인 시도",
+} as const;
+
 /** 네임스페이스별 묶음 (필요 시 한 번에 import) */
 export const CONTENTS = {
   COMMON,
   WORKSPACE,
   PROJECT,
+  AUTH,
 } as const;
