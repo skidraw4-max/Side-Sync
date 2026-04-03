@@ -32,6 +32,7 @@ export async function POST(
   }
 
   const supabase = await createClient();
+  const admin = createAdminClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -124,7 +125,9 @@ export async function POST(
     return NextResponse.json({ error: insertError.message }, { status: 500 });
   }
 
-  const { data: allReviews } = await supabase
+  /** 피평가자 전체 점수 합산은 RLS상 타인 행을 볼 수 없으므로 서비스 롤(있으면) 사용 */
+  const aggClient = admin ?? supabase;
+  const { data: allReviews } = await aggClient
     .from("peer_evaluations")
     .select("score")
     .eq("evaluatee_id", evaluateeId);
@@ -134,7 +137,6 @@ export async function POST(
   const newMannerTemp = Math.round((36.5 + totalScore) * 10) / 10;
   const clampedTemp = Math.max(30, Math.min(45, newMannerTemp));
 
-  const admin = createAdminClient();
   /** 피평가자 프로필은 RLS로 타인이 수정 불가할 수 있어 서비스 롤 우선 */
   const profileClient = admin ?? (await createClient());
   const pc = profileClient as any;
