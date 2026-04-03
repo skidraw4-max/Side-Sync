@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import Header from "@/components/Header";
 import LoginForm from "@/components/LoginForm";
@@ -25,18 +24,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       <main className="flex flex-col items-center px-6 pt-24 pb-16">
         <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
           <div className="mb-8">
-            <div className="flex items-center gap-2">
-              <Image
-                src="/logo-side-sync.png"
-                alt="Side-Sync"
-                width={40}
-                height={40}
-                className="rounded-2xl object-cover"
-                priority
-              />
-              <span className="text-xl font-semibold text-[#2563EB]">Side-Sync</span>
-            </div>
-            <h1 className="mt-6 text-2xl font-bold text-gray-900">로그인</h1>
+            <h1 className="text-2xl font-bold text-gray-900">로그인</h1>
             <p className="mt-2 text-sm text-gray-500">
               Side-Sync 계정으로 로그인하고 사이드 프로젝트를 이어가세요.
             </p>
