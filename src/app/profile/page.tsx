@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { useQueryClient } from "@tanstack/react-query";
-import ProfileHeader from "@/components/ProfileHeader";
+import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import EmptyState from "@/components/EmptyState";
 import MannerTemperatureGauge from "@/components/MannerTemperatureGauge";
@@ -440,7 +440,7 @@ export default function ProfilePage() {
   if (showSkeleton) {
     return (
       <div className="min-h-screen bg-[#F9FAFB]">
-        <ProfileHeader />
+        <Header />
         <ProfilePageSkeleton />
       </div>
     );
@@ -449,7 +449,7 @@ export default function ProfilePage() {
   if (!profile) {
     return (
       <div className="min-h-screen bg-[#F9FAFB]">
-        <ProfileHeader />
+        <Header />
         <main className="mx-auto max-w-lg px-6 py-16 text-center">
           <p className="text-lg font-semibold text-gray-900">데이터를 불러올 수 없습니다</p>
           <p className="mt-2 text-sm text-gray-600">잠시 후 다시 시도하거나 로그인 상태를 확인해 주세요.</p>
@@ -475,7 +475,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
-      <ProfileHeader />
+      <Header />
 
       <main className="px-6 pb-16 pt-8 md:px-12 lg:px-24">
         <div className="mx-auto max-w-5xl">

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import ProfileHeader from "@/components/ProfileHeader";
+import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { createClient } from "@/lib/supabase/client";
 
@@ -173,7 +173,7 @@ export default function ProfileEditPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <ProfileHeader />
+      <Header />
 
       <main className="px-6 py-10 md:px-12 lg:px-24">
         <div className="mx-auto max-w-2xl">

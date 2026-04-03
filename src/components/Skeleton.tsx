@@ -54,7 +54,7 @@ export function ProjectCardSkeleton() {
   );
 }
 
-/** 프로필 페이지 전체 스켈레톤 (ProfileHeader는 페이지에서 따로 래핑) */
+/** 프로필 페이지 전체 스켈레톤 (공통 Header는 페이지에서 따로 래핑) */
 export function ProfilePageSkeleton() {
   return (
     <div className="min-h-screen bg-[#F9FAFB]">

@@ -254,6 +254,9 @@ export default function Header({ variant = "default" }: HeaderProps) {
           <Link href="/profile" onClick={() => setDropdownOpen(false)} className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
             마이페이지
           </Link>
+          <Link href="/profile/edit" onClick={() => setDropdownOpen(false)} className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
+            프로필 수정
+          </Link>
           <Link
             href="/projects/create"
             onClick={() => setDropdownOpen(false)}
@@ -421,6 +424,9 @@ export default function Header({ variant = "default" }: HeaderProps) {
               <div className="border-t border-slate-100 px-2 py-3">
                 <Link href="/profile" onClick={closeMobileMenu} className={mobileNavLinkClass}>
                   마이페이지
+                </Link>
+                <Link href="/profile/edit" onClick={closeMobileMenu} className={mobileNavLinkClass}>
+                  프로필 수정
                 </Link>
                 <Link href="/projects/create" onClick={closeMobileMenu} className={mobileNavLinkClass}>
                   새 프로젝트
