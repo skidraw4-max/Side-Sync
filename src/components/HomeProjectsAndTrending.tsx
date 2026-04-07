@@ -13,7 +13,11 @@ export default function HomeProjectsAndTrending() {
       <div className="mt-20 md:mt-24">
         <MyProjectsSection />
       </div>
-      <div ref={trendingRef} id="trending-projects" className="mt-20 scroll-mt-24 md:mt-24">
+      <div
+        ref={trendingRef}
+        id="home-project-cards"
+        className="mt-20 scroll-mt-24 md:mt-24"
+      >
         <TrendingProjects searchQuery={searchQuery} onSearchQueryChange={setSearchQuery} />
       </div>
     </>

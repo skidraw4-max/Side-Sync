@@ -1,0 +1,2 @@
+# Python 서비스(예: 배치·별도 API)에서 DB에 직접 연결할 때만 필요합니다.
+psycopg2-binary>=2.9.9
