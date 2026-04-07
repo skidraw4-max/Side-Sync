@@ -2,13 +2,13 @@
 
 ## 메인 랜딩 구조
 
-- 페이지: `src/app/page.tsx` — `Hero` → `FeatureCards` → `HomeSeoOverview` → `HomeProjectsAndTrending`.
+- 페이지: `src/app/page.tsx` — `Hero` → (배너와 분리된 `ProjectStats` 섹션) → `FeatureCards` → `HomeSeoOverview` → `HomeProjectsAndTrending`.
 - 프로젝트 카드 그리드(트렌딩): `HomeProjectsAndTrending` 내부의 `TrendingProjects` (`src/components/TrendingProjects.tsx`).
 
 ## `ProjectStats` (히어로 통계)
 
 - **파일**: `src/components/main/ProjectStats.tsx`
-- **위치**: `Hero` 하단 CTA 아래 (`src/components/Hero.tsx`).
+- **위치**: 메인 히어로 배너 **바깥**, `page.tsx`에서 히어로 직후 별도 `<section>`(상단 보더·흰 배경) 안에 배치. 히어로 그라데이션·그리드와 시각적으로 구분됩니다.
 - **데이터**: `GET /api/stats/projects` — 로딩 중에는 스켈레톤(`Skeleton`), 완료 후 숫자는 약 0.9초 동안 카운트업(ease-out cubic).
 - **레이아웃**: 모바일 `flex-col`, `sm` 이상에서 `flex-row`로 가로 배치.
 - **스타일**: Tailwind, 카드·포커스 링 `rounded-xl`, 강조색 `#2563EB` (프로젝트 `.cursorrules`와 정합).

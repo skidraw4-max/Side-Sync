@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import ProjectStats from "@/components/main/ProjectStats";
 
 /**
  * 메인 랜딩 히어로 — 타이트한 세로 여백, 강한 타이포, CTA, 은은한 그라데이션·그리드
@@ -42,7 +41,6 @@ export default function Hero() {
         >
           프로젝트 시작하기
         </Link>
-        <ProjectStats />
       </div>
     </section>
   );

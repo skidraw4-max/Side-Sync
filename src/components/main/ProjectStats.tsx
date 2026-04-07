@@ -96,7 +96,7 @@ export default function ProjectStats() {
   if (isLoading) {
     return (
       <div
-        className="mt-8 flex w-full max-w-2xl flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-center sm:gap-4 md:mt-9"
+        className="flex w-full max-w-2xl flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-center sm:gap-4"
         aria-busy
         aria-label="프로젝트 통계 로딩 중"
       >
@@ -120,7 +120,7 @@ export default function ProjectStats() {
   ];
 
   return (
-    <div className="mt-8 flex w-full max-w-2xl flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-center sm:gap-4 md:mt-9">
+    <div className="flex w-full max-w-2xl flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-center sm:gap-4">
       {items.map(({ key, label, value }) => (
         <button
           key={key}

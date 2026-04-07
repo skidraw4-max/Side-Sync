@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
+import ProjectStats from "@/components/main/ProjectStats";
 import FeatureCards from "@/components/FeatureCards";
 import HomeSeoOverview from "@/components/HomeSeoOverview";
 import HomeProjectsAndTrending from "@/components/HomeProjectsAndTrending";
@@ -34,6 +35,14 @@ export default function Home() {
       <Header />
       <main className="pt-16">
         <Hero />
+        <section
+          className="border-t border-slate-200/90 bg-white px-6 py-8 md:px-12 md:py-10 lg:px-24"
+          aria-label="프로젝트 현황"
+        >
+          <div className="mx-auto flex max-w-5xl justify-center">
+            <ProjectStats />
+          </div>
+        </section>
         <FeatureCards />
         <HomeSeoOverview />
         <HomeProjectsAndTrending />
