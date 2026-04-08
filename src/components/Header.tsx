@@ -346,12 +346,12 @@ export default function Header({ variant = "default" }: HeaderProps) {
           <span className="truncate align-middle">{latestAnnouncement.title}</span>
         </Link>
       ) : null}
-      <div className="relative mx-auto flex min-h-14 w-full max-w-7xl items-center justify-between gap-3 px-4 py-3 md:gap-8 md:px-8 lg:px-12">
+      <div className="relative mx-auto flex min-h-14 w-full max-w-7xl items-center justify-between gap-3 px-4 py-3 md:min-h-24 md:gap-8 md:px-8 md:py-3 lg:px-12">
         {/* 좌: 모바일 햄버거 | 데스크톱 로고+이미지+텍스트 */}
         <div className="z-10 min-w-0 shrink-0">
           <div className="md:hidden">{renderMobileLeadingMenu()}</div>
           <div className="hidden md:block">
-            <BrandLogoWordmark size={40} />
+            <BrandLogoWordmark size={86} />
           </div>
         </div>
 
@@ -360,9 +360,14 @@ export default function Header({ variant = "default" }: HeaderProps) {
           {renderCenterNav()}
         </div>
 
-        {/* 모바일: 헤더 가로 중앙 로고 */}
+        {/* 모바일: 헤더 가로 중앙 텍스트만 (로고 이미지 없음) */}
         <div className="pointer-events-none absolute inset-x-0 top-1/2 z-0 flex -translate-y-1/2 justify-center md:hidden">
-          <BrandLogoWordmark size={36} className="pointer-events-auto" />
+          <Link
+            href="/"
+            className="pointer-events-auto text-lg font-semibold tracking-tight text-slate-900"
+          >
+            Side-Sync
+          </Link>
         </div>
 
         {/* 우: Sign In · 알림 · 프로필 (한 번만 마운트) */}

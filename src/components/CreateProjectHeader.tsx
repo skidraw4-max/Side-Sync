@@ -4,7 +4,7 @@ export default function CreateProjectHeader() {
   return (
     <header className="flex items-center justify-between border-b border-gray-100 bg-white px-6 py-4 md:px-12 lg:px-24">
       <BrandLogoWordmark
-        size={32}
+        size={77}
         textClassName="text-xl font-semibold text-gray-800"
       />
 

@@ -14,8 +14,8 @@ export default function WorkspaceHeader({ activeNav = "notices" }: WorkspaceHead
 
   return (
     <header className="flex items-center justify-between border-b border-gray-100 bg-white px-8 py-4">
-      <Link href="/workspace/files" className="flex items-center gap-2">
-        <BrandLogoMark size={32} />
+      <Link href="/workspace/files" className="flex items-center gap-0.5">
+        <BrandLogoMark size={77} />
         <span className="text-xl font-semibold text-gray-800">Side-Sync Workspace</span>
       </Link>
       <nav className="flex items-center gap-8">

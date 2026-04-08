@@ -25,8 +25,8 @@ export default function WorkspaceSidebar({
 
   return (
     <aside className="flex min-h-screen w-64 shrink-0 flex-col border-r border-gray-200 bg-white p-6">
-      <Link href="/workspace/files" className="flex items-center gap-2">
-        <BrandLogoMark size={32} />
+      <Link href="/workspace/files" className="flex items-center gap-0.5">
+        <BrandLogoMark size={77} />
         <span className="font-semibold text-gray-800">Side-Sync Workspace</span>
       </Link>
 
