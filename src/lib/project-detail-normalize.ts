@@ -1,11 +1,10 @@
 import type { RecruitmentStatusRow } from "@/types/database";
+import { RECRUITMENT_ROLE_PRESETS } from "@/lib/project-recruitment-form";
 
 /** 프로젝트 개설/수정 폼과 동일한 직군 라벨 (roleKey → 표시명) */
-export const RECRUITMENT_ROLE_KEY_LABELS: Record<string, string> = {
-  planner: "기획자 (Planner)",
-  developer: "개발자 (Developer)",
-  designer: "디자이너 (Designer)",
-};
+export const RECRUITMENT_ROLE_KEY_LABELS: Record<string, string> = Object.fromEntries(
+  RECRUITMENT_ROLE_PRESETS.map((p) => [p.value, p.label])
+) as Record<string, string>;
 
 /** DB/PostgREST에서 배열이 아닌 JSON 문자열로 올 수 있음 */
 export function coerceRecruitmentArray(value: unknown): unknown[] {

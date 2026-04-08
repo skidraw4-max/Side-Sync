@@ -8,34 +8,18 @@ import { toast } from "sonner";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import type { Database, RecruitmentStatusRow } from "@/types/database";
-
-const ROLE_OPTIONS: { value: string; label: string }[] = [
-  { value: "planner", label: "기획자 (Planner)" },
-  { value: "developer", label: "개발자 (Developer)" },
-  { value: "designer", label: "디자이너 (Designer)" },
-];
+import {
+  RECRUITMENT_ROLE_PRESETS,
+  createRecruitmentEntry,
+  entriesToRecruitmentStatusRows,
+  recruitmentEntriesValidationMessage,
+  type RecruitmentEntry,
+} from "@/lib/project-recruitment-form";
 
 const STATUS_OPTIONS: { value: RecruitmentStatusRow["status"]; label: string }[] = [
   { value: "recruiting", label: "모집중" },
   { value: "urgent", label: "급구" },
 ];
-
-interface RecruitmentEntry {
-  id: string;
-  roleKey: string;
-  count: number;
-  status: RecruitmentStatusRow["status"];
-}
-
-function createRecruitmentEntry(overrides?: Partial<RecruitmentEntry>): RecruitmentEntry {
-  return {
-    id: crypto.randomUUID(),
-    roleKey: "planner",
-    count: 1,
-    status: "recruiting",
-    ...overrides,
-  };
-}
 
 export default function CreateProjectPage() {
   const router = useRouter();
@@ -46,9 +30,9 @@ export default function CreateProjectPage() {
   const [techStack, setTechStack] = useState<string[]>(["React", "TypeScript", "TailwindCSS"]);
   const [techInput, setTechInput] = useState("");
   const [recruitments, setRecruitments] = useState<RecruitmentEntry[]>([
-    createRecruitmentEntry({ roleKey: "planner", count: 1 }),
-    createRecruitmentEntry({ roleKey: "developer", count: 2, status: "urgent" }),
-    createRecruitmentEntry({ roleKey: "designer", count: 1 }),
+    createRecruitmentEntry({ role: "기획자 (Planner)", count: 1 }),
+    createRecruitmentEntry({ role: "개발자 (Developer)", count: 2, status: "urgent" }),
+    createRecruitmentEntry({ role: "디자이너 (Designer)", count: 1 }),
   ]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -88,6 +72,12 @@ export default function CreateProjectPage() {
       return;
     }
 
+    const recruitErr = recruitmentEntriesValidationMessage(recruitments);
+    if (recruitErr) {
+      toast.error(recruitErr);
+      return;
+    }
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (!supabaseUrl || supabaseUrl.includes("placeholder")) {
       toast.error("Supabase 환경 변수가 설정되지 않았습니다. Vercel 설정을 확인해주세요.");
@@ -99,12 +89,7 @@ export default function CreateProjectPage() {
     const timeoutId = window.setTimeout(() => abortController.abort(), 45_000);
 
     try {
-      const recruitmentStatus: RecruitmentStatusRow[] = recruitments.map((r) => ({
-        role: ROLE_OPTIONS.find((o) => o.value === r.roleKey)?.label ?? r.roleKey,
-        roleKey: r.roleKey,
-        count: r.count,
-        status: r.status,
-      }));
+      const recruitmentStatus: RecruitmentStatusRow[] = entriesToRecruitmentStatusRows(recruitments);
 
       const payload: Pick<
         Database["public"]["Tables"]["projects"]["Insert"],
@@ -272,6 +257,11 @@ export default function CreateProjectPage() {
               </div>
 
               <div className="space-y-4">
+                <datalist id="recruitment-role-suggestions">
+                  {RECRUITMENT_ROLE_PRESETS.map((opt) => (
+                    <option key={opt.value} value={opt.label} />
+                  ))}
+                </datalist>
                 <div className="grid grid-cols-[1fr_80px_100px_40px] gap-4 text-sm font-medium text-gray-500 md:grid-cols-[1fr_100px_120px_48px]">
                   <span>모집 분야</span>
                   <span>모집 인원</span>
@@ -284,17 +274,15 @@ export default function CreateProjectPage() {
                     key={r.id}
                     className="grid grid-cols-[1fr_80px_100px_40px] items-center gap-4 md:grid-cols-[1fr_100px_120px_48px]"
                   >
-                    <select
-                      value={r.roleKey}
-                      onChange={(e) => updateRecruitment(r.id, "roleKey", e.target.value)}
-                      className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-[#2563EB] focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
-                    >
-                      {ROLE_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
+                    <input
+                      type="text"
+                      list="recruitment-role-suggestions"
+                      value={r.role}
+                      onChange={(e) => updateRecruitment(r.id, "role", e.target.value)}
+                      placeholder="직군명 입력 (예: 마케터, PM)"
+                      autoComplete="off"
+                      className="min-w-0 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#2563EB] focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
+                    />
                     <div className="flex items-center gap-1">
                       <input
                         type="number"
