@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import Header from "@/components/Header";
+import { BrandLogoMark } from "@/components/BrandLogo";
 import ResetPasswordForm from "@/components/ResetPasswordForm";
 
 export const metadata: Metadata = {
@@ -17,16 +17,8 @@ export default function ResetPasswordPage() {
       <main className="flex flex-col items-center px-6 pt-24 pb-16">
         <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
           <div className="mb-8">
-            <div className="flex items-center gap-2">
-              <Image
-                src="/logo-side-sync.png"
-                alt="Side-Sync"
-                width={40}
-                height={40}
-                className="rounded-2xl object-cover"
-                priority
-              />
-              <span className="text-xl font-semibold text-[#2563EB]">Side-Sync</span>
+            <div className="flex items-center">
+              <BrandLogoMark size={52} priority />
             </div>
             <h1 className="mt-6 text-2xl font-bold text-gray-900">새 비밀번호 설정</h1>
             <p className="mt-2 text-sm text-gray-500">

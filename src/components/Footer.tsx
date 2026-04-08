@@ -19,9 +19,8 @@ export default function Footer({ variant = "default" }: FooterProps) {
     return (
       <footer className="mt-24 border-t border-gray-100 px-6 py-12 md:px-12 lg:px-24">
         <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-          <div className="flex items-center gap-2">
-            <BrandLogoMark size={32} />
-            <span className="text-xl font-semibold text-gray-800">Side-Sync</span>
+          <div className="flex items-center">
+            <BrandLogoMark size={44} />
           </div>
           <nav className="flex flex-wrap items-center gap-x-6 gap-y-2 md:justify-end">
             {stitchFooterLinks.map((link) => (
@@ -56,9 +55,8 @@ export default function Footer({ variant = "default" }: FooterProps) {
   return (
     <footer className="mt-24 border-t border-gray-100 px-6 py-12 md:px-12 lg:px-24">
       <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-        <div className="flex items-center gap-2">
-          <BrandLogoMark size={32} />
-          <span className="text-xl font-semibold text-gray-800">Side-Sync</span>
+        <div className="flex items-center">
+          <BrandLogoMark size={44} />
         </div>
         <nav className="flex flex-wrap items-center gap-x-6 gap-y-2 md:justify-end">
           {footerLinks.map((link) => (
