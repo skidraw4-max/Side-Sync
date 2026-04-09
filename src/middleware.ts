@@ -119,6 +119,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // ads.txt는 AdSense·IAB 검증용 정적 파일 — Supabase 세션 처리를 거치지 않게 함
+    "/((?!_next/static|_next/image|favicon.ico|ads\\.txt$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

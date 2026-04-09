@@ -13,6 +13,15 @@ const nextConfig: NextConfig = {
     // 이전 청크 파일명을 요청할 수 있습니다.)
     return [
       {
+        source: "/ads.txt",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=3600, s-maxage=86400",
+          },
+        ],
+      },
+      {
         source: "/_next/static/(.*)",
         headers: [
           {
