@@ -2,63 +2,12 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { projectTaskAccessDenied } from "@/lib/api/project-task-access";
 import { KANBAN_PRIORITY_SET } from "@/lib/kanban/constants";
-
-function isMissingSortOrderColumn(msg: string): boolean {
-  const lower = msg.toLowerCase();
-  return (
-    lower.includes("sort_order") &&
-    (lower.includes("does not exist") ||
-      lower.includes("not exist") ||
-      lower.includes("could not find") ||
-      lower.includes("schema cache"))
-  );
-}
-
-function isMissingDueDateColumn(msg: string): boolean {
-  const lower = msg.toLowerCase();
-  return (
-    lower.includes("due_date") &&
-    (lower.includes("does not exist") ||
-      lower.includes("not exist") ||
-      lower.includes("could not find") ||
-      lower.includes("schema cache"))
-  );
-}
-
-function isMissingDescriptionColumn(msg: string): boolean {
-  const lower = msg.toLowerCase();
-  return (
-    lower.includes("description") &&
-    (lower.includes("does not exist") ||
-      lower.includes("not exist") ||
-      lower.includes("could not find") ||
-      lower.includes("schema cache"))
-  );
-}
-
-function isMissingRequestedByColumn(msg: string): boolean {
-  const lower = msg.toLowerCase();
-  return (
-    lower.includes("requested_by") &&
-    (lower.includes("does not exist") ||
-      lower.includes("not exist") ||
-      lower.includes("could not find") ||
-      lower.includes("schema cache"))
-  );
-}
-
-function selectForInsertRow(row: Record<string, unknown>): string {
-  const parts = ["id", "title", "category", "priority", "status", "assignee_id"];
-  if ("requested_by" in row) parts.push("requested_by");
-  if ("sort_order" in row) parts.push("sort_order");
-  if ("due_date" in row) parts.push("due_date");
-  if ("description" in row) parts.push("description");
-  return parts.join(", ");
-}
+import { generateTaskWikiDraftMarkdown } from "@/lib/wiki-task-ai";
 
 /**
  * POST /api/projects/[id]/tasks
  * — 팀장·수락 멤버만 태스크 생성 (클라이언트 직접 insert 대체)
+ * — DB 함수 `create_task_with_wiki`로 업무와 연결 위키를 한 트랜잭션에서 생성
  */
 export async function POST(
   request: Request,
@@ -80,9 +29,6 @@ export async function POST(
   if (!title) {
     return NextResponse.json({ error: "제목이 비어 있습니다." }, { status: 400 });
   }
-
-  /** 신규 업무는 항상 요청 단계로 등록 */
-  const status = "requested" as const;
 
   const priority = typeof body.priority === "string" ? body.priority : "";
   if (!KANBAN_PRIORITY_SET.has(priority)) {
@@ -149,66 +95,18 @@ export async function POST(
     );
   }
 
-  const insertRow = async (row: Record<string, unknown>) =>
-    (supabase as any)
-      .from("tasks")
-      .insert(row)
-      .select(selectForInsertRow(row))
-      .single();
-
-  let row: Record<string, unknown> = {
-    project_id: projectId,
-    title,
-    category,
-    priority,
-    status,
-    assignee_id,
-    requested_by: user.id,
-  };
-  if (sort_order !== undefined) row.sort_order = sort_order;
-  if (due_date !== undefined) row.due_date = due_date;
-  if (description !== undefined) row.description = description;
-
-  let { data: inserted, error } = await insertRow(row);
-
-  if (error && sort_order !== undefined && isMissingSortOrderColumn(error.message)) {
-    const { sort_order: _so, ...withoutSort } = row;
-    row = withoutSort;
-    const retry = await insertRow(row);
-    inserted = retry.data;
-    error = retry.error;
-  }
-
-  if (error && due_date !== undefined && isMissingDueDateColumn(error.message)) {
-    const { due_date: _dd, ...withoutDue } = row;
-    row = withoutDue;
-    const retry = await insertRow(row);
-    inserted = retry.data;
-    error = retry.error;
-  }
-
-  if (error && description !== undefined && isMissingDescriptionColumn(error.message)) {
-    const { description: _desc, ...withoutDesc } = row;
-    row = withoutDesc;
-    const retry = await insertRow(row);
-    inserted = retry.data;
-    error = retry.error;
-  }
-
-  if (error && isMissingRequestedByColumn(error.message)) {
-    const { requested_by: _rb, ...withoutRb } = row;
-    row = withoutRb;
-    const retry = await insertRow(row);
-    inserted = retry.data;
-    error = retry.error;
-  }
-
-  if (error && assignee_id) {
-    row = { ...row, assignee_id: null };
-    const retry = await insertRow(row);
-    inserted = retry.data;
-    error = retry.error;
-  }
+  /* RPC 인자 타입 — Database.Functions와 Postgrest GenericFunction 추론이 맞지 않을 때가 있어 완화 */
+  const { data: rpcData, error } = await (supabase as any).rpc("create_task_with_wiki", {
+    p_project_id: projectId,
+    p_title: title,
+    p_category: category,
+    p_priority: priority,
+    p_assignee_id: assignee_id,
+    p_requested_by: user.id,
+    p_sort_order: sort_order ?? null,
+    p_due_date: due_date,
+    p_description: description ?? null,
+  });
 
   if (error) {
     return NextResponse.json(
@@ -217,5 +115,38 @@ export async function POST(
     );
   }
 
-  return NextResponse.json({ task: inserted });
+  const payload = rpcData as { task?: unknown; wiki?: unknown } | null;
+  if (!payload?.task) {
+    return NextResponse.json(
+      { error: "업무를 등록하지 못했습니다." },
+      { status: 400 }
+    );
+  }
+
+  const taskRow = payload.task as { id: string };
+  let wikiOut = payload.wiki;
+  let wikiAiApplied = false;
+
+  if (description?.trim()) {
+    const draft = await generateTaskWikiDraftMarkdown(title, description);
+    if (draft) {
+      const { data: updatedWiki, error: wikiUpErr } = await (supabase as any)
+        .from("task_wiki_pages")
+        .update({ body: draft })
+        .eq("task_id", taskRow.id)
+        .select("id, task_id, project_id, title, body, created_at, updated_at")
+        .maybeSingle();
+
+      if (!wikiUpErr && updatedWiki) {
+        wikiOut = updatedWiki;
+        wikiAiApplied = true;
+      }
+    }
+  }
+
+  return NextResponse.json({
+    task: payload.task,
+    wiki: wikiOut,
+    wiki_ai_applied: wikiAiApplied,
+  });
 }

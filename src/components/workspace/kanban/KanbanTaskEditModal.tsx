@@ -10,8 +10,10 @@ import {
 import { listAllowedNextStatuses, transitionRequiresStatusComment } from "@/lib/kanban/task-status-policy";
 import type { KanbanAssigneeOption } from "@/lib/kanban/build-assignee-options";
 import type { KanbanTaskWithAssignee } from "@/types/kanban";
+import TaskWikiLink from "@/components/workspace/TaskWikiLink";
 
 interface KanbanTaskEditModalProps {
+  projectId: string;
   task: KanbanTaskWithAssignee | null;
   onClose: () => void;
   editTitle: string;
@@ -38,6 +40,7 @@ interface KanbanTaskEditModalProps {
 }
 
 export default function KanbanTaskEditModal({
+  projectId,
   task,
   onClose,
   editTitle,
@@ -86,7 +89,7 @@ export default function KanbanTaskEditModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
-        className={`w-full rounded-xl bg-white p-6 shadow-xl ${supportsDescription || needsTransitionComment ? "max-w-lg" : "max-w-md"}`}
+        className={`max-h-[90vh] w-full overflow-y-auto rounded-xl bg-white p-6 shadow-xl ${supportsDescription || needsTransitionComment ? "max-w-xl" : "max-w-md"}`}
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-lg font-semibold text-gray-900">{WORKSPACE.taskEdit}</h3>
@@ -177,6 +180,14 @@ export default function KanbanTaskEditModal({
               />
             </div>
           ) : null}
+          <TaskWikiLink
+            projectId={projectId}
+            task={{
+              id: task.id,
+              title: task.title,
+              description: task.description ?? null,
+            }}
+          />
           {needsTransitionComment ? (
             <div>
               <label className="block text-sm font-medium text-gray-700">

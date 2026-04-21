@@ -122,6 +122,25 @@ export const WORKSPACE = {
   recruitingSlotSuffix: "모집 중",
   /** 카드 보조 */
   commentCountLabel: "댓글",
+  /** 업무 상세 — 연결 위키 */
+  taskWikiSectionTitle: "연결된 위키",
+  taskWikiSectionHint: "업무 지식을 마크다운으로 정리해 두면 팀과 맥락을 공유하기 좋아요.",
+  taskWikiCreateButton: "위키 생성하기",
+  taskWikiCreating: "위키 만드는 중…",
+  taskWikiCreated: "위키가 생성되었습니다.",
+  taskWikiCreatedWithAi: "AI가 목차·초안을 채운 위키가 생성되었습니다.",
+  taskWikiCreateFailed: "위키를 만들지 못했습니다.",
+  taskWikiLoadFailed: "위키 정보를 불러오지 못했습니다.",
+  taskWikiEmptyPreview: "(본문 미리보기 없음)",
+  taskWikiEdit: "편집",
+  taskWikiTitleLabel: "위키 제목",
+  taskWikiBodyLabel: "본문 (마크다운)",
+  taskWikiEditCancel: "취소",
+  taskWikiEditSave: "저장",
+  taskWikiSaving: "저장 중…",
+  taskWikiSaved: "위키를 저장했습니다.",
+  taskWikiSaveFailed: "위키 저장에 실패했습니다.",
+  taskWikiAiHint: "저장된 업무 설명이 있으면 AI가 기획·API·테스트 등 목차 초안을 채웁니다.",
 } as const;
 
 export const PROJECT = {

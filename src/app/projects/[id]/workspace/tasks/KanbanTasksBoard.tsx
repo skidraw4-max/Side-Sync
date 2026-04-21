@@ -466,6 +466,7 @@ export default function KanbanTasksBoard({
       />
 
       <KanbanTaskEditModal
+        projectId={projectId}
         task={editingTask}
         onClose={() => setEditingTask(null)}
         editTitle={editTitle}

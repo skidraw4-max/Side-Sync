@@ -13,7 +13,22 @@ export type ProjectLifecycleStatus = "hiring" | "ongoing" | "completed";
 export interface Database {
   public: {
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      create_task_with_wiki: {
+        Args: {
+          p_project_id: string;
+          p_title: string;
+          p_category: string;
+          p_priority: string;
+          p_assignee_id: string;
+          p_requested_by: string;
+          p_sort_order: number | null;
+          p_due_date: string | null;
+          p_description: string | null;
+        };
+        Returns: Record<string, unknown>;
+      };
+    };
     Enums: Record<string, never>;
     Tables: {
       projects: {
@@ -200,6 +215,31 @@ export interface Database {
         Update: {
           body?: string;
           transition?: string | null;
+        };
+      };
+      task_wiki_pages: {
+        Row: {
+          id: string;
+          task_id: string;
+          project_id: string;
+          title: string;
+          body: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          task_id: string;
+          project_id: string;
+          title: string;
+          body?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          title?: string;
+          body?: string;
+          updated_at?: string;
         };
       };
       notices: {

@@ -21,3 +21,14 @@
 ## 관련 타입
 
 - API 응답: `ProjectStatsPayload` / `ProjectStatsResponse` (`recruiting`, `inProgress`, `completed`) — `ProjectStats.tsx` 및 `src/app/api/stats/projects/route.ts` 참고.
+
+## 업무 상세(칸반) — 연결 위키 `TaskWikiLink`
+
+- **파일**: `src/components/workspace/TaskWikiLink.tsx`
+- **배치**: `KanbanTaskEditModal` (`src/components/workspace/kanban/KanbanTaskEditModal.tsx`) 내부, 업무 필드 아래. 업무 카드 편집 모달이 곧 “상세” 역할을 합니다.
+- **데이터**: `GET /api/projects/[id]/tasks/[taskId]/wiki`로 `task_wiki_pages` 존재 여부를 조회합니다.
+  - **위키 없음**: `WORKSPACE.taskWikiCreateButton` — `POST` 동일 경로로 생성. 저장된 업무 설명이 있으면 `generate_ai: true`로 보내 `GEMINI_API_KEY`가 설정된 경우 AI 목차·초안을 시도합니다.
+  - **위키 있음**: 제목 + 본문에서 마크다운을 걷어낸 미리보기(`line-clamp-3`) + **편집**으로 `PATCH` 저장.
+- **스타일**: Tailwind, 카드 `rounded-xl`, 주요 버튼·포커스 강조 `#2563EB` (`.cursorrules`와 정합).
+- **문구**: `src/lib/constants/contents.ts`의 `WORKSPACE` (`taskWiki*` 키).
+- **AI 초안(신규 업무 생성 시)**: `POST /api/projects/[id]/tasks`에서 `create_task_with_wiki` 직후, 업무 설명이 있으면 `src/lib/wiki-task-ai.ts`의 `generateTaskWikiDraftMarkdown`으로 본문을 덮어씁니다. 응답에 `wiki_ai_applied`가 있을 수 있습니다.
