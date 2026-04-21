@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -19,7 +19,12 @@ import {
 import { nextSortOrderInColumn, sortTasksForBoard } from "@/lib/kanban/task-order";
 import { transitionRequiresStatusComment } from "@/lib/kanban/task-status-policy";
 import { COMMON, WORKSPACE } from "@/lib/constants/contents";
-import type { KanbanTaskWithAssignee, KanbanTeamMember } from "@/types/kanban";
+import type {
+  KanbanColumnWikiItem,
+  KanbanTaskWithAssignee,
+  KanbanTeamMember,
+  TaskWikiListEntry,
+} from "@/types/kanban";
 
 interface KanbanTasksBoardProps {
   projectId: string;
@@ -85,7 +90,53 @@ export default function KanbanTasksBoard({
   } | null>(null);
   const [statusCommentDraft, setStatusCommentDraft] = useState("");
 
+  const [columnWikiList, setColumnWikiList] = useState<TaskWikiListEntry[]>([]);
+
   const meInTeam = Boolean(currentUserId && teamMembers.some((m) => m.id === currentUserId));
+
+  const taskWikiRefreshKey = useMemo(
+    () => tasks.map((t) => `${t.id}:${t.status}`).join("|"),
+    [tasks]
+  );
+
+  const wikisByColumn = useMemo(() => {
+    const m: Record<KanbanTaskStatus, KanbanColumnWikiItem[]> = {
+      requested: [],
+      in_progress: [],
+      feedback: [],
+      completed: [],
+      on_hold: [],
+    };
+    for (const w of columnWikiList) {
+      const st = w.associated_status as KanbanTaskStatus;
+      if (st in m) {
+        m[st].push({ id: w.id, title: w.title });
+      }
+    }
+    return m;
+  }, [columnWikiList]);
+
+  useEffect(() => {
+    if (tasks.length === 0) {
+      setColumnWikiList([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const res = await fetch(`/api/projects/${projectId}/task-wikis`, {
+        credentials: "same-origin",
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        wikis?: TaskWikiListEntry[];
+      };
+      if (!cancelled && res.ok && Array.isArray(json.wikis)) {
+        setColumnWikiList(json.wikis);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, tasks.length, taskWikiRefreshKey]);
 
   const assigneeOptions = useMemo(
     () =>
@@ -430,7 +481,9 @@ export default function KanbanTasksBoard({
         </div>
       ) : (
         <KanbanColumns
+          projectId={projectId}
           columns={columns}
+          wikisByColumn={wikisByColumn}
           teamMembers={teamMembers}
           teamLeaderId={teamLeaderId}
           currentUserId={currentUserId}

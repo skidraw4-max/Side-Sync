@@ -54,7 +54,7 @@ export async function GET(
   /* task_wiki_pages — Database 스키마에 Relationships가 없는 테이블과 혼용 시 insert 타입이 never로 막히는 경우가 있어 완화 */
   const { data: wiki, error: wikiErr } = await (supabase as any)
     .from("task_wiki_pages")
-    .select("id, task_id, project_id, title, body, created_at, updated_at")
+    .select("id, task_id, project_id, title, body, associated_status, created_at, updated_at")
     .eq("task_id", taskId)
     .maybeSingle();
 
@@ -107,7 +107,7 @@ export async function POST(
 
   const { data: taskRow, error: taskErr } = await supabase
     .from("tasks")
-    .select("id, project_id, title, description")
+    .select("id, project_id, title, description, status")
     .eq("id", taskId)
     .single();
 
@@ -116,6 +116,7 @@ export async function POST(
     project_id: string;
     title: string;
     description: string | null;
+    status: string;
   } | null;
 
   if (taskErr || !tr || tr.project_id !== projectId) {
@@ -149,8 +150,9 @@ export async function POST(
       project_id: projectId,
       title: wikiTitleForTask(tr.title),
       body: wikiBody,
+      associated_status: tr.status,
     })
-    .select("id, task_id, project_id, title, body, created_at, updated_at")
+    .select("id, task_id, project_id, title, body, associated_status, created_at, updated_at")
     .single();
 
   if (insErr) {
@@ -227,7 +229,7 @@ export async function PATCH(
     .from("task_wiki_pages")
     .update(patch)
     .eq("task_id", taskId)
-    .select("id, task_id, project_id, title, body, created_at, updated_at")
+    .select("id, task_id, project_id, title, body, associated_status, created_at, updated_at")
     .maybeSingle();
 
   if (upErr) {

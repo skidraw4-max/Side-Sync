@@ -32,16 +32,21 @@ def insert_task_wiki_page(
     project_id: str,
     task_title: str,
     task_description: str | None,
+    associated_status: str = "requested",
 ) -> None:
     """
     `task_wiki_pages`에 행을 삽입합니다. 호출부 트랜잭션 안에서만 사용하세요.
+
+    ``associated_status`` 는 칸반 컬럼 키(`tasks.status` 와 동일)입니다.
     """
     title = wiki_title_for_task(task_title)
     body = wiki_body_markdown(task_title, task_description)
     cur.execute(
         """
-        INSERT INTO public.task_wiki_pages (task_id, project_id, title, body)
-        VALUES (%s::uuid, %s::uuid, %s, %s)
+        INSERT INTO public.task_wiki_pages (
+          task_id, project_id, title, body, associated_status
+        )
+        VALUES (%s::uuid, %s::uuid, %s, %s, %s)
         """,
-        (task_id, project_id, title, body),
+        (task_id, project_id, title, body, associated_status),
     )

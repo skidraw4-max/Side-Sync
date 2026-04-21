@@ -141,6 +141,8 @@ export const WORKSPACE = {
   taskWikiSaved: "위키를 저장했습니다.",
   taskWikiSaveFailed: "위키 저장에 실패했습니다.",
   taskWikiAiHint: "저장된 업무 설명이 있으면 AI가 기획·API·테스트 등 목차 초안을 채웁니다.",
+  /** 칸반 컬럼 하단 위키 목록 */
+  kanbanWikiListHeading: "이 단계의 위키",
 } as const;
 
 export const PROJECT = {

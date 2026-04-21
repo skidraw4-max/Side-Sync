@@ -9,11 +9,16 @@ import {
   type DragStart,
 } from "@hello-pangea/dnd";
 import TaskCard from "@/components/workspace/TaskCard";
+import KanbanWikiList from "@/components/workspace/KanbanWikiList";
 import { WORKSPACE } from "@/lib/constants/contents";
 import type { KanbanTaskStatus } from "@/lib/kanban/constants";
 import { KANBAN_STATUS_HEADER_CLASS } from "@/lib/kanban/constants";
 import { mergeColumnsToTasks } from "@/lib/kanban/task-order";
-import type { KanbanTaskWithAssignee, KanbanTeamMember } from "@/types/kanban";
+import type {
+  KanbanColumnWikiItem,
+  KanbanTaskWithAssignee,
+  KanbanTeamMember,
+} from "@/types/kanban";
 
 export type KanbanColumnModel = {
   id: KanbanTaskStatus;
@@ -22,7 +27,10 @@ export type KanbanColumnModel = {
 };
 
 interface KanbanColumnsProps {
+  projectId: string;
   columns: KanbanColumnModel[];
+  /** 컬럼 id → 해당 단계(associated_status)의 위키 목록 */
+  wikisByColumn: Record<KanbanTaskStatus, KanbanColumnWikiItem[]>;
   teamMembers: KanbanTeamMember[];
   teamLeaderId: string | null;
   currentUserId: string | null;
@@ -110,7 +118,9 @@ function columnAddButton(
 }
 
 export default function KanbanColumns({
+  projectId,
   columns,
+  wikisByColumn,
   teamMembers,
   teamLeaderId,
   currentUserId,
@@ -215,6 +225,7 @@ export default function KanbanColumns({
                 )}
               </Droppable>
               {columnAddButton(col.id, onAddTask)}
+              <KanbanWikiList projectId={projectId} items={wikisByColumn[col.id] ?? []} />
             </>
           ) : (
             <div className="flex flex-col gap-4">
@@ -229,6 +240,7 @@ export default function KanbanColumns({
                 false
               )}
               {columnAddButton(col.id, onAddTask)}
+              <KanbanWikiList projectId={projectId} items={wikisByColumn[col.id] ?? []} />
             </div>
           )}
         </div>

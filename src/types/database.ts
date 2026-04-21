@@ -224,6 +224,12 @@ export interface Database {
           project_id: string;
           title: string;
           body: string;
+          associated_status:
+            | "requested"
+            | "in_progress"
+            | "feedback"
+            | "completed"
+            | "on_hold";
           created_at: string;
           updated_at: string;
         };
@@ -233,12 +239,24 @@ export interface Database {
           project_id: string;
           title: string;
           body?: string;
+          associated_status?:
+            | "requested"
+            | "in_progress"
+            | "feedback"
+            | "completed"
+            | "on_hold";
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           title?: string;
           body?: string;
+          associated_status?:
+            | "requested"
+            | "in_progress"
+            | "feedback"
+            | "completed"
+            | "on_hold";
           updated_at?: string;
         };
       };

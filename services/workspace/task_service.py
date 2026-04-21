@@ -101,6 +101,7 @@ def create_task_with_wiki(
                 project_id=project_id,
                 task_title=title,
                 task_description=description,
+                associated_status=status,
             )
 
             cur.execute(

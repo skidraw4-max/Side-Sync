@@ -9,6 +9,20 @@ export interface KanbanTeamMember {
   avatarUrl: string | null;
 }
 
+/** 칸반 컬럼 하단 위키 링크 한 줄 */
+export interface KanbanColumnWikiItem {
+  id: string;
+  title: string;
+}
+
+/** GET /api/projects/[id]/task-wikis 행 */
+export interface TaskWikiListEntry {
+  id: string;
+  title: string;
+  task_id: string;
+  associated_status: string;
+}
+
 export interface KanbanTaskWithAssignee {
   id: string;
   title: string;

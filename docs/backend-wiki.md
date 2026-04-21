@@ -38,7 +38,13 @@ counts = fetch_project_lifecycle_counts(cur)
 
 - **`public.tasks`**: 프로젝트 업무(칸반). 기존과 동일하게 `project_id`로 `public.projects`를 참조합니다.
 - **`public.task_wiki_pages`**: 업무당 **1개**의 위키 페이지(마크다운 `body`). `task_id`가 `tasks.id`에 대해 **UNIQUE**이며, `ON DELETE CASCADE`로 업무 삭제 시 위키도 함께 삭제됩니다. `project_id`는 동일 프로젝트 소속을 빠르게 조회하기 위한 중복 키입니다.
-- **연결**: `task_wiki_pages.task_id → tasks.id` (1:1).
+- **`associated_status`**: 칸반 **컬럼(업무 단계)** 키. 값은 `tasks.status`와 동일한 집합(`requested` \| `in_progress` \| `feedback` \| `completed` \| `on_hold`)입니다. 신규 위키는 해당 업무의 현재 상태로 설정되고, **`tasks.status`가 바뀌면 트리거 `tasks_sync_wiki_associated_status`가 `task_wiki_pages.associated_status`를 동기화**합니다. 인덱스: `(project_id, associated_status)`.
+- **연결**: `task_wiki_pages.task_id → tasks.id` (1:1). 단계별 위키 목록은 `associated_status`로 필터·그룹화합니다(별도 매핑 테이블 없음).
+
+### 마이그레이션 참고
+
+- `20260421120000_task_wiki_pages.sql` — 테이블·`create_task_with_wiki` RPC
+- `20260423120000_task_wiki_associated_status.sql` — `associated_status`·트리거·RPC 갱신
 
 ### HTTP: `POST /api/projects/[id]/tasks`
 
@@ -65,6 +71,7 @@ counts = fetch_project_lifecycle_counts(cur)
 
 - **역할**: `tasks` INSERT 후 `wiki_service.insert_task_wiki_page`를 호출합니다. `conn.autocommit = False`로 **하나의 트랜잭션**에서 처리하고, 예외 시 `rollback`합니다.
 - **반환**: `{"task": dict, "wiki": dict}`.
+- 위키 삽입 시 **`associated_status`는 `params["status"]`**(기본 `requested`)를 넘겨 업무 단계와 맞춥니다.
 
 ```python
 from services.workspace.task_service import create_task_with_wiki
@@ -87,7 +94,38 @@ result = create_task_with_wiki(
 # result["task"], result["wiki"]
 ```
 
+### Python: `services/workspace/kanban_service.py`
+
+- **역할**: **칸반 컬럼(단계)별로 묶인 위키 목록만** 반환합니다. DB에서 `task_wiki_pages`를 조회·그룹화합니다. 위키 INSERT나 `tasks` 갱신은 담당하지 않습니다(단일 책임).
+- **컬럼 순서**: `KANBAN_TASK_STATUSES` — `requested` → `in_progress` → `feedback` → `completed` → `on_hold` (`src/lib/kanban/constants.ts`의 `KANBAN_COLUMN_ORDER`와 동일).
+- **의존성**: `psycopg2` 커서. **`RealDictCursor` 권장**(행 매핑이 단순해짐).
+
+**응답 구조** (`KanbanBoardWikisPayload`):
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `project_id` | `str` | 프로젝트 UUID |
+| `columns` | `list` | 길이 5, 고정 순서 |
+| `columns[].status` | `str` | 단계 키 |
+| `columns[].wikis` | `list` | 해당 단계의 `task_wiki_pages` 행 목록(각 항목에 `id`, `task_id`, `project_id`, `title`, `body`, `associated_status`, `created_at`, `updated_at`) |
+
+```python
+from services.workspace.kanban_service import fetch_kanban_columns_with_wikis
+from psycopg2.extras import RealDictCursor
+
+def example(conn, project_id: str):
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        payload = fetch_kanban_columns_with_wikis(cur, project_id)
+    # payload["columns"][0]["status"] == "requested"
+    # payload["columns"][0]["wikis"] == [...]
+    return payload
+```
+
+### HTTP: `GET /api/projects/[id]/tasks/[taskId]/wiki` 등
+
+- 위키 행에 **`associated_status`** 필드가 포함됩니다(수동 생성 시 해당 시점의 `tasks.status`로 저장).
+
 ## 스키마 참고
 
 - `projects.status`: `hiring` | `ongoing` | `completed` (마이그레이션 `20260330140000_projects_status_lifecycle.sql`)
-- TypeScript 타입: `src/types/database.ts`의 `ProjectLifecycleStatus`, `task_wiki_pages`, `Functions.create_task_with_wiki`
+- TypeScript 타입: `src/types/database.ts`의 `ProjectLifecycleStatus`, `task_wiki_pages`(including `associated_status`), `Functions.create_task_with_wiki`

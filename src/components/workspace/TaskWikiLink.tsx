@@ -11,6 +11,7 @@ export interface TaskWikiRow {
   project_id: string;
   title: string;
   body: string;
+  associated_status?: string;
   created_at: string;
   updated_at: string;
 }
