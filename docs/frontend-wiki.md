@@ -38,7 +38,7 @@
 - **파일**: `src/components/workspace/KanbanWikiList.tsx`
 - **배치**: `KanbanColumns` (`src/components/workspace/kanban/KanbanColumns.tsx`) 각 컬럼에서 업무 카드·「업무 추가」버튼 **아래**(컬럼 맨 하단).
 - **데이터**: `KanbanTasksBoard`가 `GET /api/projects/[id]/task-wikis`로 프로젝트 전체 위키를 받은 뒤, `associated_status`로 컬럼별로 나눠 `wikisByColumn`으로 전달합니다. 업무가 없을 때는 보드를 비우므로 위키 목록도 불러오지 않습니다.
-- **표시**: 불릿(`list-disc`) 리스트, 항목 클릭 시 `**/projects/[projectId]/workspace/wiki/[wikiId]`** 위키 상세 페이지로 이동 (`next/link`).
+- **표시**: 불릿(`list-disc`) 리스트, 항목 클릭 시 **`/projects/[projectId]/workspace/wiki/[wikiId]`** 위키 상세 페이지로 이동 (`next/link`).
 - **상세 페이지**: `src/app/projects/[id]/workspace/wiki/[wikiId]/page.tsx` — 제목·본문(마크다운 원문 `pre-wrap`)·업무 보드로 돌아가기 링크.
 - **스타일**: 컨테이너 `rounded-xl`, 링크·마커 강조 `#2563EB` (`.cursorrules` 정합). 섹션 제목은 `WORKSPACE.kanbanWikiListHeading`.
 
@@ -54,5 +54,4 @@ KanbanTasksBoard
 
 ### API
 
-- `**GET /api/projects/[id]/task-wikis**`: `{ wikis: { id, title, task_id, associated_status }[] }` — 팀장·수락 멤버만 (`projectTaskAccessDenied`).
-
+- **`GET /api/projects/[id]/task-wikis`**: `{ wikis: { id, title, task_id, associated_status }[] }` — 팀장·수락 멤버만 (`projectTaskAccessDenied`).

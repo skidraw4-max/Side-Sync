@@ -5,31 +5,11 @@ const ADMIN_EMAIL = "skidraw4@gmail.com";
 
 export async function GET() {
   const supabase = await createClient();
-  let { data, error } = await (supabase as any)
+  const { data, error } = await (supabase as any)
     .from("announcements")
-    .select("id, title, content, category, pinned, created_at, youtube_video_id, ingest_source")
+    .select("id, title, content, category, pinned, created_at")
     .order("pinned", { ascending: false })
     .order("created_at", { ascending: false });
-
-  if (
-    error?.message?.includes("youtube_video_id") ||
-    error?.message?.includes("ingest_source")
-  ) {
-    const retry = await (supabase as any)
-      .from("announcements")
-      .select("id, title, content, category, pinned, created_at")
-      .order("pinned", { ascending: false })
-      .order("created_at", { ascending: false });
-    if (retry.error) {
-      return NextResponse.json({ error: retry.error.message }, { status: 500 });
-    }
-    data = (retry.data ?? []).map((r: Record<string, unknown>) => ({
-      ...r,
-      youtube_video_id: null,
-      ingest_source: null,
-    }));
-    error = null;
-  }
 
   if (error?.message?.includes("pinned") || error?.message?.includes("category")) {
     const fallback = await (supabase as any)
@@ -44,13 +24,7 @@ export async function GET() {
       title: string;
       content: string;
       created_at: string;
-    }>).map((r) => ({
-      ...r,
-      category: "general",
-      pinned: false,
-      youtube_video_id: null,
-      ingest_source: null,
-    }));
+    }>).map((r) => ({ ...r, category: "general", pinned: false }));
     return NextResponse.json({ data: rows });
   }
 
