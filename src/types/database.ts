@@ -302,6 +302,8 @@ export interface Database {
           category: string;
           author_id: string;
           pinned: boolean;
+          youtube_video_id: string | null;
+          ingest_source: "mit" | "deepmind" | null;
           created_at: string;
           updated_at: string;
         };
@@ -312,6 +314,8 @@ export interface Database {
           category?: string;
           author_id: string;
           pinned?: boolean;
+          youtube_video_id?: string | null;
+          ingest_source?: "mit" | "deepmind" | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -320,6 +324,8 @@ export interface Database {
           content?: string;
           category?: string;
           pinned?: boolean;
+          youtube_video_id?: string | null;
+          ingest_source?: "mit" | "deepmind" | null;
           updated_at?: string;
         };
       };

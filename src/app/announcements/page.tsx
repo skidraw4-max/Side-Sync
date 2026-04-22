@@ -13,7 +13,24 @@ type AnnouncementRow = {
   category: string;
   pinned: boolean;
   created_at: string;
+  youtube_video_id: string | null;
+  ingest_source: "mit" | "deepmind" | null;
 };
+
+function YouTubeGlyph({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      width="20"
+      height="20"
+      aria-hidden
+      fill="currentColor"
+    >
+      <path d="M23.5 6.2c-.3-1.1-1.1-1.9-2.2-2.2C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.3.5C1.6 4.3.8 5.1.5 6.2 0 8.1 0 12 0 12s0 3.9.5 5.8c.3 1.1 1.1 1.9 2.2 2.2 1.8.5 9.3.5 9.3.5s7.5 0 9.3-.5c1.1-.3 1.9-1.1 2.2-2.2.5-1.9.5-5.8.5-5.8s0-3.9-.5-5.8zM9.5 15.5v-7l6 3.5-6 3.5z" />
+    </svg>
+  );
+}
 
 function AnnouncementArticle({
   item,
@@ -26,18 +43,45 @@ function AnnouncementArticle({
   canManage: boolean;
   onEdit: () => void;
   onDelete: () => void;
-  variant: "guide" | "default";
+  variant: "guide" | "default" | "aiLab" | "aiTrend";
 }) {
   const isGuide = variant === "guide";
+  const isAiLab = variant === "aiLab";
+  const isAiTrend = variant === "aiTrend";
   const cat = (item.category || "general").trim();
+  const vid = item.youtube_video_id?.trim() || null;
+  const embedSrc = vid ? `https://www.youtube.com/embed/${encodeURIComponent(vid)}` : null;
+
+  const shellClass =
+    isGuide
+      ? "border border-emerald-200 ring-1 ring-emerald-100/70"
+      : isAiLab
+        ? "border border-violet-200 ring-1 ring-violet-100/60"
+        : isAiTrend
+          ? "border border-sky-200 ring-1 ring-sky-100/70"
+          : "border border-slate-200";
+
+  const catClass = isGuide
+    ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
+    : isAiLab
+      ? "border border-violet-200 bg-violet-50 text-violet-800"
+      : isAiTrend
+        ? "border border-sky-200 bg-sky-50 text-sky-900"
+        : "border border-slate-200 bg-slate-50 text-slate-600";
+
+  const sourceBadge =
+    item.ingest_source === "mit" ? (
+      <span className="rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-800">
+        [MIT 연구]
+      </span>
+    ) : item.ingest_source === "deepmind" ? (
+      <span className="rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-900">
+        [DeepMind 공식]
+      </span>
+    ) : null;
+
   return (
-    <article
-      className={`rounded-2xl bg-white p-6 shadow-sm ${
-        isGuide
-          ? "border border-emerald-200 ring-1 ring-emerald-100/70"
-          : "border border-slate-200"
-      }`}
-    >
+    <article className={`rounded-2xl bg-white p-6 shadow-sm ${shellClass}`}>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         {item.pinned ? (
           <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
@@ -45,23 +89,45 @@ function AnnouncementArticle({
           </span>
         ) : null}
         <span
-          className={`rounded-full px-2 py-0.5 text-xs font-medium uppercase tracking-wide ${
-            isGuide
-              ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
-              : "border border-slate-200 bg-slate-50 text-slate-600"
-          }`}
+          className={`rounded-full px-2 py-0.5 text-xs font-medium uppercase tracking-wide ${catClass}`}
         >
           {cat || "general"}
         </span>
         <span className="ml-auto text-xs text-slate-500">{formatRelativeTime(item.created_at)}</span>
       </div>
-      <h3 className="text-xl font-bold tracking-tight text-slate-900">{item.title}</h3>
+      <h3 className="flex flex-wrap items-center gap-2 text-xl font-bold tracking-tight text-slate-900">
+        {vid ? (
+          <span className="inline-flex shrink-0 text-red-600" title="YouTube">
+            <YouTubeGlyph />
+          </span>
+        ) : null}
+        {sourceBadge}
+        <span className="min-w-0 flex-1 basis-[12rem]">{item.title}</span>
+      </h3>
       <div
         className={`prose prose-slate mt-4 max-w-none text-slate-700 prose-p:leading-relaxed prose-p:text-[15px] prose-headings:font-semibold prose-a:text-blue-600 ${
           isGuide ? "prose-headings:text-slate-900" : ""
         }`}
       >
+        {embedSrc ? (
+          <div className="not-prose mb-5 aspect-video w-full overflow-hidden rounded-xl bg-slate-900 shadow-md ring-1 ring-slate-200/80">
+            <iframe
+              title={`YouTube: ${item.title}`}
+              src={embedSrc}
+              className="h-full w-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="strict-origin-when-cross-origin"
+            />
+          </div>
+        ) : null}
         <p className="whitespace-pre-wrap">{item.content}</p>
+        {item.ingest_source === "mit" ? (
+          <p className="not-prose mt-6 border-t border-slate-100 pt-4 text-xs leading-relaxed text-slate-500">
+            콘텐츠 출처: MIT OpenCourseWare (CC BY-NC-SA 적용)
+          </p>
+        ) : null}
       </div>
       {canManage ? (
         <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
@@ -107,14 +173,21 @@ export default function AnnouncementsPage() {
 
       const response = await fetch("/api/announcements", { cache: "no-store" });
       const payload = await response.json();
-      const data = (payload?.data ?? []) as AnnouncementRow[];
+      const data = (payload?.data ?? []) as Partial<AnnouncementRow>[];
       const queryError = !response.ok ? { message: payload?.error || "조회 실패" } : null;
 
       if (queryError) {
         setError(queryError.message);
         setRows([]);
       } else {
-        setRows((data ?? []) as AnnouncementRow[]);
+        setRows(
+          (data ?? []).map((r) => ({
+            ...r,
+            youtube_video_id: r.youtube_video_id ?? null,
+            ingest_source:
+              r.ingest_source === "mit" || r.ingest_source === "deepmind" ? r.ingest_source : null,
+          })) as AnnouncementRow[]
+        );
       }
       setIsLoading(false);
     }
@@ -130,7 +203,15 @@ export default function AnnouncementsPage() {
       setError(payload?.error || "조회 실패");
       setRows([]);
     } else {
-      setRows((payload?.data ?? []) as AnnouncementRow[]);
+      const raw = (payload?.data ?? []) as Partial<AnnouncementRow>[];
+      setRows(
+        raw.map((r) => ({
+          ...r,
+          youtube_video_id: r.youtube_video_id ?? null,
+          ingest_source:
+            r.ingest_source === "mit" || r.ingest_source === "deepmind" ? r.ingest_source : null,
+        })) as AnnouncementRow[]
+      );
       setError(null);
     }
     setIsLoading(false);
@@ -185,12 +266,15 @@ export default function AnnouncementsPage() {
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
-  const guideRows = sortedRows.filter(
-    (r) => (r.category || "").toLowerCase().trim() === "guide"
-  );
-  const otherRows = sortedRows.filter(
-    (r) => (r.category || "").toLowerCase().trim() !== "guide"
-  );
+  const catKey = (r: AnnouncementRow) => (r.category || "").toLowerCase().trim();
+
+  const guideRows = sortedRows.filter((r) => catKey(r) === "guide");
+  const aiLabRows = sortedRows.filter((r) => catKey(r) === "lab");
+  const aiTrendRows = sortedRows.filter((r) => catKey(r) === "trend");
+  const otherRows = sortedRows.filter((r) => {
+    const c = catKey(r);
+    return c !== "guide" && c !== "lab" && c !== "trend";
+  });
 
   return (
     <main className="mx-auto min-h-[calc(100vh-160px)] w-full max-w-3xl px-4 py-10 md:max-w-4xl md:px-10">
@@ -321,6 +405,75 @@ export default function AnnouncementsPage() {
                   </li>
                 ))}
               </ul>
+            </section>
+          ) : null}
+
+          {aiLabRows.length > 0 || aiTrendRows.length > 0 ? (
+            <section aria-labelledby="announcements-ai-trend-heading" className="space-y-8">
+              <h2
+                id="announcements-ai-trend-heading"
+                className="flex flex-wrap items-center gap-2 text-lg font-bold text-slate-900"
+              >
+                <span
+                  className="rounded-md bg-slate-900 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-white"
+                  aria-hidden
+                >
+                  AI TREND
+                </span>
+                자동 요약 · 유튜브
+              </h2>
+              {aiLabRows.length > 0 ? (
+                <div>
+                  <h3 className="mb-3 text-sm font-semibold text-violet-900">
+                    LAB — MIT OpenCourseWare
+                  </h3>
+                  <ul className="space-y-5 list-none p-0">
+                    {aiLabRows.map((item) => (
+                      <li key={item.id}>
+                        <AnnouncementArticle
+                          item={item}
+                          canManage={canManage}
+                          onEdit={() => {
+                            setEditing(item);
+                            setTitle(item.title);
+                            setContent(item.content);
+                            setCategory(item.category || "general");
+                            setPinned(!!item.pinned);
+                          }}
+                          onDelete={() => void onDelete(item.id)}
+                          variant="aiLab"
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {aiTrendRows.length > 0 ? (
+                <div>
+                  <h3 className="mb-3 text-sm font-semibold text-sky-900">
+                    TREND — Google DeepMind
+                  </h3>
+                  <ul className="space-y-5 list-none p-0">
+                    {aiTrendRows.map((item) => (
+                      <li key={item.id}>
+                        <AnnouncementArticle
+                          item={item}
+                          canManage={canManage}
+                          onEdit={() => {
+                            setEditing(item);
+                            setTitle(item.title);
+                            setContent(item.content);
+                            setCategory(item.category || "general");
+                            setPinned(!!item.pinned);
+                          }}
+                          onDelete={() => void onDelete(item.id)}
+                          variant="aiTrend"
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </section>
           ) : null}
 
