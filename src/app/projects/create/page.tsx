@@ -149,7 +149,7 @@ export default function CreateProjectPage() {
     <div className="min-h-screen bg-[#FAFAFA]">
       <Header />
 
-      <main className="px-6 pb-16 pt-8 md:px-12 lg:px-24">
+      <main className="page-content-scale px-6 pb-16 pt-8 md:px-12 lg:px-24">
         <div className="mx-auto max-w-2xl">
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-gray-900">새 프로젝트 개설</h1>

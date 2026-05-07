@@ -1,10 +1,6 @@
 import type { Metadata } from "next";
 import Header from "@/components/Header";
-import Hero from "@/components/Hero";
-import ProjectStats from "@/components/main/ProjectStats";
-import FeatureCards from "@/components/FeatureCards";
-import HomeSeoOverview from "@/components/HomeSeoOverview";
-import HomeProjectsAndTrending from "@/components/HomeProjectsAndTrending";
+import HomeBentoGrid from "@/components/bento/HomeBentoGrid";
 import Footer from "@/components/Footer";
 import AdBanner from "@/components/AdBanner";
 import { ADSENSE_CLIENT_ID, ADSENSE_SLOTS } from "@/lib/ads-config";
@@ -31,23 +27,12 @@ export const metadata: Metadata = {
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[#e8ecf1]">
       <Header />
-      <main className="pt-16">
-        <Hero />
-        <section
-          className="border-t border-slate-200/90 bg-white px-6 py-8 md:px-12 md:py-10 lg:px-24"
-          aria-label="프로젝트 현황"
-        >
-          <div className="mx-auto flex max-w-5xl justify-center">
-            <ProjectStats />
-          </div>
-        </section>
-        <FeatureCards />
-        <HomeSeoOverview />
-        <HomeProjectsAndTrending />
+      <main className="page-content-scale pt-[calc(3.5rem/var(--page-content-scale))] md:pt-[calc(6rem/var(--page-content-scale))]">
+        <HomeBentoGrid />
       </main>
-      <div className="mx-auto max-w-4xl px-4 pb-6">
+      <div className="mx-auto max-w-4xl px-4 pb-4 md:pb-5">
         <AdBanner
           adSlotId={ADSENSE_SLOTS.homeFooter}
           adClientId={ADSENSE_CLIENT_ID || undefined}

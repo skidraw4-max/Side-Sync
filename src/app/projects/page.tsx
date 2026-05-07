@@ -35,7 +35,7 @@ export default async function ProjectsPage() {
     <div className="min-h-screen bg-white">
       <Header />
       <CreateProjectFloatingButton />
-      <main className="pt-[100px]">
+      <main className="page-content-scale pt-[calc(100px/var(--page-content-scale))]">
         <div className="px-6 md:px-12 lg:px-24">
           <nav className="mb-8 text-sm text-gray-500">
             <Link href="/" className="hover:text-gray-700">

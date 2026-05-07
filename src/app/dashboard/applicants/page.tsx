@@ -229,7 +229,7 @@ export default function ApplicantsDashboardPage() {
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       <Header />
-      <main className="px-6 py-12 md:px-12 lg:px-24">
+      <main className="page-content-scale px-6 py-12 md:px-12 lg:px-24">
         <div className="mx-auto max-w-5xl">
           <div className="mb-8 flex items-center justify-between">
             <div>

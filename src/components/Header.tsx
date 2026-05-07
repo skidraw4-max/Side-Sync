@@ -8,17 +8,18 @@ import type { Session, User } from "@supabase/supabase-js";
 import { signOutClient } from "@/lib/auth/client-sign-out";
 import { useServerHydratedSession } from "@/contexts/AuthSessionContext";
 import NotificationDropdown from "@/components/NotificationDropdown";
-import { BrandLogoWordmark } from "@/components/BrandLogo";
+import { HeaderBrandWordmark } from "@/components/BrandLogo";
 
 interface HeaderProps {
   variant?: "default" | "onboarding";
 }
 
+/** 랜딩·로그아웃 상태 네비 라벨 (벤토 시안: Homes, Explorer, …) */
 const NAV_LINKS = {
   default: [
-    { label: "홈", href: "/" },
-    { label: "프로젝트 탐색", href: "/explore" },
-    { label: "내 프로젝트", href: "/projects" },
+    { label: "Homes", href: "/" },
+    { label: "Explorer", href: "/explore" },
+    { label: "My Projects", href: "/projects" },
     { label: "About", href: "/about" },
   ],
   onboarding: [
@@ -188,8 +189,9 @@ export default function Header({ variant = "default" }: HeaderProps) {
   const navLinkClass =
     "whitespace-nowrap text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 md:text-[15px]";
 
+  /** 시안: 캡슐형, 진한 네이비 블루 */
   const signInButtonClass =
-    "inline-flex h-11 shrink-0 items-center justify-center rounded-xl bg-[#2563EB] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2 sm:px-5";
+    "inline-flex h-11 shrink-0 items-center justify-center rounded-full bg-[#0f2744] px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0a1c32] focus:outline-none focus:ring-2 focus:ring-[#0f2744] focus:ring-offset-2";
 
   const hamburgerButtonClass =
     "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2";
@@ -312,13 +314,13 @@ export default function Header({ variant = "default" }: HeaderProps) {
       ) : isLoggedIn ? (
         <>
           <Link href="/" className={navLinkClass}>
-            홈
+            Homes
           </Link>
           <Link href="/explore" className={navLinkClass}>
-            프로젝트 탐색
+            Explorer
           </Link>
           <Link href="/projects" className={navLinkClass}>
-            내 프로젝트
+            My Projects
           </Link>
           <Link href="/about" className={navLinkClass}>
             About
@@ -339,7 +341,7 @@ export default function Header({ variant = "default" }: HeaderProps) {
       {variant === "default" && latestAnnouncement ? (
         <Link
           href="/announcements"
-          className="block border-b border-blue-100 bg-blue-50/80 px-4 py-2 text-center text-xs text-blue-800 hover:bg-blue-100/70 md:px-8"
+          className="block border-b border-blue-100 bg-blue-50/80 px-4 py-2 text-center text-[15px] leading-snug text-blue-800 hover:bg-blue-100/70 md:px-8"
         >
           <span className="font-semibold">공지</span>
           <span className="mx-2">•</span>
@@ -351,7 +353,7 @@ export default function Header({ variant = "default" }: HeaderProps) {
         <div className="z-10 min-w-0 shrink-0">
           <div className="md:hidden">{renderMobileLeadingMenu()}</div>
           <div className="hidden md:block">
-            <BrandLogoWordmark size={86} />
+            <HeaderBrandWordmark />
           </div>
         </div>
 
@@ -366,7 +368,7 @@ export default function Header({ variant = "default" }: HeaderProps) {
             href="/"
             className="pointer-events-auto text-lg font-semibold tracking-tight text-slate-900"
           >
-            Side-Sync
+            Side-Sync.io
           </Link>
         </div>
 

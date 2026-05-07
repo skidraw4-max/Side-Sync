@@ -152,7 +152,7 @@ export default function OnboardingPage() {
     <div className="min-h-screen bg-[#F8FAFC]">
       <Header variant="onboarding" />
 
-      <div className="flex min-h-[calc(100vh-80px)]">
+      <div className="page-content-scale flex min-h-[calc(100vh-80px)]">
         {/* Sidebar - Step 1 of 4 */}
         <aside className="hidden w-64 shrink-0 border-r border-gray-200 bg-white md:block">
           <div className="p-8">

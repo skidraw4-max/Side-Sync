@@ -170,7 +170,7 @@ export default function EvaluatePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F8FAFC]">
-        <main className="px-6 py-12 md:px-12 lg:px-24">
+        <main className="page-content-scale px-6 py-12 md:px-12 lg:px-24">
           <p className="mb-4 text-center text-sm text-gray-500">데이터를 불러오는 중입니다…</p>
           <EvaluatePageSkeleton />
         </main>
@@ -181,7 +181,7 @@ export default function EvaluatePage() {
   if (loadError) {
     return (
       <div className="min-h-screen bg-[#F8FAFC]">
-        <main className="px-6 py-12 md:px-12 lg:px-24">
+        <main className="page-content-scale px-6 py-12 md:px-12 lg:px-24">
           <div className="mx-auto max-w-lg text-center">
             <h1 className="text-2xl font-bold text-gray-900">Team Evaluation</h1>
             <p className="mt-4 text-sm text-gray-600">{loadError}</p>
@@ -202,7 +202,7 @@ export default function EvaluatePage() {
   if (error && !project) {
     return (
       <div className="min-h-screen bg-[#F8FAFC]">
-        <main className="px-6 py-12 md:px-12 lg:px-24">
+        <main className="page-content-scale px-6 py-12 md:px-12 lg:px-24">
           <div className="mx-auto max-w-lg">
             <h1 className="text-2xl font-bold text-gray-900">Team Evaluation</h1>
             <div className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
@@ -226,7 +226,7 @@ export default function EvaluatePage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      <main className="px-6 py-12 md:px-12 lg:px-24">
+      <main className="page-content-scale px-6 py-12 md:px-12 lg:px-24">
         <div className="mx-auto max-w-4xl">
           <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
             INTERNAL EVALUATION PHASE

@@ -28,7 +28,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       <Header />
-      <main className="px-6 py-12 md:px-12 lg:px-24">
+      <main className="page-content-scale px-6 py-12 md:px-12 lg:px-24">
         <div className="mx-auto max-w-4xl">
           <h1 className="text-2xl font-bold text-gray-900">대시보드</h1>
           <p className="mt-2 text-gray-500">

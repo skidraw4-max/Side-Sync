@@ -62,7 +62,7 @@ export default function LegalDocLayout({
         </div>
       </header>
 
-      <div className="mx-auto max-w-7xl px-6 py-10 md:px-8 md:py-14">
+      <div className="page-content-scale mx-auto max-w-7xl px-6 py-10 md:px-8 md:py-14">
         <div className="flex flex-col gap-10 lg:flex-row lg:gap-12">
           {/* Sticky Table of Contents */}
           <aside className="w-full shrink-0 lg:w-56 xl:w-64">

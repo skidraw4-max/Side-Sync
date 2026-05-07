@@ -174,7 +174,7 @@ export default function EditProjectPage() {
   if (!ready) {
     return (
       <div className="min-h-screen bg-[#FAFAFA]">
-        <main className="px-6 pb-16 pt-8 md:px-12 lg:px-24">
+        <main className="page-content-scale px-6 pb-16 pt-8 md:px-12 lg:px-24">
           <div className="mx-auto max-w-2xl animate-pulse space-y-4">
             <div className="h-8 w-48 rounded bg-gray-200" />
             <div className="h-64 rounded-2xl bg-gray-200" />
@@ -186,7 +186,7 @@ export default function EditProjectPage() {
 
   return (
     <div className="min-h-screen bg-[#FAFAFA]">
-      <main className="px-6 pb-16 pt-8 md:px-12 lg:px-24">
+      <main className="page-content-scale px-6 pb-16 pt-8 md:px-12 lg:px-24">
         <div className="mx-auto max-w-2xl">
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-gray-900">프로젝트 수정</h1>

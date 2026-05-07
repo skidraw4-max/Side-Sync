@@ -4,6 +4,8 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /** 본문 `zoom` 보정 (헤더/푸터 제외). 1.3 적용 후 약 10% 축소 ≈ 1.17 */
+  --page-content-scale: 1.17;
 }
 
 @theme inline {
@@ -17,6 +19,14 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+/**
+ * Header/Footer 밖의 본문에만 적용. Tailwind `text-*`·`p-*` 등 rem 기반 스페이싱을
+ * 시각적으로 함께 키우기 위해 zoom 사용(사이트 헤더·푸터 컴포넌트에는 붙이지 않음).
+ */
+.page-content-scale {
+  zoom: var(--page-content-scale);
 }
 
 @keyframes shimmer {

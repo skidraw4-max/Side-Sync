@@ -25,7 +25,7 @@ export default function AboutPage() {
   return (
     <div className="min-h-screen bg-white">
       <Header />
-      <main className="pt-16">
+      <main className="page-content-scale pt-[calc(3.5rem/var(--page-content-scale))] md:pt-[calc(6rem/var(--page-content-scale))]">
         <AboutHeroSplit />
         <AboutFeatureStrip />
         <AboutOriginStory />

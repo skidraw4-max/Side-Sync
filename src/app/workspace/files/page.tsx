@@ -79,7 +79,7 @@ export default function WorkspaceFilesPage() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <WorkspaceSidebar activeItem="files" />
-      <div className="flex flex-1 flex-col">
+      <div className="page-content-scale flex flex-1 flex-col">
         {/* 상단 breadcrumb & search */}
         <header className="flex items-center justify-between border-b border-gray-100 bg-white px-8 py-4">
           <nav className="flex items-center gap-2 text-sm text-gray-500">

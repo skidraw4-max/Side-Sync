@@ -50,10 +50,12 @@ export default function ProjectAreaChrome({
 
   return (
     <div className="project-area-chrome">
-      <div className="sticky top-14 z-40 border-b border-slate-200 bg-slate-50/95 px-4 py-2.5 backdrop-blur-sm md:px-8 lg:px-12">
-        <Breadcrumb projectId={projectId} projectTitle={projectTitle} />
+      <div className="page-content-scale">
+        <div className="sticky top-14 z-40 border-b border-slate-200 bg-slate-50/95 px-4 py-2.5 backdrop-blur-sm md:px-8 lg:px-12">
+          <Breadcrumb projectId={projectId} projectTitle={projectTitle} />
+        </div>
+        {!isWorkspace ? <ProjectSubNav projectId={projectId} /> : null}
       </div>
-      {!isWorkspace ? <ProjectSubNav projectId={projectId} /> : null}
       {children}
     </div>
   );

@@ -17,7 +17,7 @@ interface FooterProps {
 export default function Footer({ variant = "default" }: FooterProps) {
   if (variant === "stitch") {
     return (
-      <footer className="mt-24 border-t border-gray-100 px-6 py-12 md:px-12 lg:px-24">
+      <footer className="mt-4 border-t border-gray-100 px-6 py-12 md:mt-5 md:px-12 lg:px-24">
         <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
           <div className="flex items-center gap-0.5">
             <BrandLogoMark size={77} />
@@ -54,7 +54,7 @@ export default function Footer({ variant = "default" }: FooterProps) {
   }
 
   return (
-    <footer className="mt-24 border-t border-gray-100 px-6 py-12 md:px-12 lg:px-24">
+    <footer className="mt-4 border-t border-gray-100 px-6 py-12 md:mt-5 md:px-12 lg:px-24">
       <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
         <div className="flex items-center gap-0.5">
           <BrandLogoMark size={77} />

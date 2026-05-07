@@ -15,7 +15,7 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      <main className="flex flex-col items-center px-6 pt-24 pb-16">
+      <main className="page-content-scale flex flex-col items-center px-6 pt-[calc(6rem/var(--page-content-scale))] pb-16">
         <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
           <h1 className="text-2xl font-bold text-gray-900">회원 가입</h1>
           <p className="mt-2 text-sm text-gray-500">

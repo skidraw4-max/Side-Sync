@@ -134,7 +134,7 @@ export default async function CertificatePage({ params, searchParams }: PageProp
 
   if (tokenPayload && !admin) {
     return (
-      <div className="mx-auto min-h-screen max-w-lg bg-[#f9f9f9] px-4 py-16 text-center text-sm text-[#111]">
+      <div className="page-content-scale mx-auto min-h-screen max-w-lg bg-[#f9f9f9] px-4 py-16 text-center text-sm text-[#111]">
         <p className="font-semibold text-black">링크로만 조회할 수 없습니다</p>
         <p className="mt-2">
           서버에 서비스 롤 키가 설정되어 있지 않아, 확인 링크 없이는 로그인 후 본인 계정으로만 열람할 수
@@ -218,7 +218,7 @@ export default async function CertificatePage({ params, searchParams }: PageProp
   });
 
   return (
-    <div className="min-h-screen bg-[#f9f9f9] font-sans text-[#111] print:bg-white">
+    <div className="page-content-scale min-h-screen bg-[#f9f9f9] font-sans text-[#111] print:bg-white">
       <CertificateClient
         projectTitle={project.title}
         participantName={participantName}

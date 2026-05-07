@@ -55,7 +55,7 @@ export default async function CertificateVerifyPage({ params }: PageProps) {
   const admin = createAdminClient();
   if (!admin) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-20 text-center text-sm text-slate-600">
+      <div className="page-content-scale mx-auto max-w-lg px-4 py-20 text-center text-sm text-slate-600">
         <p className="font-medium text-slate-900">확인 페이지를 불러올 수 없습니다</p>
         <p className="mt-2">서버 설정(SUPABASE_SERVICE_ROLE_KEY)이 필요합니다.</p>
       </div>
@@ -70,7 +70,7 @@ export default async function CertificateVerifyPage({ params }: PageProps) {
   const { projectTitle, participantName, issuanceNumber } = payload;
 
   return (
-    <div className="min-h-screen bg-slate-100 px-4 py-12">
+    <div className="page-content-scale min-h-screen bg-slate-100 px-4 py-12">
       <div className="mx-auto max-w-lg rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <p className="text-center text-xs font-semibold uppercase tracking-wider text-[#0A66C2]">
           Side-Sync

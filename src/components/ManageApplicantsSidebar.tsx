@@ -24,7 +24,7 @@ export default function ManageApplicantsSidebar({
   const baseHref = `/projects/${projectId}/manage`;
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-slate-200 bg-white">
+    <aside className="page-content-scale flex w-64 shrink-0 flex-col border-r border-slate-200 bg-white">
       <div className="border-b border-slate-100 p-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#2563EB]">

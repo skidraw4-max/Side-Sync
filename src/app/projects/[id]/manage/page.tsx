@@ -552,6 +552,7 @@ export default function ManageApplicantsPage() {
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
+        <div className="page-content-scale flex min-w-0 flex-1 flex-col">
         <div className="border-b border-slate-200 bg-white px-6 py-3 md:px-10">
           <div className="mx-auto flex max-w-4xl items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
             <svg
@@ -840,6 +841,7 @@ export default function ManageApplicantsPage() {
           </div>
         </main>
 
+        </div>
         <Footer variant="compact" />
       </div>
 

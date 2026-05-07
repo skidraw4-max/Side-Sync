@@ -2,21 +2,22 @@
 
 ## 메인 랜딩 구조
 
-- 페이지: `src/app/page.tsx` — `Hero` → (배너와 분리된 `ProjectStats` 섹션) → `FeatureCards` → `HomeSeoOverview` → `HomeProjectsAndTrending`.
-- 프로젝트 카드 그리드(트렌딩): `HomeProjectsAndTrending` 내부의 `TrendingProjects` (`src/components/TrendingProjects.tsx`).
+- 페이지: `src/app/page.tsx` — 루트 배경 `#e8ecf1`, `HomeBentoGrid`만(벤토 2열·모바일 1열). 하단 `FeatureCards`·`HomeSeoOverview`·`HomeProjectsAndTrending`는 메인에서 제거됨(컴포넌트 파일은 보존).
+- 레이아웃: `HomeBentoGrid` — (1) Profile|LiveStats 2열 → (2) Trending **전폭** → (3) Kanban **전폭** → (4) Community|CTA 2열. 컨테이너 `max-w-6xl`로 좌우폭 통일.
+- 벤토 배경: `#e8ecf1`, 패널은 `rounded-xl`(12px) + `shadow-[0_4px_24px_…]` 계열.
+- 헤더 로고: `HeaderBrandWordmark` — `public/images/image-2.png`(사용자 제공 블루 그라데이션 마크, 1024²).
+- 데스크톱·로그인 네비 라벨: Homes, Explorer, My Projects, About. Sign In: `rounded-full`, `bg-[#0f2744]`.
+- `BentoLiveStats`: `GET /api/stats/projects`, 실패 시 154/87/129, 인라인 `Recruiting:` 등 + 굵은 숫자. 클릭 시 `home-project-cards`.
+- 메인 트렌딩 UI: `BentoTrendingProjects` (`src/components/bento/BentoTrendingProjects.tsx`) — 별도 하단 `TrendingProjects` 섹션 없음. `TrendingProjects.tsx`는 레거시·다른 용도 보존.
 
-## `ProjectStats` (히어로 통계)
+## `ProjectStats` (레거시 컴포넌트)
 
 - **파일**: `src/components/main/ProjectStats.tsx`
-- **위치**: 메인 히어로 배너 **바깥**, `page.tsx`에서 히어로 직후 별도 `<section>`(상단 보더·흰 배경) 안에 배치. 히어로 그라데이션·그리드와 시각적으로 구분됩니다.
-- **데이터**: `GET /api/stats/projects` — 로딩 중에는 스켈레톤(`Skeleton`), 완료 후 숫자는 약 0.9초 동안 카운트업(ease-out cubic).
-- **레이아웃**: 모바일 `flex-col`, `sm` 이상에서 `flex-row`로 가로 배치.
-- **스타일**: Tailwind, 카드·포커스 링 `rounded-xl`, 강조색 `#2563EB` (프로젝트 `.cursorrules`와 정합).
-- **인터랙션**: 각 통계 버튼 클릭 시 `document.getElementById("home-project-cards")?.scrollIntoView({ behavior: "smooth" })`로 트렌딩 프로젝트 카드 영역으로 스크롤합니다.
+- **메인 페이지**: 벤토 `BentoLiveStats`가 동일 `GET /api/stats/projects`를 사용하며, 메인 랜딩에서는 더 이상 `ProjectStats`를 쓰지 않습니다. 다른 페이지에서 쓸 경우 이 컴포넌트를 재사용할 수 있습니다.
 
 ## 스크롤 앵커
 
-- **id**: `home-project-cards` — `src/components/HomeProjectsAndTrending.tsx`에서 트렌딩 섹션 래퍼에 부여, `scroll-mt-24`로 고정 헤더 보정.
+- **id**: `home-project-cards` — `HomeBentoGrid.tsx` 최상단 `<section>`에 부여, `scroll-mt-24`로 고정 헤더 보정. Live Stats 클릭 시 벤토 영역으로 스크롤.
 
 ## 관련 타입
 

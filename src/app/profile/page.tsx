@@ -441,7 +441,9 @@ export default function ProfilePage() {
     return (
       <div className="min-h-screen bg-[#F9FAFB]">
         <Header />
-        <ProfilePageSkeleton />
+        <div className="page-content-scale">
+          <ProfilePageSkeleton />
+        </div>
       </div>
     );
   }
@@ -450,7 +452,7 @@ export default function ProfilePage() {
     return (
       <div className="min-h-screen bg-[#F9FAFB]">
         <Header />
-        <main className="mx-auto max-w-lg px-6 py-16 text-center">
+        <main className="page-content-scale mx-auto max-w-lg px-6 py-16 text-center">
           <p className="text-lg font-semibold text-gray-900">데이터를 불러올 수 없습니다</p>
           <p className="mt-2 text-sm text-gray-600">잠시 후 다시 시도하거나 로그인 상태를 확인해 주세요.</p>
           <Link href="/" className="mt-6 inline-block text-sm font-medium text-blue-600 hover:underline">
@@ -477,7 +479,7 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-[#F9FAFB]">
       <Header />
 
-      <main className="px-6 pb-16 pt-8 md:px-12 lg:px-24">
+      <main className="page-content-scale px-6 pb-16 pt-8 md:px-12 lg:px-24">
         <div className="mx-auto max-w-5xl">
           {(profileQuery.isError || profileLoadDeadlineExceeded) && (
             <div

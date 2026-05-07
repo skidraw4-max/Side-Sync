@@ -12,7 +12,7 @@ export default function AnnouncementsLayout({ children }: { children: React.Reac
   return (
     <div className="min-h-screen bg-white">
       <Header />
-      <div className="pt-16">{children}</div>
+      <div className="page-content-scale pt-[calc(3.5rem/var(--page-content-scale))] md:pt-[calc(6rem/var(--page-content-scale))]">{children}</div>
       <Footer />
     </div>
   );

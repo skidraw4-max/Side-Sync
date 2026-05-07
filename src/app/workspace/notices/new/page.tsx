@@ -21,7 +21,7 @@ export default function CreateNoticePage() {
     <div className="min-h-screen bg-[#F7F8FC]">
       <WorkspaceHeader activeNav="notices" />
       {/* 헤더와 카드 섹션 간격 동일 */}
-      <main className="flex flex-col items-center px-6 py-16">
+      <main className="page-content-scale flex flex-col items-center px-6 py-16">
         <div className="w-full max-w-2xl rounded-2xl bg-white p-10 shadow-lg">
           <h1 className="text-2xl font-bold text-gray-900">Create New Notice</h1>
           <p className="mt-2 text-sm text-gray-500">

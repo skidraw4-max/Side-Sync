@@ -193,7 +193,7 @@ export default function AnnouncementsPage() {
   );
 
   return (
-    <main className="mx-auto min-h-[calc(100vh-160px)] w-full max-w-3xl px-4 py-10 md:max-w-4xl md:px-10">
+    <main className="page-content-scale mx-auto min-h-[calc(100vh-160px)] w-full max-w-3xl px-4 py-10 md:max-w-4xl md:px-10">
       <header className="mb-10 border-b border-slate-200 pb-8">
         <p className="text-sm font-medium text-blue-600">Side-Sync 공지</p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
