@@ -23,6 +23,9 @@ export const metadata: Metadata = {
     locale: "ko_KR",
     images: [{ url: "/images/og-image.png" }],
   },
+  other: {
+    "jury-site-verification": "wERxahGGgIOAAeK_ZcRN0VA-pii6yUKhFD3IwekhTk0",
+  },
 };
 
 export default function Home() {
