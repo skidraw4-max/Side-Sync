@@ -11,7 +11,7 @@ function SparkleCluster({ className }: { className?: string }) {
 }
 
 /**
- * 벤토: Start Project CTA — 상단 밝은 블루 → 하단 진한 블루, 글로우 버튼
+ * 고용주 CTA: 시프트 공고 등록 유도
  */
 export default function BentoStartProject() {
   return (
@@ -22,7 +22,7 @@ export default function BentoStartProject() {
       <SparkleCluster className="pointer-events-none absolute bottom-3 right-3 h-14 w-14" />
       <div className="relative">
         <h2 id="bento-start-heading" className="text-2xl font-bold tracking-tight text-white drop-shadow-sm md:text-3xl">
-          Start Project
+          공고 올리기
         </h2>
       </div>
       <div className="relative mt-auto pt-6">
@@ -30,10 +30,10 @@ export default function BentoStartProject() {
           href="/signup"
           className="inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-sky-300 to-blue-500 py-3.5 text-base font-bold text-white shadow-[0_0_28px_rgba(56,189,248,0.65),0_4px_14px_rgba(0,0,0,0.2)] transition hover:from-sky-200 hover:to-blue-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         >
-          Start Project
+          시프트 등록하기
         </Link>
         <p className="mt-3 text-center text-xs font-medium text-white/90">
-          Turn your Idea into a Career
+          필요한 인력을 빠르게 모집하세요
         </p>
       </div>
     </article>

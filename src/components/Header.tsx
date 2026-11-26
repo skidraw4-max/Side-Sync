@@ -17,9 +17,10 @@ interface HeaderProps {
 /** 랜딩·로그아웃 상태 네비 라벨 (벤토 시안: Homes, Explorer, …) */
 const NAV_LINKS = {
   default: [
-    { label: "Homes", href: "/" },
-    { label: "Explorer", href: "/explore" },
-    { label: "My Projects", href: "/projects" },
+    { label: "일자리 찾기", href: "/explore" },
+    { label: "공고 올리기", href: "/projects/create" },
+    { label: "내 근무", href: "/dashboard" },
+    { label: "공수 관리", href: "/dashboard" },
     { label: "About", href: "/about" },
   ],
   onboarding: [
@@ -264,7 +265,7 @@ export default function Header({ variant = "default" }: HeaderProps) {
             onClick={() => setDropdownOpen(false)}
             className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
           >
-            새 프로젝트
+            새 공고 올리기
           </Link>
           <button type="button" onClick={handleLogout} className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
             로그아웃
@@ -313,14 +314,17 @@ export default function Header({ variant = "default" }: HeaderProps) {
         <div className="hidden h-5 w-40 animate-pulse rounded-xl bg-slate-100 md:block" aria-hidden />
       ) : isLoggedIn ? (
         <>
-          <Link href="/" className={navLinkClass}>
-            Homes
-          </Link>
           <Link href="/explore" className={navLinkClass}>
-            Explorer
+            일자리 찾기
           </Link>
-          <Link href="/projects" className={navLinkClass}>
-            My Projects
+          <Link href="/projects/create" className={navLinkClass}>
+            공고 올리기
+          </Link>
+          <Link href="/dashboard" className={navLinkClass}>
+            내 근무
+          </Link>
+          <Link href="/dashboard" className={navLinkClass}>
+            공수 관리
           </Link>
           <Link href="/about" className={navLinkClass}>
             About
@@ -431,7 +435,7 @@ export default function Header({ variant = "default" }: HeaderProps) {
                   프로필 수정
                 </Link>
                 <Link href="/projects/create" onClick={closeMobileMenu} className={mobileNavLinkClass}>
-                  새 프로젝트
+                  새 공고 올리기
                 </Link>
                 <button type="button" onClick={() => void handleLogout()} className={`${mobileNavLinkClass} w-full text-left`}>
                   로그아웃

@@ -7,17 +7,17 @@ import { ADSENSE_CLIENT_ID, ADSENSE_SLOTS } from "@/lib/ads-config";
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Side-Sync | 사이드 프로젝트 탐색·팀 빌딩·링크드인 활동 확인서",
+    absolute: "Side-Sync | 단기 일자리와 공수 관리",
   },
   description:
-    "Side-Sync는 사이드 프로젝트를 모집·탐색하고, 지원과 수락으로 팀을 구성하며, 전용 워크스페이스에서 협업하고, 완주 시 링크드인에 등록 가능한 활동 확인서까지 제공하는 팀 빌딩 플랫폼입니다.",
+    "오늘 필요한 단기 인력을 빠르게 찾고, 시프트·공수·예상 인건비를 한 곳에서 관리하세요.",
   alternates: {
     canonical: "https://sidesync.io",
   },
   openGraph: {
-    title: "Side-Sync | 사이드 프로젝트 탐색·팀 빌딩·링크드인 활동 확인서",
+    title: "Side-Sync | 단기 일자리와 공수 관리",
     description:
-      "프로젝트 탐색, 팀 빌딩, 워크스페이스 협업, 링크드인 연동 증명서까지 한곳에서. 지금 Side-Sync에서 팀을 만나 보세요.",
+      "단기 시프트 매칭부터 근무 공수와 인건비 관리까지 한 곳에서 운영하세요.",
     url: "https://sidesync.io",
     siteName: "Side-Sync",
     locale: "ko_KR",

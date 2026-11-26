@@ -69,7 +69,7 @@ function Column({
 }
 
 /**
- * 벤토 우측: 로그인 시 내 프로젝트 선택 → 실제 칸반·위키 미리보기, 워크스페이스 이동
+ * 벤토 우측: 로그인 시 내 현장 선택 → 확정 인원·공수 관리 미리보기
  * 비로그인: 안내 문구 + 로그인 링크
  */
 export default function BentoWorkspaceKanban() {
@@ -112,20 +112,20 @@ export default function BentoWorkspaceKanban() {
           id="bento-kanban-heading"
           className="text-xs font-bold uppercase tracking-[0.18em] text-white md:text-sm"
         >
-          Collaborate / Kanban
+          공수·인건비 관리
         </h2>
-        <p className="mt-2 text-sm text-white/75">Micro-view of the Kanban board</p>
+        <p className="mt-2 text-sm text-white/75">선택한 현장의 근무 현황을 한눈에 확인하세요.</p>
         <div className="mt-6 flex flex-1 flex-col justify-center rounded-xl border border-white/10 bg-white/5 p-4 text-center ring-1 ring-white/10">
           <p className="text-sm leading-relaxed text-white/85">
-            Side-Sync 워크스페이스에서는 칸반, 공지, 채팅으로 팀과 함께 프로젝트를 진행할 수 있습니다. 로그인하면
-            내 프로젝트를 선택해 보드를 미리 볼 수 있습니다.
+            고용주라면 시프트별 확정 인원, 공수와 예상 인건비를 한 곳에서 관리할 수 있습니다. 로그인하면
+            내 공고를 선택해 근무 현황을 확인해 보세요.
           </p>
         </div>
         <Link
           href="/login"
           className="mt-4 inline-flex justify-center rounded-xl bg-white/10 py-2.5 text-center text-xs font-semibold text-white ring-1 ring-white/15 transition hover:bg-white/[0.15]"
         >
-          워크스페이스로 이동
+          공수 관리 시작하기
         </Link>
       </article>
     );
@@ -140,9 +140,9 @@ export default function BentoWorkspaceKanban() {
         id="bento-kanban-heading"
         className="text-xs font-bold uppercase tracking-[0.18em] text-white md:text-sm"
       >
-        Collaborate / Kanban
+        공수·인건비 관리
       </h2>
-      <p className="mt-2 text-sm text-white/75">Micro-view of the Kanban board</p>
+      <p className="mt-2 text-sm text-white/75">선택한 현장의 근무 현황을 한눈에 확인하세요.</p>
 
       <div className="mt-3">
         <label htmlFor="bento-workspace-project" className="sr-only">
@@ -175,18 +175,18 @@ export default function BentoWorkspaceKanban() {
         aria-busy={previewLoading}
       >
         <Column
-          label="To Do"
+          label="모집 대기"
           tasks={preview?.todo ?? []}
           placeholderBars={["bg-violet-500", "bg-slate-300"]}
         />
         <Column
-          label="Doing"
+          label="근무 중"
           tasks={preview?.doing ?? []}
           placeholderBars={["bg-orange-500", "bg-blue-500"]}
           wikiSlot={
             <div className="mt-auto rounded-xl border border-dashed border-white/70 bg-white/[0.07] px-2 py-2">
               <p className="text-center text-[9px] font-semibold uppercase tracking-wider text-white/95">
-                Wiki Links
+                확정 인원
               </p>
               <div className="mt-1 flex items-center justify-center gap-1">
                 <BrandLogoMark size={24} className="opacity-95" />
@@ -198,7 +198,7 @@ export default function BentoWorkspaceKanban() {
           }
         />
         <Column
-          label="Done"
+          label="완료"
           tasks={preview?.done ?? []}
           placeholderBars={["bg-emerald-500", "bg-emerald-500"]}
         />
@@ -208,7 +208,7 @@ export default function BentoWorkspaceKanban() {
         href={myProjects && myProjects.length > 0 ? workspaceHref : "/projects/create"}
         className="mt-4 inline-flex justify-center rounded-xl bg-white/10 py-2.5 text-center text-xs font-semibold text-white ring-1 ring-white/15 transition hover:bg-white/[0.15]"
       >
-        워크스페이스로 이동
+            공수 관리 시작하기
       </Link>
     </article>
   );

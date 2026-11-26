@@ -11,7 +11,7 @@ function CompactTrendingCard({ project }: { project: ProjectWithId }) {
   return (
     <div className="flex flex-col rounded-xl bg-white p-3.5 shadow-[0_4px_16px_rgba(0,0,0,0.12)] ring-1 ring-slate-200/90">
       <h3 className="text-sm font-bold leading-snug text-slate-900">{project.title}</h3>
-      <p className="mt-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Key Skills</p>
+      <p className="mt-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">업무 유형</p>
       <div className="mt-1.5 flex min-h-[1.75rem] flex-wrap gap-1.5">
         {tags.length > 0 ? (
           tags.map((s) => (
@@ -26,12 +26,15 @@ function CompactTrendingCard({ project }: { project: ProjectWithId }) {
           <span className="text-[11px] text-slate-400">—</span>
         )}
       </div>
-      <p className="mt-3 text-xs font-medium text-slate-600">Team Size: 0/0</p>
+      <div className="mt-3 flex items-center justify-between gap-2 text-xs font-medium text-slate-600">
+        <span>단기 시프트</span>
+        <span className="font-bold text-[#2563EB]">모집 중</span>
+      </div>
       <Link
         href={project.id ? `/projects/${project.id}` : "/explore"}
         className="mt-auto rounded-xl bg-[#1e3a8a] px-3 py-2.5 text-center text-xs font-bold text-white shadow-sm transition hover:bg-[#1e40af] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-800"
       >
-        View Details
+        일자리 상세 보기
       </Link>
     </div>
   );
@@ -66,10 +69,10 @@ export default function BentoTrendingProjects() {
         id="bento-trending-heading"
         className="text-xs font-bold uppercase tracking-[0.18em] text-white md:text-sm"
       >
-        Trending Projects
+        추천 시프트
       </h2>
       <p className="mt-2 text-sm text-white/85">
-        Few<span className="font-semibold text-white">*</span> sample cards for active projects.
+        지금 지원할 수 있는 단기 일자리입니다.
       </p>
 
       {isLoading && (

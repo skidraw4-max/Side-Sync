@@ -7,6 +7,8 @@
 - 벤토 배경: `#e8ecf1`, 패널은 `rounded-xl`(12px) + `shadow-[0_4px_24px_…]` 계열.
 - 헤더 로고: `HeaderBrandWordmark` — `public/images/image-2.png`(사용자 제공 블루 그라데이션 마크, 1024²).
 - 데스크톱·로그인 네비 라벨: Homes, Explorer, My Projects, About. Sign In: `rounded-full`, `bg-[#0f2744]`.
+- 메인 랜딩은 단기 일자리·공수 관리 컨셉으로 전환되어 `일자리 찾기`, `공고 올리기`, `내 근무`, `공수 관리`를 중심으로 노출합니다.
+- `BentoTrendingProjects`는 `추천 시프트`, `BentoWorkspaceKanban`은 `공수·인건비 관리`, `BentoWageBenchmarks`는 `업종별 참고 시세`로 표시됩니다.
 - `BentoLiveStats`: `GET /api/stats/projects`, 실패 시 154/87/129, 인라인 `Recruiting:` 등 + 굵은 숫자. 클릭 시 `home-project-cards`.
 - 메인 트렌딩 UI: `BentoTrendingProjects` (`src/components/bento/BentoTrendingProjects.tsx`) — 별도 하단 `TrendingProjects` 섹션 없음. `TrendingProjects.tsx`는 레거시·다른 용도 보존.
 

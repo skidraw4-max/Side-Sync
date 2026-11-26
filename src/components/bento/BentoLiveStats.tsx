@@ -107,7 +107,7 @@ export default function BentoLiveStats({ scrollTargetId = "home-project-cards" }
         id="bento-livestats-heading"
         className="text-xs font-bold uppercase tracking-[0.16em] text-slate-900 md:text-sm"
       >
-        Live Stats
+        오늘의 시프트 현황
       </h2>
       {loading ? (
         <div className="mt-6 flex flex-1 flex-col gap-4" aria-busy>
@@ -132,7 +132,7 @@ export default function BentoLiveStats({ scrollTargetId = "home-project-cards" }
                 <IconRecruiting className="h-6 w-6" />
               </span>
               <p className="flex flex-wrap items-baseline gap-x-1.5 text-base leading-none">
-                <span className="font-semibold text-slate-800">Recruiting:</span>
+                <span className="font-semibold text-slate-800">모집 중 시프트:</span>
                 <span className="text-3xl font-bold tabular-nums text-[#1e3a5f]" data-stat="recruiting">
                   {recruiting}
                 </span>
@@ -149,7 +149,7 @@ export default function BentoLiveStats({ scrollTargetId = "home-project-cards" }
                 <IconInProgress className="h-6 w-6" />
               </span>
               <p className="flex flex-wrap items-baseline gap-x-1.5 text-base leading-none">
-                <span className="font-semibold text-slate-800">In Progress:</span>
+                <span className="font-semibold text-slate-800">진행 중 근무:</span>
                 <span className="text-3xl font-bold tabular-nums text-[#2563eb]" data-stat="inProgress">
                   {inProgress}
                 </span>
@@ -166,7 +166,7 @@ export default function BentoLiveStats({ scrollTargetId = "home-project-cards" }
                 <IconCompleted className="h-9 w-9" />
               </span>
               <p className="flex flex-wrap items-baseline gap-x-1.5 text-base leading-none">
-                <span className="font-semibold text-slate-800">Completed:</span>
+                <span className="font-semibold text-slate-800">완료된 근무:</span>
                 <span className="text-3xl font-bold tabular-nums text-emerald-600" data-stat="completed">
                   {completed}
                 </span>
